@@ -1,4 +1,5 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { chargeEndMs, formatDuration, packageRemainingMs, playedMs, sessionCharge } from '../../core/pricing';
 import { ServerClock } from '../../core/server-clock';
@@ -18,7 +19,7 @@ interface Card {
 
 @Component({
   selector: 'app-counter-stations',
-  imports: [StartDialog],
+  imports: [StartDialog, RouterLink],
   providers: [CounterStore],
   template: `
     <section class="p-4">
@@ -90,7 +91,7 @@ interface Card {
                     } @else {
                       <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="act(s, 'reopen_session')">Resume</button>
                     }
-                    <button type="button" class="btn" (click)="soon('Adding items')">+ Items</button>
+                    <a class="btn" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
                     <button type="button" class="btn" (click)="soon('Billing')">Bill</button>
                     @if (isAdmin()) {
                       <button type="button" class="btn text-red-300" (click)="confirmCancel.set(s.id)">Cancel</button>

@@ -31,9 +31,15 @@ export class App {
           { label: 'Booking', path: '/admin/booking-settings' },
           { label: 'Staff', path: '/admin/staff' },
           { label: 'Counter', path: '/counter/stations' },
+          { label: 'Canteen', path: '/counter/canteen' },
+          { label: 'Stock', path: '/counter/stock' },
         ];
       case 'staff':
-        return [{ label: 'Stations', path: '/counter/stations' }];
+        return [
+          { label: 'Stations', path: '/counter/stations' },
+          { label: 'Canteen', path: '/counter/canteen' },
+          { label: 'Stock', path: '/counter/stock' },
+        ];
       case 'customer':
         return [
           { label: 'Book', path: '/book' },

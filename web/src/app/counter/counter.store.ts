@@ -4,6 +4,7 @@ import { ServerClock } from '../core/server-clock';
 import { SessionSnapshot } from '../core/pricing';
 import { SupabaseService } from '../core/supabase.service';
 import { friendlyError } from '../shared/errors';
+import { reservedByProduct } from './stock-utils';
 
 export interface Station {
   id: number;
@@ -24,9 +25,21 @@ export interface OpenSession extends SessionSnapshot {
 
 export interface TabLine {
   session_id: number;
+  product_id: number;
   qty: number;
   name: string;
   price: number;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  stock_qty: number;
+  low_stock_level: number;
+  track_stock: boolean;
+  active: boolean;
 }
 
 export interface Pack {
@@ -55,11 +68,19 @@ export class CounterStore {
   readonly sessions = signal<OpenSession[]>([]);
   readonly tabs = signal<TabLine[]>([]);
   readonly packages = signal<Pack[]>([]);
+  readonly products = signal<Product[]>([]);
   readonly loaded = signal(false);
   readonly live = signal(false);
   readonly error = signal<string | null>(null);
+  /** Goes up on every Realtime event, so screens can reload extra data (e.g. the stock log). */
+  readonly changes = signal(0);
 
   readonly sessionByStation = computed(() => new Map(this.sessions().map((s) => [s.station_id, s])));
+  readonly stationById = computed(() => new Map(this.stations().map((s) => [s.id, s])));
+  /** Quantity of each product already held by open tabs on any station. */
+  readonly reserved = computed(() =>
+    reservedByProduct(this.tabs(), new Set(this.sessions().map((s) => s.id))),
+  );
 
   private channel?: RealtimeChannel;
   private refreshTimer?: ReturnType<typeof setInterval>;
@@ -75,6 +96,8 @@ export class CounterStore {
       .channel('counter-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => this.queueReload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tab_items' }, () => this.queueReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => this.queueReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_moves' }, () => this.queueReload())
       .subscribe((status) => this.live.set(status === 'SUBSCRIBED'));
     this.refreshTimer = setInterval(() => void this.load(), 60_000);
     document.addEventListener('visibilitychange', this.onVisible);
@@ -88,12 +111,13 @@ export class CounterStore {
   }
 
   private queueReload(): void {
+    this.changes.update((n) => n + 1);
     clearTimeout(this.debounce);
     this.debounce = setTimeout(() => void this.load(), 100);
   }
 
   async load(): Promise<void> {
-    const [st, se, tab, pk] = await Promise.all([
+    const [st, se, tab, pk, pr] = await Promise.all([
       this.sb
         .from('stations')
         .select('id, name, type, rate_per_hour, sort_order')
@@ -101,14 +125,19 @@ export class CounterStore {
         .order('sort_order')
         .order('name'),
       this.sb.from('sessions').select(SESSION_COLUMNS).in('status', ['running', 'paused', 'ended']),
-      this.sb.from('tab_items').select('session_id, qty, products(name, price)'),
+      this.sb.from('tab_items').select('session_id, product_id, qty, products(name, price)'),
       this.sb
         .from('packages')
         .select('id, name, minutes, price, station_type')
         .eq('active', true)
         .order('minutes'),
+      this.sb
+        .from('products')
+        .select('id, name, category, price, stock_qty, low_stock_level, track_stock, active')
+        .order('category')
+        .order('name'),
     ]);
-    const failed = st.error ?? se.error ?? tab.error ?? pk.error;
+    const failed = st.error ?? se.error ?? tab.error ?? pk.error ?? pr.error;
     if (failed) {
       this.error.set(friendlyError(failed));
       return;
@@ -117,10 +146,26 @@ export class CounterStore {
     this.stations.set((st.data ?? []) as unknown as Station[]);
     this.sessions.set((se.data ?? []) as unknown as OpenSession[]);
     this.packages.set((pk.data ?? []) as unknown as Pack[]);
+    this.products.set(
+      ((pr.data ?? []) as unknown as Product[]).map((p) => ({ ...p, price: Number(p.price) })),
+    );
     this.tabs.set(
-      ((tab.data ?? []) as unknown as { session_id: number; qty: number; products: { name: string; price: number } | null }[])
+      (
+        (tab.data ?? []) as unknown as {
+          session_id: number;
+          product_id: number;
+          qty: number;
+          products: { name: string; price: number } | null;
+        }[]
+      )
         .filter((t) => t.products)
-        .map((t) => ({ session_id: t.session_id, qty: t.qty, name: t.products!.name, price: Number(t.products!.price) })),
+        .map((t) => ({
+          session_id: t.session_id,
+          product_id: t.product_id,
+          qty: t.qty,
+          name: t.products!.name,
+          price: Number(t.products!.price),
+        })),
     );
     this.loaded.set(true);
   }

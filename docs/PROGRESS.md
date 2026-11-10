@@ -7,7 +7,7 @@
 | 2 | Auth and roles | Done (verified on hosted dev project) | 2026-11-10 | Migration 0003 (11 pgTAP checks), Edge Function admin-create-staff, guards, staff and customer login. Browser-verified. |
 | 3 | Admin settings | Done (verified on hosted dev project) | 2026-11-10 | Migration 0004 (booking_settings, opening_hours); 5 admin screens; 37 new pgTAP checks (06, 07); 13 web unit tests total. Browser-verified save/reload and validation on every screen. |
 | 4 | Counter: stations | Done (verified on hosted dev project) | 2026-11-10 | Migration 0005 (server_now); /counter/stations with live timers, Realtime, start/pause/resume/stop/reopen/cancel; core/pricing.ts verified against 140 golden values from session_charge. Browser-verified. |
-| 5 | Canteen and stock | Not started | | |
+| 5 | Canteen and stock | Done (verified on hosted dev project) | 2026-11-10 | Migration 0006 (recent_stock_moves, Realtime for products + stock_moves); /counter/canteen and /counter/stock; 24 new pgTAP checks (09), 41 web unit tests total. Browser-verified at 360 px. |
 | 6 | Checkout and receipts | Not started | | |
 | 7 | Bookings | Not started | | |
 | 8 | Customer portal | Not started | | |
@@ -53,6 +53,15 @@
 5. Phone is optional: 7 to 15 digits, `+` and spaces allowed.
 6. Counter nav: `Stations` for staff, `Counter` for admin; other counter screens come in later phases.
 7. Test sessions created while verifying were deleted.
+
+## Decisions made in Phase 5
+1. `recent_stock_moves(limit)` (migration 0006, staff only) returns the stock log with the user's display name (full name, else email, else "System"), because staff cannot read other profiles. The Bookings migration in Phase 7 is therefore `0007`.
+2. `products` and `stock_moves` are in the Realtime publication, so stock changes show on every counter without refresh.
+3. Availability on the canteen = stock minus items held by all open tabs minus the cart; untracked products are unlimited. A cart line is trimmed automatically if other counters use up the stock.
+4. The cart is a root service: it survives moving between counter screens, not a reload or logout. Walk-in Checkout is a placeholder until Phase 6.
+5. Stock dialog: purchase and wastage need a positive quantity, adjustment a signed non-zero change; notes required for wastage and adjustment (purchase note optional). A move that would make stock negative is blocked.
+6. `+ Items` on a station card opens the canteen with that station's tab preselected (applied once).
+7. Test data (a session, tab items, five stock moves, adjusted stock) was removed/restored to the seed values.
 
 ## Open items / to do later
 - Rename the Supabase organisation/project and the SMTP sender name (Authentication > Emails > SMTP Settings) to "E-Sports Gaming Arena" if wanted; the sender name needs the user (SMTP settings).

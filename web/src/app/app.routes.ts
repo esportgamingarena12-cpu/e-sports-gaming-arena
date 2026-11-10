@@ -6,7 +6,9 @@ import { ShopSettings } from './admin/settings/shop-settings';
 import { StaffAdmin } from './admin/staff/staff';
 import { Stations } from './admin/stations/stations';
 import { BookLogin } from './book/book-login';
+import { Canteen } from './counter/canteen/canteen';
 import { CounterStations } from './counter/stations/stations';
+import { StockScreen } from './counter/stock/stock';
 import { adminGuard, customerGuard, staffGuard } from './core/guards';
 import { Login } from './shared/login';
 import { NotFound } from './shared/not-found';
@@ -36,6 +38,8 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'stations' },
       { path: 'stations', component: CounterStations },
+      { path: 'canteen', component: Canteen },
+      { path: 'stock', component: StockScreen },
     ],
   },
   {
