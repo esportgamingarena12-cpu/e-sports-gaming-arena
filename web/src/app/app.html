@@ -1,0 +1,13 @@
+<header class="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 backdrop-blur">
+  <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+    <a routerLink="/" class="text-lg font-bold text-emerald-400">{{ appName }}</a>
+    <a routerLink="/login" class="rounded border border-slate-700 px-3 py-1 text-sm">Login</a>
+  </div>
+  <nav class="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 pb-2">
+    @for (item of nav(); track item.path) {
+      <a [routerLink]="item.path" routerLinkActive="bg-emerald-500 text-slate-950"
+         class="whitespace-nowrap rounded px-3 py-1 text-sm text-slate-300">{{ item.label }}</a>
+    }
+  </nav>
+</header>
+<main class="mx-auto max-w-5xl"><router-outlet /></main>
