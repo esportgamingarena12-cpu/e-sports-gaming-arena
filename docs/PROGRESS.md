@@ -6,7 +6,7 @@
 | 1 | Database: core and billing | Done (verified on hosted dev project) | 2026-11-10 | Migrations 0001/0002 + seed applied; 51 pgTAP checks pass on Supabase project rfwozldwehmtjvgqpvid (no Docker). |
 | 2 | Auth and roles | Done (verified on hosted dev project) | 2026-11-10 | Migration 0003 (11 pgTAP checks), Edge Function admin-create-staff, guards, staff and customer login. Browser-verified. |
 | 3 | Admin settings | Done (verified on hosted dev project) | 2026-11-10 | Migration 0004 (booking_settings, opening_hours); 5 admin screens; 37 new pgTAP checks (06, 07); 13 web unit tests total. Browser-verified save/reload and validation on every screen. |
-| 4 | Counter: stations | Not started | | |
+| 4 | Counter: stations | Done (verified on hosted dev project) | 2026-11-10 | Migration 0005 (server_now); /counter/stations with live timers, Realtime, start/pause/resume/stop/reopen/cancel; core/pricing.ts verified against 140 golden values from session_charge. Browser-verified. |
 | 5 | Canteen and stock | Not started | | |
 | 6 | Checkout and receipts | Not started | | |
 | 7 | Bookings | Not started | | |
@@ -45,7 +45,19 @@
 6. Opening stock on a new product is applied through `stock_move` (purchase, note "Opening stock").
 7. Test data created while verifying (station PC 4, package PC 1 Hour, product Samosa, changed settings) was removed/restored to defaults.
 
+## Decisions made in Phase 4
+1. Shop name is **E-Sports Gaming Arena** (user correction). Changed in the app header, page title, seed.sql, the `settings` row and both auth email templates. NOT changed: `CLAUDE.md`, `docs/spec.md`, `START-HERE.md` (user documents, still say "E Gaming Era"), migration 0001's column default (applied migrations are never edited), the Supabase organisation/project names, and the Supabase SMTP sender name.
+2. `server_now()` (migration 0005) gives every counter the same clock; the Bookings migration in Phase 7 is therefore `0006`.
+3. `+ Items` and `Bill` are placeholders (Phases 5 and 6). `Stop` freezes the timer for now.
+4. Ended sessions show "Ended - not billed" in orange; Cancel is admin only with a confirm step.
+5. Phone is optional: 7 to 15 digits, `+` and spaces allowed.
+6. Counter nav: `Stations` for staff, `Counter` for admin; other counter screens come in later phases.
+7. Test sessions created while verifying were deleted.
+
 ## Open items / to do later
+- Rename the Supabase organisation/project and the SMTP sender name (Authentication > Emails > SMTP Settings) to "E-Sports Gaming Arena" if wanted; the sender name needs the user (SMTP settings).
+- Update `CLAUDE.md`, `docs/spec.md`, `START-HERE.md` titles/PWA app name to the new name if wanted (spec Phase 10 says PWA app name "E Gaming Era").
+- pricing.ts uses millisecond timestamps; the database uses microseconds, so a charge could differ by one block only when a session sits within a millisecond of a block boundary. The live number is display only; the bill is calculated by the server in Phase 6.
 - Phase 3 staff-access check relied on the shared `adminGuard` (unit tests + Phase 2 browser check) and pgTAP; a fresh staff browser login on the new routes was not repeated (it would sign out the admin session, which needs a new email code).
 - Screens were checked at the browser pane width (about 440 px), not an exact 360 px viewport.
 - **Resend limits (Phase 10):** `onboarding@resend.dev` only delivers to the Resend account owner's address. Verify a sending domain in Resend before real customers use the booking site, and replace the SMTP sender.

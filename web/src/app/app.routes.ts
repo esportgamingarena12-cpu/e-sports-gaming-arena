@@ -6,6 +6,7 @@ import { ShopSettings } from './admin/settings/shop-settings';
 import { StaffAdmin } from './admin/staff/staff';
 import { Stations } from './admin/stations/stations';
 import { BookLogin } from './book/book-login';
+import { CounterStations } from './counter/stations/stations';
 import { adminGuard, customerGuard, staffGuard } from './core/guards';
 import { Login } from './shared/login';
 import { NotFound } from './shared/not-found';
@@ -32,7 +33,10 @@ export const routes: Routes = [
   {
     path: 'counter',
     canActivate: [staffGuard],
-    children: [{ path: '', pathMatch: 'full', component: Placeholder, data: { title: 'Counter' } }],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'stations' },
+      { path: 'stations', component: CounterStations },
+    ],
   },
   {
     path: 'book',

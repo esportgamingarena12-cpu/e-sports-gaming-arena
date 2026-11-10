@@ -1,5 +1,5 @@
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { integer, maxAtLeastMin, notBlank, openBeforeClose, upiId } from './validators';
+import { integer, maxAtLeastMin, notBlank, openBeforeClose, phone, upiId } from './validators';
 
 describe('validators', () => {
   it('rejects negative prices with Validators.min(0)', () => {
@@ -41,6 +41,19 @@ describe('validators', () => {
     expect(c.valid).toBe(true);
     c.setValue('not a upi id');
     expect(c.errors).toEqual({ upi: true });
+  });
+
+  it('validates an optional phone number', () => {
+    const c = new FormControl('', phone);
+    expect(c.valid).toBe(true);
+    c.setValue('98765 43210');
+    expect(c.valid).toBe(true);
+    c.setValue('+91 9876543210');
+    expect(c.valid).toBe(true);
+    c.setValue('12345');
+    expect(c.errors).toEqual({ phone: true });
+    c.setValue('abc1234567');
+    expect(c.errors).toEqual({ phone: true });
   });
 
   it('requires open before close unless closed', () => {

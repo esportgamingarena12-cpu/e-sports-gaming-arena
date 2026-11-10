@@ -1,4 +1,4 @@
-// Development Supabase project "E Gaming Era" (hosted). Anon key only —
+// Development Supabase project for E-Sports Gaming Arena (hosted). Anon key only —
 // never put the service_role key in web/.
 export const environment = {
   production: false,

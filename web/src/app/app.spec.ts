@@ -22,7 +22,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).toContain('E Gaming Era');
+    expect(text).toContain('E-Sports Gaming Arena');
     expect(text).toContain('Book');
   });
 });

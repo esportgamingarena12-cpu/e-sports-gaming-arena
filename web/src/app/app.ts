@@ -16,7 +16,7 @@ interface NavItem {
 export class App {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  protected readonly appName = 'E Gaming Era';
+  protected readonly appName = 'E-Sports Gaming Arena';
 
   /** Role-based navigation. Signed-out visitors only see Book. */
   protected readonly nav = computed<NavItem[]>(() => {
@@ -30,10 +30,10 @@ export class App {
           { label: 'Products', path: '/admin/products' },
           { label: 'Booking', path: '/admin/booking-settings' },
           { label: 'Staff', path: '/admin/staff' },
-          { label: 'Counter', path: '/counter' },
+          { label: 'Counter', path: '/counter/stations' },
         ];
       case 'staff':
-        return [{ label: 'Counter', path: '/counter' }];
+        return [{ label: 'Stations', path: '/counter/stations' }];
       case 'customer':
         return [
           { label: 'Book', path: '/book' },

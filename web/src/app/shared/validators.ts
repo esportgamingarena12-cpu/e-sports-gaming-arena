@@ -17,6 +17,14 @@ export const upiId: ValidatorFn = (c: AbstractControl): ValidationErrors | null 
   return v === '' || /^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v) ? null : { upi: true };
 };
 
+/** Optional phone number: digits, spaces and a leading +, 7 to 15 digits. */
+export const phone: ValidatorFn = (c: AbstractControl): ValidationErrors | null => {
+  const v = typeof c.value === 'string' ? c.value.trim() : '';
+  if (v === '') return null;
+  const digits = v.replace(/\D/g, '').length;
+  return /^\+?[0-9 ]+$/.test(v) && digits >= 7 && digits <= 15 ? null : { phone: true };
+};
+
 /** Group validator for an opening-hours row: open must be before close unless closed. */
 export const openBeforeClose: ValidatorFn = (g: AbstractControl): ValidationErrors | null => {
   const v = g.value as { open_time?: string; close_time?: string; closed?: boolean };

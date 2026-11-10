@@ -18,6 +18,7 @@ export class FieldError {
     if (e['max']) return `Must be at most ${e['max'].max}`;
     if (e['integer']) return 'Whole number only';
     if (e['upi']) return 'Use the form name@bank';
+    if (e['phone']) return 'Enter 7 to 15 digits';
     if (e['email']) return 'Enter a valid email';
     return 'Invalid value';
   }

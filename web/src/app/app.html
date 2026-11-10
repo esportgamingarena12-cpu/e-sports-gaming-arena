@@ -1,6 +1,6 @@
 <header class="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 backdrop-blur">
   <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-    <a routerLink="/" class="text-lg font-bold text-emerald-400">{{ appName }}</a>
+    <a routerLink="/" class="min-w-0 text-sm font-bold leading-tight text-emerald-400 sm:text-lg">{{ appName }}</a>
     @if (auth.profile(); as p) {
       <div class="flex items-center gap-2 text-sm">
         <span class="max-w-32 truncate text-slate-300">{{ p.full_name || p.email }}</span>

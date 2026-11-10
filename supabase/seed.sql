@@ -1,10 +1,10 @@
 -- Starter data (runs after migrations on `supabase db reset`). Idempotent enough for repeated resets.
 
 update settings set
-  shop_name = 'E Gaming Era',
+  shop_name = 'E-Sports Gaming Arena',
   address = 'Add shop address in Settings',
   upi_id = null,
-  upi_payee_name = 'E Gaming Era';
+  upi_payee_name = 'E-Sports Gaming Arena';
 
 insert into stations (name, type, rate_per_hour, sort_order, online_bookable) values
   ('PC 1',  'pc',  60.00,  1, true),
