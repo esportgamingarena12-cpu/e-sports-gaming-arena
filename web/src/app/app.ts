@@ -1,5 +1,11 @@
-import { Component, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, computed, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from './core/auth.service';
+
+interface NavItem {
+  label: string;
+  path: string;
+}
 
 @Component({
   selector: 'app-root',
@@ -7,11 +13,34 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
 })
 export class App {
+  protected readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   protected readonly appName = 'E Gaming Era';
-  // Placeholder nav; becomes role-based in Phase 2.
-  protected readonly nav = signal([
-    { label: 'Book', path: '/book' },
-    { label: 'Counter', path: '/counter' },
-    { label: 'Admin', path: '/admin' },
-  ]);
+
+  /** Role-based navigation. Signed-out visitors only see Book. */
+  protected readonly nav = computed<NavItem[]>(() => {
+    switch (this.auth.role()) {
+      case 'admin':
+        return [
+          { label: 'Admin', path: '/admin' },
+          { label: 'Staff', path: '/admin/staff' },
+          { label: 'Counter', path: '/counter' },
+        ];
+      case 'staff':
+        return [{ label: 'Counter', path: '/counter' }];
+      case 'customer':
+        return [
+          { label: 'Book', path: '/book' },
+          { label: 'My bookings', path: '/book/my-bookings' },
+        ];
+      default:
+        return [{ label: 'Book', path: '/book' }];
+    }
+  });
+
+  protected async logout(): Promise<void> {
+    const wasStaff = this.auth.isStaff();
+    await this.auth.signOut();
+    await this.router.navigateByUrl(wasStaff ? '/login' : '/book');
+  }
 }

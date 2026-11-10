@@ -1,11 +1,22 @@
 <header class="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 backdrop-blur">
   <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
     <a routerLink="/" class="text-lg font-bold text-emerald-400">{{ appName }}</a>
-    <a routerLink="/login" class="rounded border border-slate-700 px-3 py-1 text-sm">Login</a>
+    @if (auth.profile(); as p) {
+      <div class="flex items-center gap-2 text-sm">
+        <span class="max-w-32 truncate text-slate-300">{{ p.full_name || p.email }}</span>
+        <button type="button" (click)="logout()" class="rounded border border-slate-700 px-3 py-1">Logout</button>
+      </div>
+    } @else {
+      <div class="flex gap-2 text-sm">
+        <a routerLink="/book/login" class="rounded border border-slate-700 px-3 py-1">Customer login</a>
+        <a routerLink="/login" class="rounded border border-slate-700 px-3 py-1">Staff</a>
+      </div>
+    }
   </div>
   <nav class="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 pb-2">
     @for (item of nav(); track item.path) {
       <a [routerLink]="item.path" routerLinkActive="bg-emerald-500 text-slate-950"
+         [routerLinkActiveOptions]="{ exact: true }"
          class="whitespace-nowrap rounded px-3 py-1 text-sm text-slate-300">{{ item.label }}</a>
     }
   </nav>
