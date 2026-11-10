@@ -1,7 +1,8 @@
-// Local Supabase. Paste the values printed by `supabase status`.
-// Only the anon key ever goes in web/ — never the service_role key.
+// Development Supabase project "E Gaming Era" (hosted). Anon key only —
+// never put the service_role key in web/.
 export const environment = {
   production: false,
-  SUPABASE_URL: 'http://127.0.0.1:54321',
-  SUPABASE_ANON_KEY: 'PASTE_LOCAL_ANON_KEY_FROM_supabase_status',
+  SUPABASE_URL: 'https://rfwozldwehmtjvgqpvid.supabase.co',
+  SUPABASE_ANON_KEY:
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmd296bGR3ZWhtdGp2Z3FwdmlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQyOTAzOTIsImV4cCI6MjEwOTg2NjM5Mn0.pMhNT0tS2MqMcgM1USExDvJPAy1lXMlO6Brjr5FAK3I',
 };
