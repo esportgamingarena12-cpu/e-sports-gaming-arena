@@ -1,12 +1,17 @@
 import { Routes } from '@angular/router';
+import { BookingSettings } from './admin/booking/booking-settings';
+import { Packages } from './admin/packages/packages';
+import { Products } from './admin/products/products';
+import { ShopSettings } from './admin/settings/shop-settings';
 import { StaffAdmin } from './admin/staff/staff';
+import { Stations } from './admin/stations/stations';
 import { BookLogin } from './book/book-login';
 import { adminGuard, customerGuard, staffGuard } from './core/guards';
 import { Login } from './shared/login';
 import { NotFound } from './shared/not-found';
 import { Placeholder } from './shared/placeholder';
 
-// Real screens for admin / counter / book arrive in later phases.
+// Remaining admin / counter / book screens arrive in later phases.
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'book' },
   { path: 'login', component: Login },
@@ -16,6 +21,11 @@ export const routes: Routes = [
     canActivate: [adminGuard],
     children: [
       { path: '', pathMatch: 'full', component: Placeholder, data: { title: 'Admin dashboard' } },
+      { path: 'settings', component: ShopSettings },
+      { path: 'stations', component: Stations },
+      { path: 'packages', component: Packages },
+      { path: 'products', component: Products },
+      { path: 'booking-settings', component: BookingSettings },
       { path: 'staff', component: StaffAdmin },
     ],
   },
