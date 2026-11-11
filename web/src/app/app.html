@@ -4,29 +4,30 @@
     <div class="fixed inset-0 z-30 bg-black/70 lg:hidden" (click)="menuOpen.set(false)" aria-hidden="true"></div>
   }
   <aside [class]="menuOpen() ? 'flex' : 'hidden lg:flex'"
-         class="fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] flex-col gap-4 overflow-y-auto border-r border-violet-500/20 bg-slate-900 px-4 py-5 lg:w-64"
+         class="fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] flex-col gap-3 overflow-y-auto border-r border-violet-500/20 bg-linear-to-b from-slate-900 via-slate-900 to-[#150d33] px-4 py-5 lg:w-64"
          aria-label="Main menu">
     <div class="flex items-center justify-between">
       <a routerLink="/" aria-label="Home"><app-logo /></a>
       <button type="button" class="btn !p-2 lg:hidden" (click)="menuOpen.set(false)" aria-label="Close menu"><app-icon name="close" /></button>
     </div>
-    <nav class="flex flex-1 flex-col gap-4">
+    <nav class="flex flex-col gap-3">
       @for (g of groups(); track g.title) {
         <div>
           <p class="eyebrow mb-1 px-3 !text-slate-500">{{ g.title }}</p>
           @for (item of g.items; track item.path) {
-            <a [routerLink]="item.path" routerLinkActive="!bg-violet-600 !text-white shadow-[0_0_16px_-4px_rgb(139_92_246_/_0.9)]"
+            <a [routerLink]="item.path"
+               routerLinkActive="!bg-linear-to-r !from-violet-600 !to-fuchsia-500 !text-white shadow-[0_0_20px_-4px_rgb(168_85_247_/_0.9)]"
                [routerLinkActiveOptions]="{ exact: true }"
-               class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 hover:bg-slate-800">
+               class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white">
               <app-icon [name]="item.icon" /> {{ item.label }}
             </a>
           }
         </div>
       }
     </nav>
-    <div class="hidden px-2 lg:block" aria-hidden="true"><app-side-art /></div>
+    <div class="mt-auto hidden px-1 pt-2 lg:block" aria-hidden="true"><app-side-art /></div>
     @if (auth.profile(); as p) {
-      <div class="border-t border-slate-800 pt-3">
+      <div class="border-t border-slate-800 pt-3 lg:hidden">
         <p class="truncate text-sm font-medium text-slate-100">{{ p.full_name || p.email }}</p>
         <p class="text-xs text-slate-400">{{ roleLabel() }}</p>
         <button type="button" (click)="logout()" class="btn mt-2 flex w-full items-center justify-center gap-2">
@@ -44,32 +45,28 @@
     </p>
   }
   @if (sidebar()) {
-    <div class="mx-auto flex h-14 items-center gap-3 px-4">
+    <div class="mx-auto flex h-16 items-center gap-3 px-4">
       <button type="button" class="btn !p-2 lg:hidden" (click)="menuOpen.set(true)" aria-label="Menu"><app-icon name="menu" /></button>
       <p class="min-w-0 flex-1 truncate font-display text-xl font-bold tracking-wide" data-title>{{ title() || appName }}</p>
-      @if (auth.profile(); as p) {
-        <span class="hidden max-w-48 truncate text-sm text-slate-300 sm:inline">{{ p.full_name || p.email }}</span>
-        <span class="badge hidden bg-violet-500/20 text-violet-300 sm:inline-flex">{{ roleLabel() }}</span>
-      }
+      <app-top-tools (logout)="logout()" />
     </div>
   } @else {
-    <div class="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
+    <div class="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
       <a routerLink="/" aria-label="Home"><app-logo /></a>
-      <nav class="ml-4 hidden items-center gap-1 md:flex" aria-label="Main">
-        @for (item of items(); track item.path) {
-          <a [routerLink]="item.path" routerLinkActive="!text-cyan-300 border-b-2 !border-cyan-400"
-             [routerLinkActiveOptions]="{ exact: true }"
-             class="border-b-2 border-transparent px-3 py-1 text-sm font-medium text-slate-300 hover:text-slate-50">{{ item.label }}</a>
+      <nav class="mx-auto hidden items-center gap-1 md:flex" aria-label="Main">
+        @for (l of topLinks(); track l.label) {
+          <a [routerLink]="l.path" [fragment]="l.fragment" class="rounded px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:text-white"
+             [class]="l.label === 'Home' && isHome() ? '!text-white underline decoration-cyan-400 decoration-2 underline-offset-8' : ''">{{ l.label }}</a>
         }
       </nav>
-      <div class="ml-auto flex items-center gap-2">
+      <div class="ml-auto flex items-center gap-2 md:ml-0">
         @if (auth.profile(); as p) {
-          <span class="hidden max-w-40 truncate text-sm text-slate-300 sm:inline">{{ p.full_name || p.email }}</span>
+          <span class="hidden max-w-40 truncate text-sm text-slate-300 lg:inline">{{ p.full_name || p.email }}</span>
           <button type="button" (click)="logout()" class="btn">Logout</button>
         } @else if (auth.ready()) {
-          <a routerLink="/book/login" class="btn-outline hidden sm:inline-flex sm:items-center">Customer login</a>
-          <a routerLink="/login" class="btn hidden sm:inline-flex sm:items-center">Staff</a>
+          <a routerLink="/book/login" class="btn-outline hidden sm:inline-flex sm:items-center">Login</a>
         }
+        <a routerLink="/book" fragment="book" class="btn-primary hidden items-center gap-1.5 !py-2 text-sm sm:inline-flex" data-top-book>Book a Slot <app-icon name="arrow" [size]="16" /></a>
         <button type="button" class="btn !p-2 md:hidden" (click)="menuOpen.set(!menuOpen())" aria-label="Menu" [attr.aria-expanded]="menuOpen()">
           <app-icon [name]="menuOpen() ? 'close' : 'menu'" />
         </button>
@@ -77,21 +74,20 @@
     </div>
     @if (menuOpen()) {
       <nav class="border-t border-slate-800 bg-slate-900 px-4 py-2 md:hidden" aria-label="Menu">
-        @for (item of items(); track item.path) {
-          <a [routerLink]="item.path" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-200 hover:bg-slate-800">
-            <app-icon [name]="item.icon" /> {{ item.label }}
-          </a>
+        @for (l of topLinks(); track l.label) {
+          <a [routerLink]="l.path" [fragment]="l.fragment" class="flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-slate-200 hover:bg-slate-800">{{ l.label }}</a>
         }
         @if (!auth.profile() && auth.ready()) {
-          <a routerLink="/book/login" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-cyan-300 hover:bg-slate-800"><app-icon name="user" /> Customer login</a>
+          <a routerLink="/book/login" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-cyan-300 hover:bg-slate-800"><app-icon name="user" /> Login</a>
           <a routerLink="/login" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 hover:bg-slate-800"><app-icon name="users" /> Staff login</a>
         }
+        <a routerLink="/book" fragment="book" class="btn-primary my-2 flex items-center justify-center gap-1.5">Book a Slot <app-icon name="arrow" [size]="16" /></a>
       </nav>
     }
   }
 </header>
 
-<main [class]="sidebar() ? 'pb-24 lg:pb-8 lg:pl-64' : 'mx-auto max-w-6xl'" class="min-h-[70vh]"><router-outlet /></main>
+<main [class]="sidebar() ? 'pb-24 lg:pb-8 lg:pl-64' : ''" class="min-h-[70vh]"><router-outlet /></main>
 
 @if (sidebar()) {
   <!-- Phones: the most used counter screens one tap away -->
@@ -99,7 +95,7 @@
     @for (t of tabs(); track t.path) {
       <a [routerLink]="t.path" routerLinkActive="!text-orange-400" [routerLinkActiveOptions]="{ exact: true }"
          class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-slate-400">
-        <app-icon [name]="t.icon" [size]="22" /> {{ t.label }}
+        <app-icon [name]="t.icon" [size]="22" /> {{ t.short ?? t.label }}
       </a>
     }
     <button type="button" (click)="menuOpen.set(true)" class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-slate-400" aria-label="More">

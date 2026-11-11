@@ -6,10 +6,13 @@ import { ReceiptView } from './counter/receipt/receipt';
 import { SideArt } from './shared/art';
 import { Icon } from './shared/icon';
 import { Logo } from './shared/logo';
+import { TopTools } from './shared/top-tools';
 import { ToastOutlet } from './shared/toast-outlet';
 
 interface NavItem {
   label: string;
+  /** Shorter name for the phone bottom bar. */
+  short?: string;
   path: string;
   icon: string;
 }
@@ -21,7 +24,7 @@ interface NavGroup {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet, ReceiptView, Icon, Logo, SideArt],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet, ReceiptView, Icon, Logo, SideArt, TopTools],
   templateUrl: './app.html',
 })
 export class App {
@@ -56,19 +59,19 @@ export class App {
             title: 'Overview',
             items: [
               { label: 'Dashboard', path: '/admin', icon: 'home' },
-              { label: 'Reports', path: '/admin/reports', icon: 'chart' },
+              { label: 'Reports & Analytics', short: 'Reports', path: '/admin/reports', icon: 'chart' },
             ],
           },
           {
             title: 'Counter',
             items: [
-              { label: 'Stations', path: '/counter/stations', icon: 'monitor' },
+              { label: 'Gaming Systems', short: 'Stations', path: '/counter/stations', icon: 'monitor' },
               { label: 'Bookings', path: '/counter/bookings', icon: 'calendar' },
               { label: 'Canteen', path: '/counter/canteen', icon: 'cup' },
-              { label: 'Bills', path: '/counter/bills', icon: 'receipt' },
-              { label: 'Stock', path: '/counter/stock', icon: 'box' },
+              { label: 'Billing & Payments', short: 'Bills', path: '/counter/bills', icon: 'receipt' },
+              { label: 'Inventory', short: 'Stock', path: '/counter/stock', icon: 'box' },
               { label: 'Customers', path: '/counter/customers', icon: 'users' },
-              { label: 'Passes', path: '/counter/passes', icon: 'tag' },
+              { label: 'Memberships', short: 'Passes', path: '/counter/passes', icon: 'tag' },
             ],
           },
           {
@@ -80,7 +83,7 @@ export class App {
               { label: 'Pass setup', path: '/admin/passes', icon: 'tag' },
               { label: 'Products', path: '/admin/products', icon: 'tag' },
               { label: 'Booking rules', path: '/admin/booking-settings', icon: 'clock' },
-              { label: 'Staff', path: '/admin/staff', icon: 'users' },
+              { label: 'Staff Management', short: 'Staff', path: '/admin/staff', icon: 'users' },
             ],
           },
         ];
@@ -89,13 +92,13 @@ export class App {
           {
             title: 'Counter',
             items: [
-              { label: 'Stations', path: '/counter/stations', icon: 'monitor' },
+              { label: 'Gaming Systems', short: 'Stations', path: '/counter/stations', icon: 'monitor' },
               { label: 'Bookings', path: '/counter/bookings', icon: 'calendar' },
               { label: 'Canteen', path: '/counter/canteen', icon: 'cup' },
-              { label: 'Bills', path: '/counter/bills', icon: 'receipt' },
-              { label: 'Stock', path: '/counter/stock', icon: 'box' },
+              { label: 'Billing & Payments', short: 'Bills', path: '/counter/bills', icon: 'receipt' },
+              { label: 'Inventory', short: 'Stock', path: '/counter/stock', icon: 'box' },
               { label: 'Customers', path: '/counter/customers', icon: 'users' },
-              { label: 'Passes', path: '/counter/passes', icon: 'tag' },
+              { label: 'Memberships', short: 'Passes', path: '/counter/passes', icon: 'tag' },
               { label: 'Today', path: '/counter/today', icon: 'clock' },
             ],
           },
@@ -132,6 +135,18 @@ export class App {
     const hit = [...this.items()].sort((a, b) => b.path.length - a.path.length).find((i) => path === i.path || path.startsWith(i.path + '/'));
     return hit?.label ?? '';
   });
+
+  /** Visitor and customer top bar: sections of the booking page, plus My bookings for a customer. */
+  protected readonly topLinks = computed<{ label: string; path: string; fragment?: string }[]>(() => [
+    { label: 'Home', path: '/book' },
+    { label: 'The Studio', path: '/book', fragment: 'studio' },
+    { label: 'Plans', path: '/book', fragment: 'plans' },
+    { label: 'Book', path: '/book', fragment: 'book' },
+    ...(this.auth.role() === 'customer' ? [{ label: 'My bookings', path: '/book/my-bookings' }] : []),
+  ]);
+
+  /** True on the plain booking page (no section anchor), for the highlighted Home link. */
+  protected readonly isHome = computed(() => this.url().split(/[?#]/)[0] === '/book' && !this.url().includes('#'));
 
   protected readonly roleLabel = computed(() => {
     const r = this.auth.role();

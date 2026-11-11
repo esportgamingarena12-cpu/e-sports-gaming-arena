@@ -2,7 +2,8 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { formatIstTime, todayIst } from '../shared/format';
-import { HeroArt, RoomArt } from '../shared/art';
+import { RouterLink } from '@angular/router';
+import { ControllerArt, HeroArt, RoomArt } from '../shared/art';
 import { Icon } from '../shared/icon';
 import { BookingInfo, BookingService, FreeSlot } from './booking.service';
 import { lengthLabel, typeLabel } from './portal';
@@ -14,11 +15,15 @@ const addDays = (day: string, n: number): string =>
 /** Public booking page: anyone can see free times; signing in is asked only when they pick one. */
 @Component({
   selector: 'app-book-home',
-  imports: [Icon, HeroArt, RoomArt],
+  imports: [Icon, HeroArt, RoomArt, ControllerArt, RouterLink],
   template: `
     <!-- Hero -->
-    <section class="relative overflow-hidden px-4 pb-6 pt-8 sm:pt-12">
-      <div class="mx-auto grid max-w-6xl items-center gap-4 md:grid-cols-[1.05fr_1fr]">
+    <section class="relative px-4 pb-10 pt-8 sm:pt-12">
+      <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div class="absolute -left-32 -top-10 h-[130%] w-80 -skew-x-12 bg-linear-to-b from-fuchsia-600/45 via-violet-700/20 to-transparent blur-2xl"></div>
+        <div class="absolute right-0 top-0 h-full w-2/3 bg-radial from-violet-700/30 to-transparent"></div>
+      </div>
+      <div class="relative mx-auto grid max-w-7xl items-center gap-4 md:grid-cols-[1fr_1.25fr]">
         <div>
           <p class="eyebrow">Welcome to</p>
           <h1 class="mt-2 font-display text-5xl font-bold italic leading-[0.95] tracking-wide sm:text-6xl lg:text-7xl">
@@ -36,13 +41,13 @@ const addDays = (day: string, n: number): string =>
             <a href="#plans" class="btn-outline inline-flex items-center" data-view-plans>View Plans</a>
           </div>
         </div>
-        <div class="mx-auto w-full max-w-md md:max-w-none"><app-hero-art /></div>
+        <div class="mx-auto w-full max-w-md animate-float md:max-w-none"><app-hero-art /></div>
       </div>
 
-      <div class="mx-auto mt-6 grid max-w-6xl grid-cols-2 divide-slate-700/60 rounded-xl border border-violet-500/25 bg-slate-900/70 md:grid-cols-4 md:divide-x" data-features>
+      <div class="relative z-10 mx-auto -mb-16 mt-2 grid max-w-7xl grid-cols-2 divide-slate-700/60 rounded-xl border border-violet-500/30 bg-slate-900/85 shadow-[0_0_40px_-12px_rgb(139_92_246_/_0.8)] backdrop-blur md:-mt-4 md:grid-cols-4 md:divide-x" data-features>
         @for (f of features(); track f.title) {
           <div class="flex flex-col items-center gap-2 px-3 py-4 text-center">
-            <span class="text-cyan-300"><app-icon [name]="f.icon" [size]="30" /></span>
+            <span class="text-violet-300 drop-shadow-[0_0_8px_rgb(34_211_238_/_0.7)]"><app-icon [name]="f.icon" [size]="32" /></span>
             <p class="text-sm font-semibold text-slate-100">{{ f.title }}</p>
             <p class="text-xs text-slate-400">{{ f.text }}</p>
           </div>
@@ -51,9 +56,9 @@ const addDays = (day: string, n: number): string =>
     </section>
 
     <!-- The studio -->
-    <section class="mx-auto max-w-6xl px-4 py-8">
+    <section id="studio" class="mx-auto max-w-7xl scroll-mt-20 px-4 pb-8 pt-24">
       <div class="grid items-center gap-6 md:grid-cols-2">
-        <div class="overflow-hidden rounded-xl border border-violet-500/40 shadow-[0_0_40px_-12px_rgb(139_92_246_/_0.8)]"><app-room-art /></div>
+        <div class="overflow-hidden rounded-xl border border-violet-400/50 shadow-[0_0_50px_-10px_rgb(168_85_247_/_0.9)]"><app-room-art /></div>
         <div>
           <h2 class="font-display text-3xl font-bold leading-tight sm:text-4xl">The Ultimate <span class="glow-text">Gaming</span> Studio in Your City</h2>
           <p class="mt-3 text-sm text-slate-300">
@@ -70,17 +75,17 @@ const addDays = (day: string, n: number): string =>
 
     <!-- Plans (the real hourly rates and the passes that are for sale) -->
     @if (plans().length > 0) {
-      <section id="plans" class="mx-auto max-w-6xl scroll-mt-20 px-4 py-8">
+      <section id="plans" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-8">
         <h2 class="page-title text-center">Choose Your Plan</h2>
         <p class="mt-1 text-center text-sm text-slate-400">Flexible gaming plans for every kind of player.</p>
-        <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-plans>
+        <div class="mt-6 flex flex-wrap justify-center gap-3" data-plans>
           @for (p of plans(); track p.key) {
-            <div class="card relative flex flex-col gap-3 p-4" [class]="p.popular ? '!border-orange-500/70 shadow-[0_0_34px_-10px_rgb(255_107_53_/_0.7)]' : ''" [attr.data-plan]="p.title">
+            <div class="card relative flex w-full flex-col gap-3 p-4 sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]" [class]="p.popular ? '!border-orange-500/70 shadow-[0_0_34px_-10px_rgb(255_107_53_/_0.7)]' : ''" [attr.data-plan]="p.title">
               @if (p.popular) {
-                <span class="badge absolute -top-3 right-3 bg-orange-500 text-slate-950" data-popular>Most popular</span>
+                <span class="badge absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 px-3 text-slate-950" data-popular>Most popular</span>
               }
               <div class="text-center">
-                <span class="mx-auto grid size-10 place-items-center text-violet-300"><app-icon [name]="p.icon" [size]="30" /></span>
+                <span class="mx-auto grid size-12 place-items-center rounded-xl bg-linear-to-br from-violet-500/30 to-cyan-400/20 text-violet-200"><app-icon [name]="p.icon" [size]="28" /></span>
                 <p class="mt-1 font-display text-lg font-bold">{{ p.title }}</p>
                 <p><span class="font-display text-3xl font-bold">₹{{ p.price }}</span> <span class="text-sm text-slate-400">/ {{ p.per }}</span></p>
               </div>
@@ -89,7 +94,9 @@ const addDays = (day: string, n: number): string =>
                   <li class="flex items-start gap-2"><span class="mt-0.5 text-cyan-300"><app-icon name="check" [size]="16" /></span>{{ l }}</li>
                 }
               </ul>
-              <button type="button" class="w-full" [class]="p.popular ? 'btn-primary' : 'btn-outline'" (click)="chooseType(p.type)" data-choose>Book Now</button>
+              <button type="button" class="flex w-full items-center justify-center gap-1.5" [class]="p.popular ? 'btn-primary' : 'btn-outline'" (click)="chooseType(p.type)" data-choose>
+                Book Now @if (p.popular) { <app-icon name="arrow" [size]="16" /> }
+              </button>
             </div>
           }
         </div>
@@ -98,7 +105,7 @@ const addDays = (day: string, n: number): string =>
     }
 
     <!-- Booking -->
-    <section id="book" class="mx-auto max-w-3xl scroll-mt-20 px-4 pb-10 pt-4">
+    <section id="book" class="mx-auto max-w-3xl scroll-mt-20 px-4 pb-10 pt-8">
       <h2 class="page-title">Book a slot{{ info()?.shop_name ? ' · ' + info()!.shop_name : '' }}</h2>
 
       @if (loadError()) {
@@ -167,13 +174,15 @@ const addDays = (day: string, n: number): string =>
 
     <!-- Closing band -->
     <section class="px-4 pb-12">
-      <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-violet-500/30 bg-linear-to-r from-violet-700/40 via-slate-900 to-cyan-500/20 p-6 sm:flex-row sm:items-center">
-        <div>
+      <div class="mx-auto flex max-w-7xl flex-col items-start gap-4 overflow-hidden rounded-2xl border border-violet-500/40 bg-linear-to-r from-violet-800/50 via-slate-900 to-slate-900 p-5 shadow-[0_0_40px_-14px_rgb(168_85_247_/_0.9)] sm:flex-row sm:items-center sm:p-6">
+        <div class="w-32 shrink-0 sm:w-44"><app-controller-art /></div>
+        <div class="min-w-0 flex-1">
           <h2 class="font-display text-2xl font-bold sm:text-3xl">Ready for your next session?</h2>
           <p class="mt-1 text-sm text-slate-300">Pick a time, bring your friends, and walk in. We keep your station ready.</p>
         </div>
-        <a href="#book" class="btn-primary inline-flex shrink-0 items-center gap-2" data-band-book>Book Now <app-icon name="play" [size]="16" /></a>
+        <a href="#book" class="btn-primary inline-flex shrink-0 items-center gap-2" data-band-book>Book Now <app-icon name="arrow" [size]="16" /></a>
       </div>
+      <p class="mt-6 text-center text-xs text-slate-500">© E-Sports Gaming Arena · <a routerLink="/login" class="underline hover:text-slate-300" data-staff-link>Staff login</a></p>
     </section>
   `,
 })

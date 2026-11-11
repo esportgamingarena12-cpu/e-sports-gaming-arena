@@ -24,6 +24,14 @@ const PATHS: Record<string, string> = {
   trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3',
   check: 'M5 12l5 5 9-10',
   rupee: 'M6 4h12M6 9h12M9 4c5 0 6 5 0 5l7 11',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.5-4.5',
+  bell: 'M6 9a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0',
+  chevron: 'M6 9l6 6 6-6',
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
+  crown: 'M3 8l4 4 5-7 5 7 4-4-2 11H5z',
+  bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+  plus: 'M12 5v14M5 12h14',
 };
 
 @Component({

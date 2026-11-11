@@ -61,7 +61,7 @@ test('dashboard totals equal the paid bills of today, and match the reports scre
   for (const sel of ['[data-occupancy]', '[data-bookings]', '[data-low-stock]', '[data-trend]', '[data-busy]']) {
     await expect(page.locator(sel)).toBeVisible();
   }
-  await expect(page.locator('[data-trend] polyline')).toHaveCount(2);
+  await expect(page.locator('[data-trend] [data-line]')).toHaveCount(1);
   await expect(page.locator('[data-busy] rect').first()).toBeAttached();
 
   await page.getByRole('link', { name: 'Reports' }).first().click();

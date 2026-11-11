@@ -212,3 +212,134 @@ export function hourLabel(h: number): string {
   const ap = h < 12 ? 'am' : 'pm';
   return `${h % 12 === 0 ? 12 : h % 12} ${ap}`;
 }
+
+// ---------- revenue overview (week / 7 days / 30 days) ----------
+
+export type RevenueRange = 'week' | 'last7' | 'last30';
+
+export const RANGE_LABEL: Record<RevenueRange, string> = { week: 'This Week', last7: 'Last 7 days', last30: 'Last 30 days' };
+
+const DAY_MS = 86_400_000;
+const addDay = (day: string, n: number): string => new Date(Date.parse(`${day}T12:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Mon" for a yyyy-mm-dd date. */
+export const weekdayName = (day: string): string => WEEKDAY[new Date(`${day}T12:00:00Z`).getUTCDay()];
+/** "11 Nov" */
+export const shortDate = (day: string): string => `${Number(day.slice(8, 10))} ${MONTH[Number(day.slice(5, 7)) - 1]}`;
+
+/** Monday of the week that contains `day`. */
+export function mondayOf(day: string): string {
+  const dow = new Date(`${day}T12:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDay(day, -((dow + 6) % 7));
+}
+
+export interface RangeDays {
+  /** The days shown, in order (a week always has all seven, future days included). */
+  days: string[];
+  /** The same number of days just before them, for "vs last week". */
+  prev: string[];
+  /** How many of `days` are today or earlier. */
+  elapsed: number;
+}
+
+export function rangeDays(range: RevenueRange, today: string): RangeDays {
+  if (range === 'week') {
+    const mon = mondayOf(today);
+    const days = Array.from({ length: 7 }, (_, i) => addDay(mon, i));
+    const elapsed = days.filter((d) => d <= today).length;
+    return { days, prev: Array.from({ length: elapsed }, (_, i) => addDay(mon, i - 7)), elapsed };
+  }
+  const n = range === 'last7' ? 7 : 30;
+  const days = Array.from({ length: n }, (_, i) => addDay(today, i - (n - 1)));
+  return { days, prev: days.map((d) => addDay(d, -n)), elapsed: n };
+}
+
+/** Sales for each day of the range (null for days that have not happened yet), total, and the previous period's total. */
+export function revenueSeries(
+  trend: { day: string; sales: number }[],
+  range: RevenueRange,
+  today: string,
+): { values: (number | null)[]; labels: string[]; total: number; prevTotal: number } {
+  const by = new Map(trend.map((r) => [r.day, Number(r.sales)]));
+  const r = rangeDays(range, today);
+  const values = r.days.map((d) => (d > today ? null : (by.get(d) ?? 0)));
+  const labels = r.days.map((d, i) => (range === 'last30' ? (i % 5 === 4 || i === 0 ? shortDate(d) : '') : weekdayName(d)));
+  const total = values.reduce<number>((a, v) => a + (v ?? 0), 0);
+  const prevTotal = r.prev.reduce((a, d) => a + (by.get(d) ?? 0), 0);
+  return { values, labels, total, prevTotal };
+}
+
+/** Percent change, one decimal, or null when there is nothing to compare with. */
+export function pctChange(current: number, previous: number): number | null {
+  if (!(previous > 0)) return null;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+/** 20000 -> "20K", 1500 -> "1.5K", 800 -> "800" */
+export function kFormat(n: number): string {
+  return n >= 1000 ? `${Number((n / 1000).toFixed(1))}K` : String(Math.round(n));
+}
+
+export interface ChartPoint {
+  x: number;
+  y: number;
+  value: number;
+  label: string;
+}
+
+/** Points for a chart in a w x h box; days without a value (null) are left out. */
+export function chartPoints(values: (number | null)[], labels: string[], w: number, h: number, max: number): ChartPoint[] {
+  const step = values.length > 1 ? w / (values.length - 1) : 0;
+  const out: ChartPoint[] = [];
+  values.forEach((v, i) => {
+    if (v === null) return;
+    out.push({
+      x: Math.round(i * step * 10) / 10,
+      y: Math.round((h - (Math.min(Math.max(v, 0), max) / max) * h) * 10) / 10,
+      value: v,
+      label: labels[i] ?? '',
+    });
+  });
+  return out;
+}
+
+/** A smooth line through the points (Catmull-Rom turned into Bezier curves). */
+export function smoothPath(p: { x: number; y: number }[]): string {
+  if (p.length === 0) return '';
+  if (p.length === 1) return `M${p[0].x},${p[0].y}`;
+  let d = `M${p[0].x},${p[0].y}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[i - 1] ?? p[i];
+    const p1 = p[i];
+    const p2 = p[i + 1];
+    const p3 = p[i + 2] ?? p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
+/** The line closed down to the bottom edge, for the soft fill under it. */
+export function smoothArea(p: { x: number; y: number }[], h: number): string {
+  return p.length < 2 ? '' : `${smoothPath(p)} L${p[p.length - 1].x},${h} L${p[0].x},${h} Z`;
+}
+
+/** Horizontal grid lines with their labels, from the bottom (0) to the top (max). */
+export function yTicks(max: number, h: number, steps = 4): { y: number; label: string }[] {
+  return Array.from({ length: steps + 1 }, (_, i) => ({
+    y: Math.round((h - (i / steps) * h) * 10) / 10,
+    label: kFormat((max * i) / steps),
+  }));
+}
+
+/** Initials for the live-session avatar. */
+export function avatarInitials(name: string | null | undefined): string {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'W';
+  return (parts.length === 1 ? parts[0][0] : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}

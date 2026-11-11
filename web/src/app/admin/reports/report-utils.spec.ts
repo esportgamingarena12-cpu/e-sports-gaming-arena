@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  avatarInitials,
+  chartPoints,
+  kFormat,
+  mondayOf,
+  pctChange,
+  rangeDays,
+  revenueSeries,
+  shortDate,
+  smoothArea,
+  smoothPath,
+  weekdayName,
+  yTicks,
   areaPoints,
   lastPoint,
   liveAmount,
@@ -169,5 +181,97 @@ describe('dashboard helpers', () => {
     const p = donutParts(10, 18, 4);
     expect(p.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 5);
     expect(donutParts(0, 0, 0)).toEqual([0, 0, 0]);
+  });
+});
+
+describe('revenue overview', () => {
+  const T = '2026-11-11'; // a Wednesday
+  const trend = [
+    { day: '2026-11-04', sales: 100 }, // last Wednesday
+    { day: '2026-11-09', sales: 300 }, // Monday
+    { day: '2026-11-10', sales: 500 }, // Tuesday
+    { day: '2026-11-11', sales: 700 }, // today
+    { day: '2026-11-02', sales: 50 }, // last Monday
+    { day: '2026-11-03', sales: 150 }, // last Tuesday
+  ];
+  it('weekday and date names', () => {
+    expect(weekdayName('2026-11-11')).toBe('Wed');
+    expect(shortDate('2026-11-05')).toBe('5 Nov');
+    expect(mondayOf('2026-11-11')).toBe('2026-11-09');
+    expect(mondayOf('2026-11-09')).toBe('2026-11-09');
+    expect(mondayOf('2026-11-15')).toBe('2026-11-09'); // a Sunday still belongs to the week that began on Monday
+  });
+  it('a week has seven days Monday first, and compares the same number of days of last week', () => {
+    const r = rangeDays('week', T);
+    expect(r.days[0]).toBe('2026-11-09');
+    expect(r.days[6]).toBe('2026-11-15');
+    expect(r.elapsed).toBe(3);
+    expect(r.prev).toEqual(['2026-11-02', '2026-11-03', '2026-11-04']);
+  });
+  it('last 7 and 30 days end today', () => {
+    expect(rangeDays('last7', T).days[6]).toBe(T);
+    expect(rangeDays('last7', T).prev[6]).toBe('2026-11-04');
+    expect(rangeDays('last30', T).days).toHaveLength(30);
+    expect(rangeDays('last30', T).days[0]).toBe('2026-10-13');
+  });
+  it('series: future days are empty, totals and previous total add up', () => {
+    const s = revenueSeries(trend, 'week', T);
+    expect(s.values).toEqual([300, 500, 700, null, null, null, null]);
+    expect(s.labels).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    expect(s.total).toBe(1500);
+    expect(s.prevTotal).toBe(300);
+  });
+  it('series for 30 days labels every fifth day', () => {
+    const s = revenueSeries(trend, 'last30', T);
+    expect(s.labels.filter(Boolean).length).toBeGreaterThan(4);
+    expect(s.values.at(-1)).toBe(700);
+  });
+  it('percent change', () => {
+    expect(pctChange(1500, 300)).toBe(400);
+    expect(pctChange(112.4, 100)).toBe(12.4);
+    expect(pctChange(80, 100)).toBe(-20);
+    expect(pctChange(50, 0)).toBeNull();
+  });
+  it('k format', () => {
+    expect(kFormat(20000)).toBe('20K');
+    expect(kFormat(1500)).toBe('1.5K');
+    expect(kFormat(800)).toBe('800');
+    expect(kFormat(0)).toBe('0');
+  });
+  it('points leave out days that have no value and stay inside the box', () => {
+    const p = chartPoints([0, 50, null, 100], ['a', 'b', 'c', 'd'], 90, 100, 100);
+    expect(p.map((x) => x.label)).toEqual(['a', 'b', 'd']);
+    expect(p[0]).toMatchObject({ x: 0, y: 100 });
+    expect(p[2]).toMatchObject({ x: 90, y: 0 });
+    expect(chartPoints([500], ['a'], 90, 100, 100)[0].y).toBe(0);
+  });
+  it('smooth line passes through every point', () => {
+    const pts = [
+      { x: 0, y: 10 },
+      { x: 10, y: 20 },
+      { x: 20, y: 5 },
+    ];
+    const d = smoothPath(pts);
+    expect(d.startsWith('M0,10')).toBe(true);
+    expect(d).toContain('10,20');
+    expect(d.endsWith('20,5')).toBe(true);
+    expect(smoothPath([])).toBe('');
+    expect(smoothPath([{ x: 3, y: 4 }])).toBe('M3,4');
+  });
+  it('area closes to the bottom; ticks run bottom to top', () => {
+    expect(smoothArea([{ x: 0, y: 5 }, { x: 10, y: 5 }], 100).endsWith('L10,100 L0,100 Z')).toBe(true);
+    expect(smoothArea([{ x: 0, y: 5 }], 100)).toBe('');
+    expect(yTicks(20000, 100)).toEqual([
+      { y: 100, label: '0' },
+      { y: 75, label: '5K' },
+      { y: 50, label: '10K' },
+      { y: 25, label: '15K' },
+      { y: 0, label: '20K' },
+    ]);
+  });
+  it('avatar initials', () => {
+    expect(avatarInitials('Rahul Sharma')).toBe('RS');
+    expect(avatarInitials('Aman')).toBe('A');
+    expect(avatarInitials(null)).toBe('W');
   });
 });

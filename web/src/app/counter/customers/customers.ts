@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
 import { FieldError } from '../../shared/field-error';
@@ -167,6 +167,7 @@ export class Customers implements OnInit, OnDestroy {
   private readonly sb = inject(SupabaseService).client;
   private readonly fb = inject(FormBuilder);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly rows = signal<CustomerRow[]>([]);
   protected readonly search = signal('');
@@ -204,6 +205,9 @@ export class Customers implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     void this.load();
+    // arriving from the search box in the top bar: open that customer straight away
+    const id = Number(this.route.snapshot.queryParamMap.get('open'));
+    if (id > 0) void this.open(id);
   }
 
   ngOnDestroy(): void {
