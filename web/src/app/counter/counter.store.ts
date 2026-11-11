@@ -42,6 +42,18 @@ export interface Product {
   active: boolean;
 }
 
+/** An active booking (confirmed or checked in) around now, for station cards and the walk-in warning. */
+export interface BookingLite {
+  id: number;
+  station_id: number;
+  start_at: string;
+  end_at: string;
+  status: 'confirmed' | 'checked_in';
+  slots: number;
+  customer_name: string;
+  customer_phone: string | null;
+}
+
 export interface Pack {
   id: number;
   name: string;
@@ -69,6 +81,7 @@ export class CounterStore {
   readonly tabs = signal<TabLine[]>([]);
   readonly packages = signal<Pack[]>([]);
   readonly products = signal<Product[]>([]);
+  readonly bookings = signal<BookingLite[]>([]);
   readonly loaded = signal(false);
   readonly live = signal(false);
   readonly error = signal<string | null>(null);
@@ -98,6 +111,7 @@ export class CounterStore {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tab_items' }, () => this.queueReload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => this.queueReload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_moves' }, () => this.queueReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => this.queueReload())
       .subscribe((status) => this.live.set(status === 'SUBSCRIBED'));
     this.refreshTimer = setInterval(() => void this.load(), 60_000);
     document.addEventListener('visibilitychange', this.onVisible);
@@ -117,7 +131,8 @@ export class CounterStore {
   }
 
   async load(): Promise<void> {
-    const [st, se, tab, pk, pr] = await Promise.all([
+    const now = Date.now();
+    const [st, se, tab, pk, pr, bk] = await Promise.all([
       this.sb
         .from('stations')
         .select('id, name, type, rate_per_hour, sort_order')
@@ -136,8 +151,15 @@ export class CounterStore {
         .select('id, name, category, price, stock_qty, low_stock_level, track_stock, active')
         .order('category')
         .order('name'),
+      this.sb
+        .from('bookings')
+        .select('id, station_id, start_at, end_at, status, slots, customers(name, phone)')
+        .in('status', ['confirmed', 'checked_in'])
+        .lt('start_at', new Date(now + 24 * 3600_000).toISOString())
+        .gt('end_at', new Date(now - 3600_000).toISOString())
+        .order('start_at'),
     ]);
-    const failed = st.error ?? se.error ?? tab.error ?? pk.error ?? pr.error;
+    const failed = st.error ?? se.error ?? tab.error ?? pk.error ?? pr.error ?? bk.error;
     if (failed) {
       this.error.set(friendlyError(failed));
       return;
@@ -148,6 +170,28 @@ export class CounterStore {
     this.packages.set((pk.data ?? []) as unknown as Pack[]);
     this.products.set(
       ((pr.data ?? []) as unknown as Product[]).map((p) => ({ ...p, price: Number(p.price) })),
+    );
+    this.bookings.set(
+      (
+        (bk.data ?? []) as unknown as {
+          id: number;
+          station_id: number;
+          start_at: string;
+          end_at: string;
+          status: 'confirmed' | 'checked_in';
+          slots: number;
+          customers: { name: string; phone: string | null } | null;
+        }[]
+      ).map((b) => ({
+        id: b.id,
+        station_id: b.station_id,
+        start_at: b.start_at,
+        end_at: b.end_at,
+        status: b.status,
+        slots: b.slots,
+        customer_name: b.customers?.name ?? 'Customer',
+        customer_phone: b.customers?.phone ?? null,
+      })),
     );
     this.tabs.set(
       (

@@ -32,6 +32,7 @@ export class App {
           { label: 'Booking', path: '/admin/booking-settings' },
           { label: 'Staff', path: '/admin/staff' },
           { label: 'Counter', path: '/counter/stations' },
+          { label: 'Bookings', path: '/counter/bookings' },
           { label: 'Canteen', path: '/counter/canteen' },
           { label: 'Bills', path: '/counter/bills' },
           { label: 'Stock', path: '/counter/stock' },
@@ -39,6 +40,7 @@ export class App {
       case 'staff':
         return [
           { label: 'Stations', path: '/counter/stations' },
+          { label: 'Bookings', path: '/counter/bookings' },
           { label: 'Canteen', path: '/counter/canteen' },
           { label: 'Bills', path: '/counter/bills' },
           { label: 'Stock', path: '/counter/stock' },

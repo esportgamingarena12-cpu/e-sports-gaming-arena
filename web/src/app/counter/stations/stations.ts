@@ -5,11 +5,15 @@ import { chargeEndMs, formatDuration, packageRemainingMs, playedMs, sessionCharg
 import { ServerClock } from '../../core/server-clock';
 import { ToastService } from '../../shared/toast.service';
 import { CounterStore, OpenSession, Station, TabLine } from '../counter.store';
+import { formatIstTime } from '../../shared/format';
+import { relativeStart, upcomingBooking } from '../booking-utils';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
 import { StartDialog } from './start-dialog';
 
 interface Card {
   station: Station;
+  /** a confirmed booking within the next hour (or already due) on this station */
+  booking: { text: string } | null;
   session: OpenSession | null;
   played: string;
   charge: number;
@@ -48,6 +52,10 @@ interface Card {
                 </div>
                 <span class="shrink-0 rounded px-2 py-0.5 text-xs font-medium" [class]="badgeFor(c)">{{ labelFor(c) }}</span>
               </div>
+
+              @if (c.booking; as b) {
+                <p class="rounded bg-sky-500/15 px-2 py-1 text-xs text-sky-300" data-booking-note>{{ b.text }}</p>
+              }
 
               @if (c.session; as s) {
                 <div class="flex items-end justify-between gap-2">
@@ -108,7 +116,8 @@ interface Card {
       }
 
       @if (startFor(); as st) {
-        <app-start-dialog [station]="st" [packages]="store.packages()" (started)="store.load()" (closed)="startFor.set(null)" />
+        <app-start-dialog [station]="st" [packages]="store.packages()" [warning]="warningFor(st)"
+                          (started)="store.load()" (closed)="startFor.set(null)" />
       }
 
       @if (billFor(); as src) {
@@ -138,14 +147,19 @@ export class CounterStations implements OnInit, OnDestroy {
 
     return this.store.stations().map((station) => {
       const session = byStation.get(station.id) ?? null;
+      const next = upcomingBooking(this.store.bookings(), station.id, now);
+      const booking = next
+        ? { text: `Booked ${formatIstTime(next.start_at)} · ${next.customer_name} (${relativeStart(next.start_at, now)})` }
+        : null;
       if (!session) {
-        return { station, session: null, played: '', charge: 0, packageLeft: null, items: [], canteen: 0 };
+        return { station, booking, session: null, played: '', charge: 0, packageLeft: null, items: [], canteen: 0 };
       }
       const end = chargeEndMs(session, now);
       const left = packageRemainingMs(session, end);
       const items = bySession.get(session.id) ?? [];
       return {
         station,
+        booking,
         session,
         played: formatDuration(playedMs(session, end)),
         charge: sessionCharge(session, end),
@@ -247,6 +261,15 @@ export class CounterStations implements OnInit, OnDestroy {
       customerName: s.customer_name,
       items: items.map((t) => ({ productId: t.product_id, name: t.name, qty: t.qty, price: t.price })),
     });
+  }
+
+  /** Walk-in conflict (FR-37): a booking on this station within the next hour. */
+  protected warningFor(station: Station): string | null {
+    const now = this.clock.now();
+    const b = upcomingBooking(this.store.bookings(), station.id, now);
+    if (!b) return null;
+    const when = Date.parse(b.start_at) <= now ? 'was due at' : 'is booked at';
+    return `${b.customer_name} ${when} ${formatIstTime(b.start_at)} (${relativeStart(b.start_at, now)}). Starting a walk-in now may run into this booking.`;
   }
 
   protected closeBill(): void {

@@ -38,4 +38,16 @@ export function istDayRange(day: string): { from: string; to: string } {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-export const inr = (n: number | string): string => `₹${Number(n).toFixed(2)}`;
+const IST_TIME = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+});
+
+/** "6:30 pm" in India time. */
+export function formatIstTime(iso: string): string {
+  return IST_TIME.format(new Date(iso));
+}
+
+export const inr =(n: number | string): string => `₹${Number(n).toFixed(2)}`;

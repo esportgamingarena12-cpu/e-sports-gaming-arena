@@ -9,7 +9,7 @@
 | 4 | Counter: stations | Done (verified on hosted dev project) | 2026-11-10 | Migration 0005 (server_now); /counter/stations with live timers, Realtime, start/pause/resume/stop/reopen/cancel; core/pricing.ts verified against 140 golden values from session_charge. Browser-verified. |
 | 5 | Canteen and stock | Done (verified on hosted dev project) | 2026-11-10 | Migration 0006 (recent_stock_moves, Realtime for products + stock_moves); /counter/canteen and /counter/stock; 24 new pgTAP checks (09), 41 web unit tests total. Browser-verified at 360 px. |
 | 6 | Checkout and receipts | Done (verified on hosted dev project) | 2026-11-11 | No new migration. Checkout dialog (station Bill + walk-in), split payments, UPI QR, receipt print layout 58/80 mm, /counter/bills with reprint and admin void. 23 new pgTAP checks (10); 53 unit tests; 2 Playwright tests. Browser-verified at 360 px. |
-| 7 | Bookings | Not started | | |
+| 7 | Bookings | Done (verified on hosted dev project) | 2026-11-11 | Migration 0007 (customers, bookings, overlap rule, availability/create/cancel/reschedule/check-in/no-show functions, pg_cron job); /counter/bookings with list, day grid, search, New booking, Check in, Cancel, No-show; walk-in conflict warning. 92 pgTAP checks (11); 69 unit tests. Browser-verified at 360 px; scheduled job proven live. |
 | 8 | Customer portal | Not started | | |
 | 9 | Dashboard and reports | Not started | | |
 | 10 | Notifications, PWA, deploy | Not started | | |
@@ -78,7 +78,22 @@
 - A method named `void` on the Bills screen was read by Angular as the `void` operator, so the Void button did nothing (renamed `voidBill`).
 - Logging in triggered two redirects to the home page, which could override a click made right after login (found by Playwright; fixed in `login.ts`).
 
+## Decisions made in Phase 7
+1. `0007_bookings.sql`. Uses `btree_gist` (no-double-booking exclusion constraint) and `pg_cron` (job `release-no-shows`, every 5 minutes). Both extensions were enabled from SQL on the hosted project. The Customer portal (Phase 8) adds a function for customers to save their own name/phone (`customers` rows with a login are created there).
+2. Customers get online-bookable stations only, auto-assigned in station order; staff booking on behalf may use any active station of the type and may pick one. Staff bookings need a name and a phone (matched to an existing counter customer by digits).
+3. Rules on every create/reschedule: opening hours of that weekday (India time, same day), booking window, slot boundary, min/max slots, start in the future. Customers cancel/reschedule only until the cutoff (2 h); staff any time.
+4. A running per-hour session blocks only the current slot for new bookings; a package session blocks until the package ends; beyond that staff rely on the walk-in warning (FR-37).
+5. Check-in: from 15 minutes before start until the booking ends; refused with a clear message if the station still has an open session (no automatic swap in v1). Check-in starts a per-hour session and links it (`sessions.booking_id`).
+6. A trigger on `sessions` completes the booking when its session is billed and cancels it if the session is cancelled; `checkout_bill` is unchanged.
+7. A confirmed booking past start + grace stops blocking immediately (availability and create_booking treat it as free); the 5-minute job and create/reschedule/check-in mark it No-show. Staff can mark No-show from the start time.
+8. `get_availability(type, date, slots default 1, staff_view default false)`: free counts only, callable without logging in. `slots` counts stations free for the whole duration; `staff_view` (staff only) includes walk-in-only stations.
+9. Bookings screen search covers a week back and the whole booking window ahead, by name or phone digits. `bookings` is in the Realtime publication.
+10. Not built: Pending payment status (advance payment, D3), booking emails (Phase 10), customer screens (Phase 8), automatic station swap at check-in.
+11. Test data (bookings, test customers, one test bill/session) was removed after verification; the scheduled job and extensions stay.
+
 ## Open items / to do later
+- Bookings tables have no data of their own yet; the shop opens with the default hours 10:00-22:00 (change on Admin > Booking).
+- If the project is ever rebuilt from the migration files on another Supabase project, `pg_cron` may need switching on under Database > Extensions before the job is scheduled (the migration prints a notice if it cannot enable it).
 - **Not done by me:** a physical thermal printer test (Chrome print dialog: Margins None, Headers and footers off, Scale 100%) and scanning the UPI QR with a real UPI app. Layout was checked with print-media emulation and the QR was checked by decoding it back to the exact link.
 - Set the real shop address, phone, UPI ID and receipt width in Admin > Settings before going live.
 - Playwright test account `e2e.staff@example.com` and the older `staff.test@example.com` exist in the dev project; remove them before production.

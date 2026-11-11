@@ -17,6 +17,12 @@ import { Pack, Station } from '../counter.store';
             class="max-h-full w-full max-w-md space-y-4 overflow-y-auto rounded-t-lg bg-slate-900 p-4 sm:rounded-lg">
         <h2 class="text-lg font-semibold">Start {{ station().name }}</h2>
 
+        @if (warning(); as w) {
+          <p class="rounded border border-amber-500/50 bg-amber-500/10 p-2 text-sm text-amber-200" role="alert" data-walkin-warning>
+            ⚠ {{ w }}
+          </p>
+        }
+
         <fieldset class="space-y-2">
           <legend class="label">Billing</legend>
           <label class="flex items-center gap-2 rounded border border-slate-700 p-2 text-sm">
@@ -55,6 +61,8 @@ export class StartDialog {
 
   readonly station = input.required<Station>();
   readonly packages = input.required<Pack[]>();
+  /** Shown when this station has a booking soon (walk-in conflict); starting is still allowed. */
+  readonly warning = input<string | null>(null);
   readonly started = output<void>();
   readonly closed = output<void>();
 
