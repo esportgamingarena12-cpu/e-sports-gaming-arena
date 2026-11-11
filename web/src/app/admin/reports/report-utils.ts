@@ -1,3 +1,5 @@
+import { playedMs, SessionSnapshot, sessionCharge } from '../../core/pricing';
+
 /** Shapes returned by the reporting functions (migration 0009) and the pure helpers around them. */
 
 export interface PayModes {
@@ -57,12 +59,11 @@ export interface DashStation {
   active: boolean;
 }
 
-export interface LiveSession {
+export interface LiveSession extends SessionSnapshot {
   id: number;
   station_id: number;
   customer_name: string | null;
-  started_at: string;
-  paused_seconds: number;
+  pass_name: string | null;
   status: 'running' | 'paused';
 }
 
@@ -75,7 +76,25 @@ export function stationState(s: DashStation, busyIds: Set<number>): StationState
 
 /** Minutes played so far: elapsed time minus pauses (never negative). */
 export function playedMinutes(s: LiveSession, nowMs: number): number {
-  return Math.max(0, Math.floor((nowMs - Date.parse(s.started_at)) / 60000 - s.paused_seconds / 60));
+  return Math.floor(playedMs(s, nowMs) / 60000);
+}
+
+/** What the session costs so far (same formula as the database and the counter screen). */
+export function liveAmount(s: LiveSession, nowMs: number): number {
+  return sessionCharge(s, nowMs);
+}
+
+/** Closed polygon under a chart line (for the soft fill), in a w x h box. */
+export function areaPoints(line: string, w: number, h: number): string {
+  return line ? `0,${h} ${line} ${w},${h}` : '';
+}
+
+/** The last point of a line (for the end dot), or null. */
+export function lastPoint(line: string): { x: number; y: number } | null {
+  const last = line.trim().split(' ').pop();
+  if (!last || !last.includes(',')) return null;
+  const [x, y] = last.split(',').map(Number);
+  return { x, y };
 }
 
 /** "2 h 10 min", "54 min" */

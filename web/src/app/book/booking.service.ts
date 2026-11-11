@@ -11,6 +11,17 @@ export interface BookingInfo {
   cutoff_hours: number;
   types: string[];
   rates: { type: string; rate_per_hour: number }[];
+  passes: PublicPass[];
+}
+
+export interface PublicPass {
+  name: string;
+  price: number;
+  validity_days: number;
+  station_type: string | null;
+  kind: 'unlimited' | 'hours';
+  minutes_total: number | null;
+  popular: boolean;
 }
 
 export interface FreeSlot {

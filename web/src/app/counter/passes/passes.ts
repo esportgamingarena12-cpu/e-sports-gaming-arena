@@ -206,7 +206,7 @@ export class CounterPasses implements OnInit {
     const [t, p] = await Promise.all([
       this.sb
         .from('pass_types')
-        .select('id, name, price, validity_days, station_type, kind, minutes_total, active')
+        .select('id, name, price, validity_days, station_type, kind, minutes_total, active, popular')
         .eq('active', true)
         .order('name'),
       this.sb

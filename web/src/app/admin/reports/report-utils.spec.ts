@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areaPoints,
+  lastPoint,
+  liveAmount,
+  LiveSession,
   barHeight,
   donutParts,
   durationText,
@@ -111,6 +115,24 @@ describe('charts', () => {
   });
 });
 
+const live = (over: Partial<LiveSession> = {}): LiveSession => ({
+  id: 1,
+  station_id: 1,
+  customer_name: null,
+  pass_name: null,
+  status: 'running',
+  rate_per_hour: 60,
+  block_min: 15,
+  min_bill_min: 30,
+  package_minutes: null,
+  package_price: null,
+  started_at: '2026-11-11T10:00:00Z',
+  paused_at: null,
+  paused_seconds: 0,
+  ended_at: null,
+  ...over,
+});
+
 describe('dashboard helpers', () => {
   it('station state', () => {
     const st = { id: 1, name: 'PC 1', type: 'pc', active: true };
@@ -119,10 +141,25 @@ describe('dashboard helpers', () => {
     expect(stationState({ ...st, active: false }, new Set([1]))).toBe('off');
   });
   it('played minutes remove pauses and never go negative', () => {
-    const base = { id: 1, station_id: 1, customer_name: null, status: 'running' as const };
     const start = Date.parse('2026-11-11T10:00:00Z');
-    expect(playedMinutes({ ...base, started_at: '2026-11-11T10:00:00Z', paused_seconds: 600 }, start + 70 * 60000)).toBe(60);
-    expect(playedMinutes({ ...base, started_at: '2026-11-11T10:00:00Z', paused_seconds: 9999 }, start + 60000)).toBe(0);
+    expect(playedMinutes(live({ paused_seconds: 600 }), start + 70 * 60000)).toBe(60);
+    expect(playedMinutes(live({ paused_seconds: 9999 }), start + 60000)).toBe(0);
+  });
+  it('a running pause stops the played time', () => {
+    const start = Date.parse('2026-11-11T10:00:00Z');
+    expect(playedMinutes(live({ paused_at: '2026-11-11T10:30:00Z', status: 'paused' }), start + 90 * 60000)).toBe(30);
+  });
+  it('amount so far uses the pricing formula', () => {
+    const start = Date.parse('2026-11-11T10:00:00Z');
+    expect(liveAmount(live(), start + 47 * 60000)).toBe(60); // 47 min rounds up to 60 min (blocks of 15), at 60 an hour
+    expect(liveAmount(live({ rate_per_hour: 120 }), start + 10 * 60000)).toBe(60); // minimum bill 30 min x 120
+    expect(liveAmount(live({ pass_id: 1, pass_minutes_left: null }), start + 600 * 60000)).toBe(0);
+  });
+  it('chart helpers', () => {
+    expect(areaPoints('0.0,50.0 100.0,20.0', 100, 100)).toBe('0,100 0.0,50.0 100.0,20.0 100,100');
+    expect(areaPoints('', 100, 100)).toBe('');
+    expect(lastPoint('0.0,50.0 100.0,20.0')).toEqual({ x: 100, y: 20 });
+    expect(lastPoint('')).toBeNull();
   });
   it('duration text', () => {
     expect(durationText(54)).toBe('54 min');

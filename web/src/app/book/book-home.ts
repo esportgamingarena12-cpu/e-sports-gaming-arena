@@ -2,9 +2,11 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { formatIstTime, todayIst } from '../shared/format';
+import { HeroArt, RoomArt } from '../shared/art';
 import { Icon } from '../shared/icon';
 import { BookingInfo, BookingService, FreeSlot } from './booking.service';
 import { lengthLabel, typeLabel } from './portal';
+import { buildPlans } from './plans';
 
 const addDays = (day: string, n: number): string =>
   new Date(Date.parse(`${day}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -12,14 +14,14 @@ const addDays = (day: string, n: number): string =>
 /** Public booking page: anyone can see free times; signing in is asked only when they pick one. */
 @Component({
   selector: 'app-book-home',
-  imports: [Icon],
+  imports: [Icon, HeroArt, RoomArt],
   template: `
     <!-- Hero -->
-    <section class="relative overflow-hidden px-4 pb-8 pt-8 sm:pt-12">
-      <div class="mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-[1.2fr_1fr]">
+    <section class="relative overflow-hidden px-4 pb-6 pt-8 sm:pt-12">
+      <div class="mx-auto grid max-w-6xl items-center gap-4 md:grid-cols-[1.05fr_1fr]">
         <div>
           <p class="eyebrow">Welcome to</p>
-          <h1 class="mt-2 font-display text-5xl font-bold leading-[0.95] tracking-wide sm:text-6xl">
+          <h1 class="mt-2 font-display text-5xl font-bold italic leading-[0.95] tracking-wide sm:text-6xl lg:text-7xl">
             E-SPORT<br /><span class="glow-text">GAMING ARENA</span>
           </h1>
           <p class="mt-4 font-display text-lg font-semibold tracking-wide text-slate-100">
@@ -27,28 +29,19 @@ const addDays = (day: string, n: number): string =>
             <span class="text-violet-400">|</span> Repeat
           </p>
           <p class="mt-3 max-w-md text-sm text-slate-300">
-            High-performance PCs and consoles, billed fairly by the minute. See what is free and book your slot in under a minute.
+            A premium gaming studio with high-performance PCs and consoles, billed fairly by the minute. See what is free and book your slot in under a minute.
           </p>
           <div class="mt-6 flex flex-wrap gap-3">
             <a href="#book" class="btn-primary inline-flex items-center gap-2" data-hero-book>Book a Gaming Slot <app-icon name="play" [size]="16" /></a>
-            @if ((info()?.rates?.length ?? 0) > 0) {
-              <a href="#rates" class="btn-outline inline-flex items-center">View rates</a>
-            }
+            <a href="#plans" class="btn-outline inline-flex items-center" data-view-plans>View Plans</a>
           </div>
         </div>
-        <div class="relative mx-auto hidden aspect-square w-full max-w-sm place-items-center md:grid" aria-hidden="true">
-          <div class="absolute inset-6 rounded-full bg-violet-600/30 blur-3xl"></div>
-          <div class="absolute inset-16 rounded-full bg-cyan-400/20 blur-3xl"></div>
-          <div class="relative grid size-56 place-items-center rounded-[2.5rem] border border-violet-400/40 bg-slate-900/70 text-violet-300
-                      shadow-[0_0_60px_-10px_rgb(139_92_246_/_0.9)]">
-            <app-icon name="gamepad" [size]="150" />
-          </div>
-        </div>
+        <div class="mx-auto w-full max-w-md md:max-w-none"><app-hero-art /></div>
       </div>
 
-      <div class="mx-auto mt-8 grid max-w-6xl grid-cols-2 gap-3 md:grid-cols-4" data-features>
+      <div class="mx-auto mt-6 grid max-w-6xl grid-cols-2 divide-slate-700/60 rounded-xl border border-violet-500/25 bg-slate-900/70 md:grid-cols-4 md:divide-x" data-features>
         @for (f of features(); track f.title) {
-          <div class="card flex flex-col items-center gap-2 py-4 text-center">
+          <div class="flex flex-col items-center gap-2 px-3 py-4 text-center">
             <span class="text-cyan-300"><app-icon [name]="f.icon" [size]="30" /></span>
             <p class="text-sm font-semibold text-slate-100">{{ f.title }}</p>
             <p class="text-xs text-slate-400">{{ f.text }}</p>
@@ -57,8 +50,55 @@ const addDays = (day: string, n: number): string =>
       </div>
     </section>
 
+    <!-- The studio -->
+    <section class="mx-auto max-w-6xl px-4 py-8">
+      <div class="grid items-center gap-6 md:grid-cols-2">
+        <div class="overflow-hidden rounded-xl border border-violet-500/40 shadow-[0_0_40px_-12px_rgb(139_92_246_/_0.8)]"><app-room-art /></div>
+        <div>
+          <h2 class="font-display text-3xl font-bold leading-tight sm:text-4xl">The Ultimate <span class="glow-text">Gaming</span> Studio in Your City</h2>
+          <p class="mt-3 text-sm text-slate-300">
+            Whether you are a casual gamer or a competitive player, E-Sport Gaming Arena gives you the right setup, comfort and honest pricing to level up your game.
+          </p>
+          <ul class="mt-4 space-y-2 text-sm" data-checks>
+            @for (c of checks; track c) {
+              <li class="flex items-center gap-2"><span class="text-cyan-300"><app-icon name="check" [size]="18" /></span>{{ c }}</li>
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Plans (the real hourly rates and the passes that are for sale) -->
+    @if (plans().length > 0) {
+      <section id="plans" class="mx-auto max-w-6xl scroll-mt-20 px-4 py-8">
+        <h2 class="page-title text-center">Choose Your Plan</h2>
+        <p class="mt-1 text-center text-sm text-slate-400">Flexible gaming plans for every kind of player.</p>
+        <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-plans>
+          @for (p of plans(); track p.key) {
+            <div class="card relative flex flex-col gap-3 p-4" [class]="p.popular ? '!border-orange-500/70 shadow-[0_0_34px_-10px_rgb(255_107_53_/_0.7)]' : ''" [attr.data-plan]="p.title">
+              @if (p.popular) {
+                <span class="badge absolute -top-3 right-3 bg-orange-500 text-slate-950" data-popular>Most popular</span>
+              }
+              <div class="text-center">
+                <span class="mx-auto grid size-10 place-items-center text-violet-300"><app-icon [name]="p.icon" [size]="30" /></span>
+                <p class="mt-1 font-display text-lg font-bold">{{ p.title }}</p>
+                <p><span class="font-display text-3xl font-bold">₹{{ p.price }}</span> <span class="text-sm text-slate-400">/ {{ p.per }}</span></p>
+              </div>
+              <ul class="flex-1 space-y-1.5 text-sm text-slate-300">
+                @for (l of p.lines; track l) {
+                  <li class="flex items-start gap-2"><span class="mt-0.5 text-cyan-300"><app-icon name="check" [size]="16" /></span>{{ l }}</li>
+                }
+              </ul>
+              <button type="button" class="w-full" [class]="p.popular ? 'btn-primary' : 'btn-outline'" (click)="chooseType(p.type)" data-choose>Book Now</button>
+            </div>
+          }
+        </div>
+        <p class="mt-3 text-center text-xs text-slate-400">Passes are bought at the counter and used when you start a session.</p>
+      </section>
+    }
+
     <!-- Booking -->
-    <section id="book" class="mx-auto max-w-3xl scroll-mt-20 px-4 pb-10">
+    <section id="book" class="mx-auto max-w-3xl scroll-mt-20 px-4 pb-10 pt-4">
       <h2 class="page-title">Book a slot{{ info()?.shop_name ? ' · ' + info()!.shop_name : '' }}</h2>
 
       @if (loadError()) {
@@ -125,24 +165,16 @@ const addDays = (day: string, n: number): string =>
       }
     </section>
 
-    <!-- Rates (the real hourly rates from the shop settings) -->
-    @if ((info()?.rates?.length ?? 0) > 0) {
-      <section id="rates" class="mx-auto max-w-6xl scroll-mt-20 px-4 pb-12">
-        <h2 class="page-title text-center">Our rates</h2>
-        <p class="mt-1 text-center text-sm text-slate-400">Billed by the minute on the clock, rounded up to a fair block.</p>
-        <div class="mx-auto mt-4 grid max-w-3xl gap-3 sm:grid-cols-2" data-rates>
-          @for (r of info()!.rates; track r.type) {
-            <div class="card flex items-center justify-between gap-3 p-4">
-              <div>
-                <p class="flex items-center gap-2 font-display text-xl font-bold"><span class="text-violet-400"><app-icon [name]="r.type === 'pc' ? 'monitor' : 'gamepad'" /></span>{{ label(r.type) }}</p>
-                <p class="mt-1 text-sm text-slate-300"><span class="font-display text-2xl font-bold text-slate-50">₹{{ r.rate_per_hour }}</span> / hour</p>
-              </div>
-              <button type="button" class="btn-outline" (click)="chooseType(r.type)" data-choose>Book {{ label(r.type) }}</button>
-            </div>
-          }
+    <!-- Closing band -->
+    <section class="px-4 pb-12">
+      <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-violet-500/30 bg-linear-to-r from-violet-700/40 via-slate-900 to-cyan-500/20 p-6 sm:flex-row sm:items-center">
+        <div>
+          <h2 class="font-display text-2xl font-bold sm:text-3xl">Ready for your next session?</h2>
+          <p class="mt-1 text-sm text-slate-300">Pick a time, bring your friends, and walk in. We keep your station ready.</p>
         </div>
-      </section>
-    }
+        <a href="#book" class="btn-primary inline-flex shrink-0 items-center gap-2" data-band-book>Book Now <app-icon name="play" [size]="16" /></a>
+      </div>
+    </section>
   `,
 })
 export class BookHome implements OnInit {
@@ -178,7 +210,21 @@ export class BookHome implements OnInit {
     { icon: 'check', title: 'Easy Changes', text: `Cancel or move until ${this.info()?.cutoff_hours ?? 2} h before` },
   ]);
 
-  protected chooseType(t: string): void {
+  protected readonly checks = [
+    'Performance gaming PCs',
+    'Console and multiplayer zone',
+    'Comfortable gaming lounge',
+    'Fair billing by the minute, pay at the counter',
+  ];
+
+  /** Hourly rate cards plus the passes that are for sale (real data from the shop settings). */
+  protected readonly plans = computed(() => buildPlans(this.info()));
+
+  protected chooseType(t: string | null): void {
+    if (!t) {
+      document.getElementById('book')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     this.type.set(t);
     void this.reload();
     document.getElementById('book')?.scrollIntoView({ behavior: 'smooth', block: 'start' });

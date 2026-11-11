@@ -15,6 +15,7 @@ export interface PassType {
   kind: 'unlimited' | 'hours';
   minutes_total: number | null;
   active: boolean;
+  popular: boolean;
 }
 
 /** "20 h", "1 h 30 min" */
@@ -76,6 +77,9 @@ export function bundleText(minutes: number): string {
           <label class="flex items-center gap-2 text-sm">
             <input type="checkbox" formControlName="active" /> Active (can be sold)
           </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" formControlName="popular" data-popular /> Show "Most popular" on the booking page
+          </label>
           @if (error()) { <p class="text-sm text-red-400" role="alert" data-error>{{ error() }}</p> }
           <div class="flex gap-2">
             <button type="submit" class="btn-primary" [disabled]="busy()" data-save>{{ busy() ? 'Saving…' : 'Save' }}</button>
@@ -93,6 +97,7 @@ export function bundleText(minutes: number): string {
                 ₹{{ p.price }} · {{ p.validity_days }} day{{ p.validity_days === 1 ? '' : 's' }} ·
                 {{ p.station_type ? p.station_type.toUpperCase() : 'All games' }} ·
                 {{ p.kind === 'unlimited' ? 'unlimited play' : bundle(p.minutes_total) }}
+                @if (p.popular) { · most popular }
                 @if (!p.active) { · inactive }
               </p>
             </div>
@@ -124,6 +129,7 @@ export class PassTypes implements OnInit {
     kind: ['unlimited' as 'unlimited' | 'hours'],
     hours: [10, [Validators.min(0.25)]],
     active: [true],
+    popular: [false],
   });
 
   protected bundle(minutes: number | null): string {
@@ -138,7 +144,7 @@ export class PassTypes implements OnInit {
     const [pt, st] = await Promise.all([
       this.sb
         .from('pass_types')
-        .select('id, name, price, validity_days, station_type, kind, minutes_total, active')
+        .select('id, name, price, validity_days, station_type, kind, minutes_total, active, popular')
         .order('active', { ascending: false })
         .order('name'),
       this.sb.from('stations').select('type'),
@@ -149,7 +155,7 @@ export class PassTypes implements OnInit {
   }
 
   protected startNew(): void {
-    this.form.reset({ name: '', price: 0, validity_days: 30, station_type: '', kind: 'unlimited', hours: 10, active: true });
+    this.form.reset({ name: '', price: 0, validity_days: 30, station_type: '', kind: 'unlimited', hours: 10, active: true, popular: false });
     this.error.set(null);
     this.editingId.set(0);
   }
@@ -163,6 +169,7 @@ export class PassTypes implements OnInit {
       kind: p.kind,
       hours: p.minutes_total ? p.minutes_total / 60 : 10,
       active: p.active,
+      popular: p.popular,
     });
     this.error.set(null);
     this.editingId.set(p.id);
@@ -191,6 +198,7 @@ export class PassTypes implements OnInit {
       kind: v.kind,
       minutes_total: hours ? Math.round(Number(v.hours) * 60) : null,
       active: v.active,
+      popular: v.popular,
     };
     const id = this.editingId();
     this.busy.set(true);

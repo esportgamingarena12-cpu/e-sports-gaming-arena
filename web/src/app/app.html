@@ -24,6 +24,7 @@
         </div>
       }
     </nav>
+    <div class="hidden px-2 lg:block" aria-hidden="true"><app-side-art /></div>
     @if (auth.profile(); as p) {
       <div class="border-t border-slate-800 pt-3">
         <p class="truncate text-sm font-medium text-slate-100">{{ p.full_name || p.email }}</p>

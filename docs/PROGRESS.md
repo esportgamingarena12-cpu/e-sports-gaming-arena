@@ -15,6 +15,7 @@
 | 10 | Notifications, PWA, deploy | Emails verified live and received (dev project); installs on phones and the production deploy are waiting on the owner | 2026-11-11 | Migration 0010 (email outbox, triggers, 1-hour reminder job), Edge Function send-booking-email, PWA (manifest, icons, offline banner), RLS review (docs/RLS-REVIEW.md, test 15), docs/DEPLOY.md, netlify.toml, build key scan. 23 + 32 new pgTAP checks (14, 15); 95 unit tests; 12 Playwright tests. |
 | 11 | New look (mockup palette, mobile first) | Done (verified on the dev project) | 2026-11-11 | Brand palette and fonts as theme tokens; sidebar layout with phone menu and bottom bar for staff/admin, top bar for customers; landing page with hero, booking card and real rates; dashboard redesign (tiles, station quick view, donut, live sessions, quick actions); every screen checked at 360 px and 1280 px. Migration 0011 (rates in booking_info). 99 unit tests; 12 Playwright tests. |
 | 12 | Memberships (prepaid passes) | Done (verified on the dev project) | 2026-11-11 | Migrations 0012 (pass types, sold passes, sell / start / look up / cancel, billing, void, reports) and 0013 (pass name on the bill line). Admin Pass setup, counter Passes screen, Start dialog finds a customer's pass by phone, customers see My passes. 62 pgTAP checks (16) and the RLS test extended (47); 117 unit tests; 18 Playwright tests. |
+| 13 | Mockup design (landing page, dashboard, illustrations) | Done (verified on the dev project) | 2026-11-11 | Migration 0014 (passes and a "most popular" flag in booking_info). Landing page like the mockup: hero with neon illustration, feature strip, studio section, Choose Your Plan cards from real rates and passes, booking card, closing band. Dashboard: live sessions with amounts, highlights, area chart; sidebar illustration. 128 unit tests; 18 Playwright tests; all routes checked at 360 and 1280 px. |
 
 ## Environment (no Docker / no local Supabase)
 - Hosted dev project: org "E Gaming Era", project ref `rfwozldwehmtjvgqpvid`. `web/` uses its URL and **anon** key only.
@@ -148,7 +149,15 @@
 9. Not built: pass online purchase, a pass for a booked slot (a booking does not need or reserve a pass), expiry reminders, unused-hours refunds.
 10. Test passes ("E2E ...") and their customers were removed after the runs; the cleanup order matters (sessions point at passes, passes at bills, bills at sessions).
 
+## Decisions made in Phase 13
+1. Images: no image generator is available here, so the pictures are neon SVG illustrations drawn in code (`web/src/app/shared/art.ts`): a gamer at a three-monitor desk (hero), a gaming room with a neon sign (studio section) and a gamer bust (sidebar). They scale to any size, add no files and work offline. They are illustrations, not photographs. To use real photos, put them in `web/public/images/` and replace the art component with an image.
+2. "Choose Your Plan" shows only real data: one card per game with its hourly rate, then every active pass (price, validity, unlimited or hours, game type). A pass can carry "Most popular" (tick box in Pass setup). With no passes only the hourly cards show. Pass buttons scroll to the booking card; passes themselves are still bought at the counter and the page says so. `booking_info()` exposes only pass name, price, terms and the flag (migration 0014).
+3. Left out of the mockup because they are not features of the app: Experience, Events, Gallery, Contact, Tournaments, Community and "Join Now", notification bell, global search, avatar menu, and the maintenance status (a switched-off station takes its place in orange).
+4. Dashboard: the live sessions list shows time played and the amount so far (same pricing formula as the counter and the database); a "Today's highlights" card with real counts; the 30-day sales chart has a soft area fill.
+5. The hero text uses the italic display font like the mockup.
+
 ## Open items / to do later
+- Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).
 - Delete the test login `e2e.admin@example.com` before production.
 - Delete the test logins `e2e.customer1..3@example.com` and `e2e.staff@example.com` before production.

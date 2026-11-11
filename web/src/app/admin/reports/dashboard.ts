@@ -12,6 +12,8 @@ import {
   HourRow,
   hourLabel,
   linePoints,
+  liveAmount,
+  areaPoints,
   LiveSession,
   niceMax,
   playedMinutes,
@@ -125,12 +127,15 @@ const BAR_H = 70;
           </div>
           <div class="mt-2 divide-y divide-slate-800">
             @for (s of live(); track s.id) {
-              <div class="flex items-center justify-between gap-2 py-2 text-sm">
+              <div class="flex items-center justify-between gap-2 py-2 text-sm" data-live-row>
                 <div class="min-w-0">
                   <p class="truncate font-medium"><span class="mr-2 rounded bg-violet-600/40 px-1.5 py-0.5 text-xs">{{ stationName(s.station_id) }}</span>{{ s.customer_name || 'Walk-in' }}</p>
-                  <p class="text-xs text-slate-400">Started {{ time(s.started_at) }}{{ s.status === 'paused' ? ' · paused' : '' }}</p>
+                  <p class="text-xs text-slate-400">Started {{ time(s.started_at) }}{{ s.status === 'paused' ? ' · paused' : '' }}{{ s.pass_name ? ' · ' + s.pass_name + ' pass' : '' }}</p>
                 </div>
-                <span class="shrink-0 text-slate-200">{{ duration(s) }}</span>
+                <div class="shrink-0 text-right">
+                  <p class="text-slate-200">{{ duration(s) }}</p>
+                  <p class="font-semibold text-orange-400" data-live-amount>{{ inr(amount(s)) }}</p>
+                </div>
               </div>
             } @empty { <p class="py-2 text-sm text-slate-400">No session running right now.</p> }
           </div>
@@ -149,6 +154,15 @@ const BAR_H = 70;
               <a routerLink="/counter/canteen" class="btn flex items-center justify-center gap-2"><app-icon name="cup" [size]="18" /> Canteen sale</a>
               <a routerLink="/admin/reports" class="btn flex items-center justify-center gap-2" data-reports-link><app-icon name="chart" [size]="18" /> Reports</a>
             </div>
+          </div>
+          <div class="card" data-highlights>
+            <h2 class="text-lg font-bold">Today's highlights</h2>
+            <ul class="mt-2 space-y-1.5 text-sm">
+              <li class="flex items-center gap-2"><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ bookingsToday() }} booking{{ bookingsToday() === 1 ? '' : 's' }} today</li>
+              <li class="flex items-center gap-2"><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ live().length }} session{{ live().length === 1 ? '' : 's' }} running now</li>
+              <li class="flex items-center gap-2"><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ inr(data()?.sales?.passes ?? 0) }} in passes sold</li>
+              <li class="flex items-center gap-2"><span [class]="offCount() ? 'text-orange-400' : 'text-emerald-400'"><app-icon name="check" [size]="16" /></span>{{ offCount() }} station{{ offCount() === 1 ? '' : 's' }} switched off</li>
+            </ul>
           </div>
           <div class="card" data-bookings>
             <h2 class="text-lg font-bold">Today's bookings</h2>
@@ -178,6 +192,8 @@ const BAR_H = 70;
           <svg [attr.viewBox]="'0 0 ' + w + ' ' + h" class="w-full" role="img"
                aria-label="Daily sales and occupancy for the last 30 days" preserveAspectRatio="none" style="height: 9rem">
             <line x1="0" [attr.y1]="h" [attr.x2]="w" [attr.y2]="h" stroke="currentColor" class="text-slate-700" />
+            <defs><linearGradient id="rev-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity="0.45" /><stop offset="1" stop-color="#8b5cf6" stop-opacity="0" /></linearGradient></defs>
+            <polygon [attr.points]="salesArea()" fill="url(#rev-fill)" />
             <polyline fill="none" stroke="#8b5cf6" stroke-width="2" vector-effect="non-scaling-stroke" [attr.points]="salesLine()" />
             <polyline fill="none" stroke="#00d9ff" stroke-width="1.5" vector-effect="non-scaling-stroke" [attr.points]="occLine()" />
           </svg>
@@ -260,6 +276,11 @@ export class Dashboard implements OnInit, OnDestroy {
   protected readonly salesLine = computed(() =>
     linePoints(this.trend().map((r) => r.sales), CHART_W, CHART_H, this.salesMax()),
   );
+  protected readonly salesArea = computed(() => areaPoints(this.salesLine(), CHART_W, CHART_H));
+  protected readonly bookingsToday = computed(() => {
+    const b = this.data()?.bookings;
+    return b ? b.upcoming + b.checked_in + b.no_show + b.cancelled : 0;
+  });
   protected readonly occLine = computed(() => linePoints(this.trend().map((r) => r.occupancy), CHART_W, CHART_H, 100));
   protected readonly trendTotal = computed(() => this.trend().reduce((a, r) => a + r.sales, 0));
   protected readonly avgOcc = computed(() => {
@@ -280,6 +301,9 @@ export class Dashboard implements OnInit, OnDestroy {
   }
   protected state(s: DashStation) {
     return stationState(s, this.busyIds());
+  }
+  protected amount(s: LiveSession): number {
+    return liveAmount(s, this.now());
   }
   protected stationName(id: number): string {
     return this.stations().find((s) => s.id === id)?.name ?? '';

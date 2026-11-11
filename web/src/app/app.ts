@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
 import { ReceiptView } from './counter/receipt/receipt';
+import { SideArt } from './shared/art';
 import { Icon } from './shared/icon';
 import { Logo } from './shared/logo';
 import { ToastOutlet } from './shared/toast-outlet';
@@ -20,7 +21,7 @@ interface NavGroup {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet, ReceiptView, Icon, Logo],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet, ReceiptView, Icon, Logo, SideArt],
   templateUrl: './app.html',
 })
 export class App {

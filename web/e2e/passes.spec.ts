@@ -55,10 +55,10 @@ async function sell(page: Page, passName: string, name: string, phone: string, e
   await expect(page.locator('[data-sold]')).toContainText('Pass sold');
 }
 
-test('the admin sets up two passes', async ({ page }) => {
+test('the admin sets up two passes, and the public booking page offers them as plans', async ({ page, browser }) => {
   await login(page, adminEmail!, adminPassword!, /\/admin$/);
   await page.goto('/admin/passes');
-  const make = async (name: string, price: string, days: string, kind: 'unlimited' | 'hours', hours?: string) => {
+  const make = async (name: string, price: string, days: string, kind: 'unlimited' | 'hours', hours?: string, popular = false) => {
     if (await page.locator(`[data-pass="${name}"]`).count()) return; // re-run
     await page.locator('[data-new]').click();
     await page.locator('[data-name]').fill(name);
@@ -67,13 +67,29 @@ test('the admin sets up two passes', async ({ page }) => {
     await page.locator('[data-games]').selectOption('pc');
     await page.locator('[data-kind]').selectOption(kind);
     if (hours) await page.locator('[data-hours]').fill(hours);
+    if (popular) await page.locator('[data-popular]').check();
     await page.locator('[data-save]').click();
     await expect(page.locator(`[data-pass="${name}"]`)).toBeVisible();
   };
-  await make('E2E Weekly PC', '100', '7', 'unlimited');
+  await make('E2E Weekly PC', '100', '7', 'unlimited', undefined, true);
   await make('E2E 2 Hours', '80', '30', 'hours', '2');
   await expect(page.locator('[data-pass="E2E 2 Hours"]')).toContainText('2 h');
   await expect(page.locator('[data-pass="E2E Weekly PC"]')).toContainText('unlimited play');
+
+  // a visitor sees them under "Choose Your Plan", next to the real hourly rates
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const visitor = await ctx.newPage();
+  await visitor.goto('/book');
+  const plans = visitor.locator('[data-plans]');
+  await expect(plans.locator('[data-plan="PC by the hour"]')).toContainText('₹60');
+  await expect(plans.locator('[data-plan="E2E Weekly PC"]')).toContainText('₹100');
+  await expect(plans.locator('[data-plan="E2E Weekly PC"]')).toContainText('Unlimited play');
+  await expect(plans.locator('[data-plan="E2E Weekly PC"] [data-popular]')).toBeVisible();
+  await expect(plans.locator('[data-plan="E2E 2 Hours"]')).toContainText('2 h of play');
+  await expect(plans.locator('[data-popular]')).toHaveCount(1);
+  // no pass is shown with anything about customers or sales
+  await expect(visitor.locator('[data-hero-book]')).toBeVisible();
+  await ctx.close();
 });
 
 test('the counter sells a pass, a session runs on it for free, and the bill says so', async ({ page }) => {
@@ -94,6 +110,13 @@ test('the counter sells a pass, a session runs on it for free, and the bill says
   await expect(card).toContainText('Running');
   await expect(card.locator('[data-pass-note]')).toContainText('E2E Weekly PC pass');
   await expect(card.locator('[data-charge]')).toHaveText('₹0.00');
+
+  // the owner's dashboard lists it live, with the amount so far
+  await page.goto('/admin');
+  const liveRow = page.locator('[data-live-row]').filter({ hasText: 'E2E Weekly PC pass' });
+  await expect(liveRow).toBeVisible();
+  await expect(liveRow.locator('[data-live-amount]')).toHaveText('₹0.00');
+  await page.goto('/counter/stations');
 
   // the bill is free, with the pass named on the gaming line
   await card.getByRole('button', { name: 'Bill' }).click();
