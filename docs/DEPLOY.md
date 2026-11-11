@@ -46,15 +46,17 @@ Two functions live in `supabase/functions/`: `admin-create-staff` and `send-book
    npx supabase functions deploy send-booking-email --project-ref YOUR_PROJECT_REF
    ```
    (Or Edge Functions > Deploy via editor: paste `index.ts`, and for `send-booking-email` also add `email-text.ts`.)
-2. Secrets (Edge Functions > Secrets, or the CLI). Pick a long random value for `MAIL_FUNCTION_SECRET`:
+2. Secret (Edge Functions > Secrets, or the CLI): your Resend key, and optionally the sender address:
    ```bash
-   npx supabase secrets set RESEND_API_KEY=re_xxx MAIL_FUNCTION_SECRET=LONG_RANDOM_TEXT MAIL_FROM="E-Sports Gaming Arena <bookings@yourdomain.com>" --project-ref YOUR_PROJECT_REF
+   npx supabase secrets set RESEND_API_KEY=re_xxx MAIL_FROM="E-Sports Gaming Arena <bookings@yourdomain.com>" --project-ref YOUR_PROJECT_REF
    ```
-3. Tell the database where the function is (SQL Editor, once; use the same secret as above):
+3. Tell the database where the function is (SQL Editor, once). The shared secret between the job and the function
+   is generated here and lives only in the database; there is nothing to copy anywhere else:
    ```sql
    insert into mail_config (function_url, anon_key, secret) values
-     ('https://YOUR_PROJECT_REF.supabase.co/functions/v1/send-booking-email', 'YOUR_ANON_KEY', 'LONG_RANDOM_TEXT')
-   on conflict (id) do update set function_url = excluded.function_url, anon_key = excluded.anon_key, secret = excluded.secret;
+     ('https://YOUR_PROJECT_REF.supabase.co/functions/v1/send-booking-email', 'YOUR_ANON_KEY',
+      replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''))
+   on conflict (id) do update set function_url = excluded.function_url, anon_key = excluded.anon_key;
    ```
 4. How it works: when a customer who signed in with an email makes, moves or cancels a booking, an email is queued.
    Every minute the job `booking-mail` queues 1-hour reminders and wakes the function, which sends them.

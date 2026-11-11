@@ -1,6 +1,7 @@
 // send-booking-email: sends the queued booking emails (confirmation, change, cancellation, reminder).
-// Called every minute by the database job (pg_net) with the shared secret in `x-mail-secret`.
-// Secrets (Edge Functions > Secrets): RESEND_API_KEY, MAIL_FUNCTION_SECRET, MAIL_FROM (optional).
+// Called every minute by the database job (pg_net) with the shared secret in `x-mail-secret`
+// (checked against mail_config.secret in the database).
+// Secrets (Edge Functions > Secrets): RESEND_API_KEY, MAIL_FROM (optional).
 // The service role key is used here only, never in web/.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { buildMail, MailKind } from './email-text.ts';
@@ -27,15 +28,18 @@ interface Row {
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
 
-  const secret = Deno.env.get('MAIL_FUNCTION_SECRET');
+  const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+    auth: { persistSession: false },
+  });
+
+  // The shared secret lives only in the database (table mail_config), next to the job that sends it,
+  // so there is no second copy to keep in sync.
+  const { data: mailCfg } = await db.from('mail_config').select('secret').maybeSingle();
+  const secret = mailCfg?.secret as string | undefined;
   if (!secret || req.headers.get('x-mail-secret') !== secret) return json(401, { error: 'Not allowed' });
 
   const resendKey = Deno.env.get('RESEND_API_KEY');
   if (!resendKey) return json(500, { error: 'RESEND_API_KEY is not set' });
-
-  const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
-    auth: { persistSession: false },
-  });
 
   const [{ data: shop }, { data: cfg }, { data: rows, error }] = await Promise.all([
     db.from('settings').select('shop_name').maybeSingle(),
