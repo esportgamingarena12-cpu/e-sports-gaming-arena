@@ -82,7 +82,7 @@ const addDays = (day: string, n: number): string =>
           @for (p of plans(); track p.key) {
             <div class="card relative flex w-full flex-col gap-3 p-4 sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]" [class]="p.popular ? '!border-orange-500/70 shadow-[0_0_34px_-10px_rgb(255_107_53_/_0.7)]' : ''" [attr.data-plan]="p.title">
               @if (p.popular) {
-                <span class="badge absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 px-3 text-slate-950" data-popular>Most popular</span>
+                <span class="badge absolute -top-3 left-1/2 -translate-x-1/2 bg-linear-to-r from-violet-600 to-fuchsia-500 px-3 text-white" data-popular>Most popular</span>
               }
               <div class="text-center">
                 <span class="mx-auto grid size-12 place-items-center rounded-xl bg-linear-to-br from-violet-500/30 to-cyan-400/20 text-violet-200"><app-icon [name]="p.icon" [size]="28" /></span>
@@ -145,7 +145,7 @@ const addDays = (day: string, n: number): string =>
               <div class="grid grid-cols-3 gap-2 sm:grid-cols-4" data-slots-grid>
                 @for (s of free(); track s.slot_start) {
                   <button type="button" class="btn !py-2.5 font-medium" data-slot
-                          [class]="picked() === s.slot_start ? '!border-orange-500 !bg-orange-500 !text-slate-950' : ''"
+                          [class]="picked() === s.slot_start ? '!border-violet-400 !bg-linear-to-r !from-violet-600 !to-fuchsia-500 !text-white' : ''"
                           (click)="pick(s)">
                     {{ time(s.slot_start) }}
                   </button>

@@ -91,7 +91,7 @@ import { availableQty } from '../stock-utils';
         <div class="flex gap-2 overflow-x-auto pb-1">
           @for (c of categories(); track c) {
             <button type="button" class="whitespace-nowrap rounded-full border px-3 py-1 text-sm"
-                    [class]="category() === c ? 'border-orange-500 bg-orange-500 text-slate-950' : 'border-slate-700 text-slate-300'"
+                    [class]="category() === c ? 'border-violet-400 bg-linear-to-r from-violet-600 to-fuchsia-500 text-white' : 'border-slate-700 text-slate-300'"
                     (click)="category.set(c)">{{ c }}</button>
           }
         </div>
