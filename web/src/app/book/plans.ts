@@ -59,3 +59,14 @@ export function buildPlans(info: BookingInfo | null): Plan[] {
   const passes = (info.passes ?? []).map(passPlan);
   return [...rates, ...passes];
 }
+
+/** Small facts for the login banner: each game type with its lowest hourly rate, e.g. "PC from ₹60/h". */
+export function loginChips(info: BookingInfo | null): string[] {
+  const plain = ['Easy booking', 'Pay at the counter'];
+  if (!info) return plain;
+  const chips = (info.types ?? []).map((t) => {
+    const rates = (info.rates ?? []).filter((r) => r.type === t).map((r) => num(r.rate_per_hour));
+    return rates.length ? `${typeLabel(t)} from ₹${Math.min(...rates)}/h` : typeLabel(t);
+  });
+  return [...chips, ...plain].slice(0, 4);
+}

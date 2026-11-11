@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BookingInfo, PublicPass } from './booking.service';
-import { buildPlans, hoursText, passPlan, perText } from './plans';
+import { buildPlans, hoursText, loginChips, passPlan, perText } from './plans';
 
 const pass = (over: Partial<PublicPass> = {}): PublicPass => ({
   name: 'Weekly PC',
@@ -76,5 +76,18 @@ describe('buildPlans', () => {
   it('keys are unique', () => {
     const plans = buildPlans(info({ passes: [pass(), pass({ name: 'Day' })] }));
     expect(new Set(plans.map((p) => p.key)).size).toBe(plans.length);
+  });
+});
+
+describe('login banner chips', () => {
+  it('shows each game type with its lowest rate, then the plain facts (at most 4)', () => {
+    expect(loginChips(info())).toEqual(['PC from ₹60/h', 'PS5 from ₹120/h', 'Easy booking', 'Pay at the counter']);
+  });
+  it('uses the lowest of several rates and copes with a type that has none', () => {
+    const i = info({ types: ['pc', 'vr'], rates: [{ type: 'pc', rate_per_hour: 80 }, { type: 'pc', rate_per_hour: 50 }] });
+    expect(loginChips(i).slice(0, 2)).toEqual(['PC from ₹50/h', 'VR']);
+  });
+  it('falls back to the plain facts before the shop info has loaded', () => {
+    expect(loginChips(null)).toEqual(['Easy booking', 'Pay at the counter']);
   });
 });

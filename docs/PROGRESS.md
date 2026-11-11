@@ -18,6 +18,7 @@
 | 13 | Mockup design (landing page, dashboard, illustrations) | Done (verified on the dev project) | 2026-11-11 | Migration 0014 (passes and a "most popular" flag in booking_info). Landing page like the mockup: hero with neon illustration, feature strip, studio section, Choose Your Plan cards from real rates and passes, booking card, closing band. Dashboard: live sessions with amounts, highlights, area chart; sidebar illustration. 128 unit tests; 18 Playwright tests; all routes checked at 360 and 1280 px. |
 | 14 | Customers screen | Done (verified on the dev project) | 2026-11-11 | Migration 0015 (staff note, customer_list, customer_detail, update_customer; the notes column hidden from every direct read). /counter/customers: search by name, phone or login email; detail with bookings, passes, bills, spend, no-show warning, editable details and a staff note; Book for this customer and Sell a pass hand-overs. 49 pgTAP checks (17); 134 unit tests; 23 Playwright tests. |
 | 15 | Mockup match (second pass) | Done (verified on the dev project) | 2026-11-11 | Landing page and admin shell rebuilt to follow the mockup: hero art bleeding to the edge, overlapping feature panel, studio, plan cards, controller band; sidebar with mockup names and gradient pill; top bar with customer search (Ctrl + K), alerts bell and user menu; dashboard with icon tiles, systems quick view, revenue overview (week / 7 / 30 days, % vs previous, smooth chart), session donut, live sessions table with avatars and amounts, quick actions and highlights. 150 unit tests; 28 Playwright tests; every route checked at 360, 768, 1280 and 1536 px. |
+| 16 | Login look | Done (one older e2e test needs a data cleanup, see below) | 2026-11-11 | Both login pages are now split screens: an animated neon arena banner (moving screens, sweeping beams, sparks, floating controller, flickering sign) beside a glowing form card with icons and a show/hide password button. The customer banner shows the real hourly rates. 153 unit tests; 9 new Playwright tests. |
 
 ## Environment (no Docker / no local Supabase)
 - Hosted dev project: org "E Gaming Era", project ref `rfwozldwehmtjvgqpvid`. `web/` uses its URL and **anon** key only.
@@ -178,6 +179,15 @@
 6. Revenue overview: This Week (Monday to Sunday, future days empty), Last 7 days or Last 30 days, with the change against the same number of days before (for a part-week, against the same days of last week). The chart is drawn at the real width of its card so text and dots keep their size on phones. An empty chart shows a 0 to 100 axis.
 7. Motion: a gentle float on the hero picture, a rise-in on the welcome heading and hover lift on tiles and quick actions; all switched off for people who ask their device for less motion.
 8. The page area is no longer limited to 1152 px for visitors, so the hero can use wide screens; every customer screen sets its own width.
+
+## Decisions made in Phase 16
+1. "Live images" are animated SVG scenes drawn in code (`web/src/app/shared/login-stage.ts`), not photos or video: no image files, works offline, scales to any size. Real photos or a looping video can replace the scene later.
+2. The banner never shows invented numbers. The customer page shows each game type with its lowest hourly rate from `booking_info` (e.g. "PC from ₹60/h"); if that cannot load, it shows plain facts. Live free-station counts would need a new public function, so they were left out.
+3. All movement is CSS and stops completely when the device asks for less motion (tested).
+4. On phones the banner is a short strip above the form; checked at 360, 768 and 1280 px with no sideways scroll.
+5. The show/hide button is outside the password label and named "Show typed characters", so screen readers and `getByLabel('Password')` still find only the field.
+6. No database change and no new migration; login logic is unchanged.
+7. Test data note: the customer e2e spec (`first booking`) expects an empty bookings table. After a failed run, remove the leftover E2E bookings/customers (the cleanup SQL used in earlier phases) before running it again.
 
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
