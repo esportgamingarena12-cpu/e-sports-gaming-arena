@@ -18,6 +18,17 @@ export interface FreeSlot {
   free: number;
 }
 
+export interface MyPass {
+  id: number;
+  name: string;
+  kind: 'unlimited' | 'hours';
+  station_type: string | null;
+  minutes_left: number | null;
+  starts_at: string;
+  expires_at: string;
+  state: 'active' | 'expired' | 'used up' | 'cancelled';
+}
+
 export interface MyBill {
   bill_no: number;
   booking_id: number;
@@ -86,6 +97,12 @@ export class BookingService {
       .limit(200);
     if (error) this.fail(error);
     return (data ?? []) as PortalBooking[];
+  }
+
+  async myPasses(): Promise<MyPass[]> {
+    const { data, error } = await this.sb.rpc('my_passes');
+    if (error) this.fail(error);
+    return (data ?? []) as MyPass[];
   }
 
   async myBills(): Promise<MyBill[]> {

@@ -66,6 +66,7 @@ export class App {
               { label: 'Canteen', path: '/counter/canteen', icon: 'cup' },
               { label: 'Bills', path: '/counter/bills', icon: 'receipt' },
               { label: 'Stock', path: '/counter/stock', icon: 'box' },
+              { label: 'Passes', path: '/counter/passes', icon: 'tag' },
             ],
           },
           {
@@ -74,6 +75,7 @@ export class App {
               { label: 'Settings', path: '/admin/settings', icon: 'sliders' },
               { label: 'Station setup', path: '/admin/stations', icon: 'monitor' },
               { label: 'Packages', path: '/admin/packages', icon: 'box' },
+              { label: 'Pass setup', path: '/admin/passes', icon: 'tag' },
               { label: 'Products', path: '/admin/products', icon: 'tag' },
               { label: 'Booking rules', path: '/admin/booking-settings', icon: 'clock' },
               { label: 'Staff', path: '/admin/staff', icon: 'users' },
@@ -90,6 +92,7 @@ export class App {
               { label: 'Canteen', path: '/counter/canteen', icon: 'cup' },
               { label: 'Bills', path: '/counter/bills', icon: 'receipt' },
               { label: 'Stock', path: '/counter/stock', icon: 'box' },
+              { label: 'Passes', path: '/counter/passes', icon: 'tag' },
               { label: 'Today', path: '/counter/today', icon: 'clock' },
             ],
           },

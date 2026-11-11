@@ -4,6 +4,7 @@ import { Reports } from './admin/reports/reports';
 import { Today } from './counter/today/today';
 import { BookingSettings } from './admin/booking/booking-settings';
 import { Packages } from './admin/packages/packages';
+import { PassTypes } from './admin/passes/pass-types';
 import { Products } from './admin/products/products';
 import { ShopSettings } from './admin/settings/shop-settings';
 import { StaffAdmin } from './admin/staff/staff';
@@ -15,6 +16,7 @@ import { MyBookings } from './book/my-bookings';
 import { Bills } from './counter/bills/bills';
 import { CounterBookings } from './counter/bookings/bookings';
 import { Canteen } from './counter/canteen/canteen';
+import { CounterPasses } from './counter/passes/passes';
 import { CounterStations } from './counter/stations/stations';
 import { StockScreen } from './counter/stock/stock';
 import { adminGuard, customerGuard, staffGuard } from './core/guards';
@@ -35,6 +37,7 @@ export const routes: Routes = [
       { path: 'settings', component: ShopSettings },
       { path: 'stations', component: Stations },
       { path: 'packages', component: Packages },
+      { path: 'passes', component: PassTypes },
       { path: 'products', component: Products },
       { path: 'booking-settings', component: BookingSettings },
       { path: 'staff', component: StaffAdmin },
@@ -50,6 +53,7 @@ export const routes: Routes = [
       { path: 'canteen', component: Canteen },
       { path: 'bills', component: Bills },
       { path: 'stock', component: StockScreen },
+      { path: 'passes', component: CounterPasses },
       { path: 'today', component: Today },
     ],
   },

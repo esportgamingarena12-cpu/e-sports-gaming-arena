@@ -17,9 +17,9 @@ select is((select count(*)::int from pg_class c where c.relnamespace = 'public':
               and has_table_privilege('anon', c.oid, 'SELECT,INSERT,UPDATE,DELETE')), 0,
           'visitors (anon) have no privilege on any table');
 select is((select count(*)::int from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p')
-              and c.relname in ('bills', 'bill_items', 'payments', 'sessions', 'tab_items', 'stock_moves', 'bookings', 'customers', 'booking_emails', 'mail_config')
+              and c.relname in ('bills', 'bill_items', 'payments', 'sessions', 'tab_items', 'stock_moves', 'bookings', 'customers', 'booking_emails', 'mail_config', 'customer_passes')
               and has_table_privilege('authenticated', c.oid, 'INSERT,UPDATE,DELETE')), 0,
-          'money, stock, session, booking and customer tables cannot be written directly by anyone signed in');
+          'money, stock, session, booking, customer and pass tables cannot be written directly by anyone signed in');
 select is((select count(*)::int from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p')
               and c.relname in ('booking_emails', 'mail_config') and has_table_privilege('authenticated', c.oid, 'SELECT')), 0,
           'the mail outbox and sender settings cannot be read by anyone signed in');
@@ -72,6 +72,29 @@ select throws_ok($$select * from bookings$$, '42501', null, 'nor bookings');
 select throws_ok($$select * from customers$$, '42501', null, 'nor customers');
 select throws_ok($$select * from profiles$$, '42501', null, 'nor profiles');
 select throws_ok($$select create_booking('pc', now() + interval '1 day', 1)$$, '42501', null, 'nor book without signing in');
+reset role;
+
+-- ---------- passes (Phase 12) ----------
+select is((select count(*)::int from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype = 'trigger'::regtype
+              and (has_function_privilege('authenticated', p.oid, 'EXECUTE') or has_function_privilege('anon', p.oid, 'EXECUTE'))
+              and p.proname in ('session_pass_usage', 'bill_item_pass_label', 'booking_email_queue')), 0,
+          'trigger functions cannot be called from the app');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000c5","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok($$insert into pass_types (name, price, validity_days, kind) values ('Free', 0, 1, 'unlimited')$$, '42501', null, 'a customer cannot add a pass type');
+select is((select count(*)::int from pass_types), 0, 'a customer sees no pass price list');
+select throws_ok($$select sell_pass(1, 'x', '9999999999', null, '[]'::jsonb)$$, '42501', null, 'a customer cannot sell a pass');
+select throws_ok($$select cancel_pass(1, 'x')$$, '42501', null, 'nor cancel one');
+reset role;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b5","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok($$insert into pass_types (name, price, validity_days, kind) values ('Free', 0, 1, 'unlimited')$$, '42501', null, 'staff cannot add a pass type');
+select throws_ok($$select cancel_pass(1, 'x')$$, '42501', null, 'staff cannot cancel a pass');
+reset role;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select throws_ok($$select * from customer_passes$$, '42501', null, 'a visitor cannot read passes');
+select throws_ok($$select my_passes()$$, '42501', null, 'nor ask for passes');
 reset role;
 
 select * from finish();

@@ -1,7 +1,7 @@
 # RLS review (Phase 10)
 
 Checked live against the dev project on 2026-11-11 (policies, table privileges, function grants) and locked in by
-`supabase/tests/15_rls_review.test.sql` (32 checks). Result: **no gaps found, no fix needed.**
+`supabase/tests/15_rls_review.test.sql` (47 checks, extended for passes in Phase 12). Result: **no gaps found, no fix needed.**
 
 Roles: **Visitor** = not signed in (anon). **Customer** = signed in, not staff. **Staff** = active staff.
 **Admin** = active admin. Staff rights include admin's read rights; "is_staff()" means staff or admin.
@@ -23,6 +23,8 @@ Roles: **Visitor** = not signed in (anon). **Customer** = signed in, not staff. 
 | bills | none | none | select | select |
 | bill_items | none | none | select | select |
 | payments | none | none | select | select |
+| pass_types | none | none | select | select, insert, update, delete |
+| customer_passes | none | select own | select all | select all |
 | customers | none | select own | select all | select all |
 | bookings | none | select own | select all | select all |
 | booking_emails | none | none | none | none (server only) |
@@ -37,10 +39,10 @@ No table has a policy for visitors.
 | Callable by | Functions |
 | --- | --- |
 | Visitor | `booking_info`, `get_availability` (free counts only) |
-| Customer (own data only, checked inside) | `save_my_profile`, `my_bills`, `create_booking`, `cancel_booking`, `reschedule_booking`, `get_reschedule_availability` |
-| Staff and admin | `start_session`, `pause_session`, `resume_session`, `end_session`, `reopen_session`, `cancel_session`, `add_tab_item`, `remove_tab_item`, `checkout_bill`, `stock_move`, `recent_stock_moves`, `check_in_booking`, `mark_no_show`, `server_now`, `today_report` |
-| Admin only (checked inside) | `void_bill`, `dashboard_today`, `sales_trend`, `busy_hours`, `sales_report` |
-| Nobody from the app | `promote_admin`, `session_charge`, `release_no_shows`, `resolve_customer`, `station_free`, `station_busy_until`, `check_booking_window`, `availability_rows`, `report_core`, `run_booking_mail` |
+| Customer (own data only, checked inside) | `save_my_profile`, `my_bills`, `my_passes`, `create_booking`, `cancel_booking`, `reschedule_booking`, `get_reschedule_availability` |
+| Staff and admin | `start_session`, `pause_session`, `resume_session`, `end_session`, `reopen_session`, `cancel_session`, `add_tab_item`, `remove_tab_item`, `checkout_bill`, `stock_move`, `recent_stock_moves`, `check_in_booking`, `mark_no_show`, `server_now`, `today_report`, `sell_pass`, `start_pass_session`, `lookup_passes` |
+| Admin only (checked inside) | `void_bill`, `cancel_pass`, `dashboard_today`, `sales_trend`, `busy_hours`, `sales_report` |
+| Nobody from the app | `promote_admin`, `session_charge`, `release_no_shows`, `resolve_customer`, `station_free`, `station_busy_until`, `check_booking_window`, `availability_rows`, `report_core`, `run_booking_mail`, and the trigger functions |
 
 `is_admin()` and `is_staff()` are callable by signed-in users (they only answer for the caller).
 

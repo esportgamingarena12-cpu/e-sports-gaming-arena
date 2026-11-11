@@ -140,6 +140,9 @@ const BAR_H = 70;
         <div class="space-y-4">
           <div class="card">
             <h2 class="text-lg font-bold">Quick actions</h2>
+            <p class="mt-1 text-sm text-slate-300" data-active-passes>
+              <a routerLink="/counter/passes" class="text-cyan-300 hover:underline">{{ data()?.active_passes ?? 0 }} active pass{{ (data()?.active_passes ?? 0) === 1 ? '' : 'es' }}</a>
+            </p>
             <div class="mt-2 grid grid-cols-2 gap-2">
               <a routerLink="/counter/bookings" class="btn flex items-center justify-center gap-2"><app-icon name="calendar" [size]="18" /> New booking</a>
               <a routerLink="/counter/stations" class="btn flex items-center justify-center gap-2"><app-icon name="play" [size]="18" /> Start session</a>

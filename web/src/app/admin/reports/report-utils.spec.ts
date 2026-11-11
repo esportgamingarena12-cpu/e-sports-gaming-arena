@@ -23,6 +23,7 @@ const report: SalesReport = {
   net_sales: 280,
   gaming: 180,
   canteen: 110,
+  passes: 0,
   discounts: 10,
   void_count: 1,
   void_value: 500,
@@ -32,8 +33,8 @@ const report: SalesReport = {
     { name: 'Cola "cold"', qty: 2, amount: 50 },
   ],
   daily: [
-    { day: '2026-11-10', bills: 1, sales: 80, gaming: 80, canteen: 0, discounts: 0, voids: 0 },
-    { day: '2026-11-11', bills: 2, sales: 200, gaming: 100, canteen: 110, discounts: 10, voids: 1 },
+    { day: '2026-11-10', bills: 1, sales: 80, gaming: 80, canteen: 0, passes: 0, discounts: 0, voids: 0 },
+    { day: '2026-11-11', bills: 2, sales: 200, gaming: 100, canteen: 110, passes: 0, discounts: 10, voids: 1 },
   ],
 };
 
@@ -63,10 +64,10 @@ describe('csv', () => {
   });
   it('has the daily table, a total, the payment modes and the top items', () => {
     const lines = buildCsv(report).split('\r\n');
-    expect(lines[0]).toBe('Date,Bills,Gaming (₹),Canteen (₹),Discounts (₹),Net sales (₹),Void bills');
-    expect(lines[1]).toBe('2026-11-10,1,80.00,0.00,0.00,80.00,0');
-    expect(lines[2]).toBe('2026-11-11,2,100.00,110.00,10.00,200.00,1');
-    expect(lines[3]).toBe('TOTAL,3,180.00,110.00,10.00,280.00,1');
+    expect(lines[0]).toBe('Date,Bills,Gaming (₹),Canteen (₹),Passes (₹),Discounts (₹),Net sales (₹),Void bills');
+    expect(lines[1]).toBe('2026-11-10,1,80.00,0.00,0.00,0.00,80.00,0');
+    expect(lines[2]).toBe('2026-11-11,2,100.00,110.00,0.00,10.00,200.00,1');
+    expect(lines[3]).toBe('TOTAL,3,180.00,110.00,0.00,10.00,280.00,1');
     expect(lines[4]).toBe('');
     expect(lines).toContain('Cash,180.00');
     expect(lines).toContain('UPI,40.00');

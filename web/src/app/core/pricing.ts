@@ -4,7 +4,7 @@
 //
 // Rules: played time = elapsed - paused. Per hour: round up to the billing block, at least the
 // minimum bill. Package: fixed price inside the package minutes; overtime in billing blocks at the
-// hourly rate. The rate, block and minimum are the values snapshotted when the session started.
+// hourly rate. Pass: unlimited = 0; hours bundle = time beyond the balance at the hourly rate. The rate, block and minimum are the values snapshotted when the session started.
 // Money is calculated in whole paise with integers and rounded half up, like Postgres numeric.
 
 export interface SessionSnapshot {
@@ -13,6 +13,9 @@ export interface SessionSnapshot {
   min_bill_min: number;
   package_minutes: number | null;
   package_price: number | string | null;
+  /** Set when the session runs on a pass; pass_minutes_left null = unlimited pass. */
+  pass_id?: number | null;
+  pass_minutes_left?: number | null;
   started_at: string;
   paused_at: string | null;
   paused_seconds: number;
@@ -35,6 +38,13 @@ export function chargePaise(s: SessionSnapshot, endMs: number): number {
   const blockMs = s.block_min * 60_000;
   const roundedMinutes = (ms: number): number => Math.ceil(ms / blockMs) * s.block_min;
   const played = playedMs(s, endMs);
+
+  // pass session: unlimited is free; an hours bundle covers time up to its balance, the rest is billed
+  // at the hourly rate (no minimum bill)
+  if (s.pass_id != null) {
+    if (s.pass_minutes_left == null) return 0;
+    return roundHalfUp(Math.max(0, roundedMinutes(played) - s.pass_minutes_left) * rate, 60);
+  }
 
   if (s.package_minutes !== null) {
     const price = toPaise(s.package_price ?? 0);

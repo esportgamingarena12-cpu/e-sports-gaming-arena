@@ -20,6 +20,7 @@ export interface OpenSession extends SessionSnapshot {
   customer_name: string | null;
   customer_phone: string | null;
   package_name: string | null;
+  pass_name: string | null;
   status: 'running' | 'paused' | 'ended';
 }
 
@@ -64,7 +65,7 @@ export interface Pack {
 
 const SESSION_COLUMNS =
   'id, station_id, customer_name, customer_phone, status, package_name, rate_per_hour, block_min, ' +
-  'min_bill_min, package_minutes, package_price, started_at, paused_at, paused_seconds, ended_at';
+  'min_bill_min, package_minutes, package_price, pass_id, pass_name, pass_minutes_left, started_at, paused_at, paused_seconds, ended_at';
 
 /**
  * Everything the counter screens need: stations, open sessions, tabs and packages.

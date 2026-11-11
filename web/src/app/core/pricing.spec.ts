@@ -91,3 +91,37 @@ describe('pricing: helpers', () => {
     expect(formatDuration(-61_000)).toBe('0:01:01');
   });
 });
+
+describe('pricing: pass sessions (same numbers as the database tests)', () => {
+  const unlimited = (over: Partial<SessionSnapshot> = {}) => perHour(60, { pass_id: 1, pass_minutes_left: null, ...over });
+  const bundle = (left: number, rate = 60) => perHour(rate, { pass_id: 1, pass_minutes_left: left });
+
+  it('an unlimited pass is free however long it runs', () => {
+    expect(sessionCharge(unlimited(), at(0))).toBe(0);
+    expect(sessionCharge(unlimited(), at(120))).toBe(0);
+    expect(sessionCharge(unlimited(), at(600))).toBe(0);
+  });
+  it('an hours bundle covers time up to the balance, with no minimum bill', () => {
+    expect(sessionCharge(bundle(120), at(10))).toBe(0);
+    expect(sessionCharge(bundle(120), at(100))).toBe(0); // 105 rounded minutes of 120
+  });
+  it('time beyond the balance is billed at the hourly rate in blocks', () => {
+    expect(sessionCharge(bundle(15), at(40))).toBe(30); // 45 rounded - 15 covered = 30 min x 60
+    expect(sessionCharge(bundle(0), at(40))).toBe(45);
+    expect(sessionCharge(bundle(15, 120), at(40))).toBe(60);
+  });
+  it('rounds the played time up to the billing block before taking the balance off', () => {
+    expect(sessionCharge(bundle(60), at(61))).toBe(15); // 75 - 60 = 15 min
+    expect(sessionCharge(bundle(60), at(60))).toBe(0);
+  });
+  it('pauses are not charged against a pass either', () => {
+    expect(sessionCharge(bundle(30, 60), at(60))).toBe(30); // 60 elapsed
+    expect(sessionCharge({ ...bundle(30, 60), paused_seconds: 30 * 60 }, at(60))).toBe(0); // 30 played
+  });
+  it('a pass wins over a package on the same snapshot', () => {
+    expect(sessionCharge(pkg(180, 150, 60, { pass_id: 1, pass_minutes_left: null }), at(60))).toBe(0);
+  });
+  it('sessions without a pass are unchanged', () => {
+    expect(sessionCharge(perHour(60, { pass_id: null }), at(91))).toBe(105);
+  });
+});

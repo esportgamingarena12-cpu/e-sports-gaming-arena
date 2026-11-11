@@ -14,6 +14,7 @@
 | 9 | Dashboard and reports | Done (verified on hosted dev project) | 2026-11-11 | Migration 0009 (dashboard_today, sales_trend, busy_hours, sales_report admin-only; today_report for staff). /admin dashboard with tiles and SVG charts, /admin/reports with range and CSV export, /counter/today for staff. 44 pgTAP checks (13); 89 unit tests; 12 Playwright tests in all (4 new). Checked at 360 px. |
 | 10 | Notifications, PWA, deploy | Emails verified live and received (dev project); installs on phones and the production deploy are waiting on the owner | 2026-11-11 | Migration 0010 (email outbox, triggers, 1-hour reminder job), Edge Function send-booking-email, PWA (manifest, icons, offline banner), RLS review (docs/RLS-REVIEW.md, test 15), docs/DEPLOY.md, netlify.toml, build key scan. 23 + 32 new pgTAP checks (14, 15); 95 unit tests; 12 Playwright tests. |
 | 11 | New look (mockup palette, mobile first) | Done (verified on the dev project) | 2026-11-11 | Brand palette and fonts as theme tokens; sidebar layout with phone menu and bottom bar for staff/admin, top bar for customers; landing page with hero, booking card and real rates; dashboard redesign (tiles, station quick view, donut, live sessions, quick actions); every screen checked at 360 px and 1280 px. Migration 0011 (rates in booking_info). 99 unit tests; 12 Playwright tests. |
+| 12 | Memberships (prepaid passes) | Done (verified on the dev project) | 2026-11-11 | Migrations 0012 (pass types, sold passes, sell / start / look up / cancel, billing, void, reports) and 0013 (pass name on the bill line). Admin Pass setup, counter Passes screen, Start dialog finds a customer's pass by phone, customers see My passes. 62 pgTAP checks (16) and the RLS test extended (47); 117 unit tests; 18 Playwright tests. |
 
 ## Environment (no Docker / no local Supabase)
 - Hosted dev project: org "E Gaming Era", project ref `rfwozldwehmtjvgqpvid`. `web/` uses its URL and **anon** key only.
@@ -134,6 +135,18 @@
 6. Receipt printing is unchanged (black on white, 58 and 80 mm).
 7. Playwright: the staff test opens "More" to reach the Today screen on a phone; the customer test now also works when the test customer already has a profile. The preview dev server had gone stale and kept serving an older build; it was restarted. If screens ever look old, restart it.
 8. Not done: a real logo, a light theme, and the mockup's membership and event features.
+
+## Decisions made in Phase 12
+1. Passes are v2 (the spec lists a prepaid wallet / loyalty as out of scope for v1). They are sold at the counter only: no online payment, auto-renewal, refunds or pausing.
+2. A pass type has a price, validity in days (counted from the sale), a game type (or all games) and either unlimited play or a bundle of hours. Sold passes keep the terms they were bought with (snapshot), so editing a pass type never changes a sold pass. Pass types are never deleted from use (sold passes reference them); they can be switched off.
+3. Selling goes through `sell_pass` (staff): customer by phone (counter customer found or created) or by login email (then the pass shows under My bookings). Payments (cash / UPI / card) must equal the price. It writes an ordinary bill (new `pass_total` column, line kind "pass"), so it appears in Bills, sales, payment modes and reports. Reports and the CSV have a Passes column; gaming + canteen + passes - discounts = net sales.
+4. Using a pass: Start on a station, look the customer up by phone, pick the pass (`start_pass_session`). One pass runs on one station at a time. Unlimited = gaming charge 0. Hours bundle = played time rounded up to the billing block is taken off the balance; time beyond it is billed at the normal hourly rate; no minimum bill applies. The balance is taken off when the bill is paid (a cancelled session costs nothing). Canteen items are always billed. The gaming line reads "Gaming - PC 1 (Weekly PC pass)".
+5. The charge formula changed in `session_charge` (SQL) and `core/pricing.ts` together, with the same numbers in the pgTAP test (16) and the unit tests.
+6. Voiding a pass bill cancels the pass; voiding a session bill that used pass hours gives the hours back. Admin can also cancel a pass with a reason (refused while it is in use). Cancelling a pass does not refund money; void its bill for that.
+7. Staff can sell and start; only the admin can set up pass types and cancel (RLS and function checks; test 15 and 16).
+8. Dashboard shows the count of active passes; the customer's My bookings page lists their passes with hours left and the expiry date.
+9. Not built: pass online purchase, a pass for a booked slot (a booking does not need or reserve a pass), expiry reminders, unused-hours refunds.
+10. Test passes ("E2E ...") and their customers were removed after the runs; the cleanup order matters (sessions point at passes, passes at bills, bills at sessions).
 
 ## Open items / to do later
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

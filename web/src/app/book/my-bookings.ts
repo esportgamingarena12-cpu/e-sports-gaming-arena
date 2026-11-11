@@ -2,7 +2,8 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { RouterLink } from '@angular/router';
 import { STATUS_LABEL } from '../counter/booking-utils';
 import { formatIst, formatIstLong, formatIstTime, inr, todayIst } from '../shared/format';
-import { BookingInfo, BookingService, FreeSlot, MyBill } from './booking.service';
+import { BookingInfo, BookingService, FreeSlot, MyBill, MyPass } from './booking.service';
+import { minutesText } from '../counter/passes/pass-utils';
 import { canChangeBooking, lengthLabel, PortalBooking, splitBookings, typeLabel } from './portal';
 
 const addDays = (day: string, n: number): string =>
@@ -24,6 +25,22 @@ const addDays = (day: string, n: number): string =>
       @if (!loaded()) {
         <p class="text-sm text-slate-400">Loading…</p>
       } @else {
+        @if (passes().length) {
+          <h2 class="text-sm font-medium uppercase tracking-wide text-slate-400">My passes</h2>
+          @for (p of passes(); track p.id) {
+            <article class="card flex items-start justify-between gap-2" data-my-pass>
+              <div>
+                <p class="font-medium">{{ p.name }}</p>
+                <p class="text-sm text-slate-300">
+                  {{ p.minutes_left === null ? 'Unlimited play' : minutesText(p.minutes_left) + ' left' }} ·
+                  {{ p.station_type ? label(p.station_type) + ' only' : 'all games' }}
+                </p>
+                <p class="text-xs text-slate-400">{{ p.state === 'active' ? 'Valid until' : 'Ended' }} {{ short(p.expires_at) }}</p>
+              </div>
+              <span class="badge" [class]="p.state === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-600/40 text-slate-300'">{{ p.state }}</span>
+            </article>
+          }
+        }
         <h2 class="text-sm font-medium uppercase tracking-wide text-slate-400">Upcoming</h2>
         @if (groups().upcoming.length === 0) {
           <p class="text-sm text-slate-400" data-none>No upcoming bookings.</p>
@@ -129,6 +146,8 @@ export class MyBookings implements OnInit, OnDestroy {
   protected readonly info = signal<BookingInfo | null>(null);
   protected readonly bookings = signal<PortalBooking[]>([]);
   protected readonly bills = signal<MyBill[]>([]);
+  protected readonly passes = signal<MyPass[]>([]);
+  protected minutesText = minutesText;
   protected readonly loaded = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
@@ -176,10 +195,11 @@ export class MyBookings implements OnInit, OnDestroy {
 
   private async refresh(first: boolean): Promise<void> {
     try {
-      const [info, bookings, bills] = await Promise.all([this.svc.info(), this.svc.myBookings(), this.svc.myBills()]);
+      const [info, bookings, bills, passes] = await Promise.all([this.svc.info(), this.svc.myBookings(), this.svc.myBills(), this.svc.myPasses()]);
       this.info.set(info);
       this.bookings.set(bookings);
       this.bills.set(bills);
+      this.passes.set(passes);
       this.now.set(Date.now());
       this.loaded.set(true);
     } catch (e) {

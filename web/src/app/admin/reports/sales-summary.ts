@@ -12,9 +12,10 @@ import { SalesSummary } from './report-utils';
           <p class="text-xs text-slate-500">{{ v.bills }} bill{{ v.bills === 1 ? '' : 's' }}</p></div>
         <div class="card"><p class="text-xs text-slate-400">Gaming</p><p class="text-lg font-medium" data-gaming>{{ inr(v.gaming) }}</p></div>
         <div class="card"><p class="text-xs text-slate-400">Canteen</p><p class="text-lg font-medium" data-canteen>{{ inr(v.canteen) }}</p></div>
-        <div class="card"><p class="text-xs text-slate-400">Discounts</p><p class="text-lg font-medium" data-discounts>{{ inr(v.discounts) }}</p></div>
+        <div class="card"><p class="text-xs text-slate-400">Passes</p><p class="text-lg font-medium" data-passes>{{ inr(v.passes ?? 0) }}</p></div>
       </div>
-      <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div class="card"><p class="text-xs text-slate-400">Discounts</p><p class="font-medium" data-discounts>{{ inr(v.discounts) }}</p></div>
         <div class="card"><p class="text-xs text-slate-400">Cash</p><p class="font-medium" data-cash>{{ inr(v.payments.cash) }}</p></div>
         <div class="card"><p class="text-xs text-slate-400">UPI</p><p class="font-medium" data-upi>{{ inr(v.payments.upi) }}</p></div>
         <div class="card"><p class="text-xs text-slate-400">Card</p><p class="font-medium" data-card>{{ inr(v.payments.card) }}</p></div>

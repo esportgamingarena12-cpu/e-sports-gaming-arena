@@ -62,6 +62,12 @@ interface Card {
                   <p class="font-mono text-2xl" data-timer>{{ c.played }}</p>
                   <p class="text-xl font-semibold text-emerald-300" data-charge>₹{{ c.charge.toFixed(2) }}</p>
                 </div>
+                @if (s.pass_name) {
+                  <p class="text-sm" data-pass-note>
+                    <span class="badge bg-violet-500/25 text-violet-200">{{ s.pass_name }} pass</span>
+                    <span class="text-slate-300">{{ s.pass_minutes_left === null ? 'unlimited' : s.pass_minutes_left + ' min on the pass' }}</span>
+                  </p>
+                }
                 @if (s.package_name) {
                   <p class="text-sm">
                     {{ s.package_name }}:
@@ -255,7 +261,7 @@ export class CounterStations implements OnInit, OnDestroy {
       kind: 'station',
       sessionId: s.id,
       title: c.station.name,
-      gamingLabel: `Gaming – ${c.station.name} (${s.package_name ?? 'per hour'})`,
+      gamingLabel: `Gaming – ${c.station.name} (${s.pass_name ? s.pass_name + ' pass' : (s.package_name ?? 'per hour')})`,
       gaming: Number(data),
       played: formatDuration(playedMs(ended, chargeEndMs(ended, this.clock.now()))),
       customerName: s.customer_name,

@@ -83,10 +83,10 @@ test('the CSV has a byte order mark, the right columns and the report totals', a
   const bytes = readFileSync((await download.path())!);
   expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // UTF-8 BOM, so Excel shows ₹ correctly
   const lines = bytes.toString('utf8').slice(1).split('\r\n');
-  expect(lines[0]).toBe('Date,Bills,Gaming (₹),Canteen (₹),Discounts (₹),Net sales (₹),Void bills');
+  expect(lines[0]).toBe('Date,Bills,Gaming (₹),Canteen (₹),Passes (₹),Discounts (₹),Net sales (₹),Void bills');
   const total = lines.find((l) => l.startsWith('TOTAL,'))!;
   expect(total).toBeTruthy();
-  expect(Number(total.split(',')[5])).toBeCloseTo(net, 2);
+  expect(Number(total.split(',')[6])).toBeCloseTo(net, 2);
   expect(lines).toContain('Payment mode,Amount (₹)');
 
   // a bad range is refused on screen

@@ -47,16 +47,17 @@ import { SalesSummaryView } from './sales-summary';
         <div class="card" data-daily>
           <h2 class="text-sm font-medium uppercase tracking-wide text-slate-400">By day</h2>
           <div class="mt-2 overflow-x-auto">
-            <table class="w-full min-w-[28rem] text-sm">
+            <table class="w-full min-w-[32rem] text-sm">
               <thead class="text-left text-xs text-slate-400">
                 <tr><th class="py-1 pr-2">Date</th><th class="pr-2 text-right">Bills</th><th class="pr-2 text-right">Gaming</th>
-                  <th class="pr-2 text-right">Canteen</th><th class="pr-2 text-right">Disc.</th><th class="pr-2 text-right">Net</th><th class="text-right">Voids</th></tr>
+                  <th class="pr-2 text-right">Canteen</th><th class="pr-2 text-right">Passes</th><th class="pr-2 text-right">Disc.</th><th class="pr-2 text-right">Net</th><th class="text-right">Voids</th></tr>
               </thead>
               <tbody>
                 @for (d of r.daily; track d.day) {
                   <tr class="border-t border-slate-800">
                     <td class="py-1 pr-2">{{ d.day }}</td><td class="pr-2 text-right">{{ d.bills }}</td>
                     <td class="pr-2 text-right">{{ inr(d.gaming) }}</td><td class="pr-2 text-right">{{ inr(d.canteen) }}</td>
+                    <td class="pr-2 text-right">{{ inr(d.passes ?? 0) }}</td>
                     <td class="pr-2 text-right">{{ inr(d.discounts) }}</td><td class="pr-2 text-right font-medium">{{ inr(d.sales) }}</td>
                     <td class="text-right">{{ d.voids }}</td>
                   </tr>

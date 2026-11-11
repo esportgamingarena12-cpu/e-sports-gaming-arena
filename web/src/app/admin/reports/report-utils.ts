@@ -12,6 +12,7 @@ export interface DailyRow {
   sales: number;
   gaming: number;
   canteen: number;
+  passes: number;
   discounts: number;
   voids: number;
 }
@@ -29,6 +30,7 @@ export interface SalesSummary {
   net_sales: number;
   gaming: number;
   canteen: number;
+  passes: number;
   discounts: number;
   void_count: number;
   void_value: number;
@@ -45,6 +47,7 @@ export interface DashboardData {
   occupancy: { type: string; total: number; in_use: number }[];
   bookings: { upcoming: number; checked_in: number; no_show: number; cancelled: number };
   low_stock: { name: string; stock_qty: number; low_stock_level: number }[];
+  active_passes: number;
 }
 
 export interface DashStation {
@@ -140,12 +143,12 @@ const row = (cells: (string | number)[]): string => cells.map(csvCell).join(',')
  */
 export function buildCsv(r: SalesReport): string {
   const lines: string[] = [];
-  lines.push(row(['Date', 'Bills', 'Gaming (₹)', 'Canteen (₹)', 'Discounts (₹)', 'Net sales (₹)', 'Void bills']));
+  lines.push(row(['Date', 'Bills', 'Gaming (₹)', 'Canteen (₹)', 'Passes (₹)', 'Discounts (₹)', 'Net sales (₹)', 'Void bills']));
   for (const d of r.daily) {
-    lines.push(row([d.day, d.bills, money(d.gaming), money(d.canteen), money(d.discounts), money(d.sales), d.voids]));
+    lines.push(row([d.day, d.bills, money(d.gaming), money(d.canteen), money(d.passes), money(d.discounts), money(d.sales), d.voids]));
   }
   lines.push(
-    row(['TOTAL', r.bills, money(r.gaming), money(r.canteen), money(r.discounts), money(r.net_sales), r.void_count]),
+    row(['TOTAL', r.bills, money(r.gaming), money(r.canteen), money(r.passes), money(r.discounts), money(r.net_sales), r.void_count]),
   );
   lines.push('');
   lines.push(row(['Payment mode', 'Amount (₹)']));
