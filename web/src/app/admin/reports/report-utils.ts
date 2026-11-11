@@ -47,6 +47,47 @@ export interface DashboardData {
   low_stock: { name: string; stock_qty: number; low_stock_level: number }[];
 }
 
+export interface DashStation {
+  id: number;
+  name: string;
+  type: string;
+  active: boolean;
+}
+
+export interface LiveSession {
+  id: number;
+  station_id: number;
+  customer_name: string | null;
+  started_at: string;
+  paused_seconds: number;
+  status: 'running' | 'paused';
+}
+
+export type StationState = 'free' | 'busy' | 'off';
+
+/** Free (green), occupied (red) or switched off (orange) for the dashboard quick view. */
+export function stationState(s: DashStation, busyIds: Set<number>): StationState {
+  return !s.active ? 'off' : busyIds.has(s.id) ? 'busy' : 'free';
+}
+
+/** Minutes played so far: elapsed time minus pauses (never negative). */
+export function playedMinutes(s: LiveSession, nowMs: number): number {
+  return Math.max(0, Math.floor((nowMs - Date.parse(s.started_at)) / 60000 - s.paused_seconds / 60));
+}
+
+/** "2 h 10 min", "54 min" */
+export function durationText(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h === 0 ? `${m} min` : `${h} h ${m} min`;
+}
+
+/** Stroke lengths for a three-part donut (circumference 100): [free, busy, off]. Empty data gives all zeros. */
+export function donutParts(free: number, busy: number, off: number): number[] {
+  const total = free + busy + off;
+  return total > 0 ? [free, busy, off].map((n) => (100 * n) / total) : [0, 0, 0];
+}
+
 export interface TrendRow {
   day: string;
   sales: number;

@@ -13,7 +13,7 @@ import { SupabaseService } from '../../core/supabase.service';
       <div class="flex items-center justify-between">
         <h1 class="text-xl font-semibold">Staff</h1>
         <button type="button" (click)="showForm.set(!showForm())"
-                class="rounded bg-emerald-500 px-3 py-1 text-sm font-medium text-slate-950">+ Staff</button>
+                class="btn-primary !px-3 !py-1 !text-sm">+ Staff</button>
       </div>
 
       @if (message(); as m) {
@@ -34,7 +34,7 @@ import { SupabaseService } from '../../core/supabase.service';
                    class="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2" />
           </label>
           <button type="submit" [disabled]="form.invalid || busy()"
-                  class="rounded bg-emerald-500 px-4 py-2 font-medium text-slate-950 disabled:opacity-50">
+                  class="btn-primary">
             {{ busy() ? 'Creating…' : 'Create staff' }}
           </button>
         </form>

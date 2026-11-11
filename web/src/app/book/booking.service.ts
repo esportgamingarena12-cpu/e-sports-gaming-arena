@@ -10,6 +10,7 @@ export interface BookingInfo {
   window_days: number;
   cutoff_hours: number;
   types: string[];
+  rates: { type: string; rate_per_hour: number }[];
 }
 
 export interface FreeSlot {

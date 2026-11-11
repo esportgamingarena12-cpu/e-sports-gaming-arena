@@ -98,6 +98,8 @@ test('the CSV has a byte order mark, the right columns and the report totals', a
 
 test('staff see only today; the admin screens and functions stay closed to them', async ({ page, request }) => {
   await login(page, staffEmail!, staffPassword!, /\/counter\/stations/);
+  // on a phone the less used screens are under "More"
+  await page.getByRole('button', { name: 'More' }).click();
   await page.getByRole('link', { name: 'Today' }).click();
   await expect(page).toHaveURL(/\/counter\/today/);
   await expect(page.locator('[data-net]')).toBeVisible();

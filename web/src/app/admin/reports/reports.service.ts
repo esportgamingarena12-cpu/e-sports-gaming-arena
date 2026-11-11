@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
-import { DashboardData, HourRow, SalesReport, TrendRow } from './report-utils';
+import { DashboardData, DashStation, HourRow, LiveSession, SalesReport, TrendRow } from './report-utils';
 
 /** Wrapper over the reporting functions. Every method throws an Error with a plain message. */
 @Injectable({ providedIn: 'root' })
@@ -28,5 +28,23 @@ export class ReportsService {
   }
   today(): Promise<SalesReport> {
     return this.call('today_report');
+  }
+
+  /** Every station with its on/off flag (staff and admin can read stations). */
+  async stations(): Promise<DashStation[]> {
+    const { data, error } = await this.sb.from('stations').select('id, name, type, active').order('sort_order').order('name');
+    if (error) throw new Error(friendlyError(error));
+    return (data ?? []) as DashStation[];
+  }
+
+  /** Sessions that are running or paused right now. */
+  async liveSessions(): Promise<LiveSession[]> {
+    const { data, error } = await this.sb
+      .from('sessions')
+      .select('id, station_id, customer_name, started_at, paused_seconds, status')
+      .in('status', ['running', 'paused'])
+      .order('started_at');
+    if (error) throw new Error(friendlyError(error));
+    return (data ?? []) as LiveSession[];
   }
 }

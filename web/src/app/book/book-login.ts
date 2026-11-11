@@ -19,7 +19,7 @@ import { safeNext } from './portal';
           </label>
           @if (error()) { <p class="text-sm text-red-400" role="alert">{{ error() }}</p> }
           <button type="submit" [disabled]="emailForm.invalid || busy()"
-                  class="w-full rounded bg-emerald-500 px-4 py-2 font-medium text-slate-950 disabled:opacity-50">
+                  class="btn-primary w-full">
             {{ busy() ? 'Sending…' : 'Email me a code' }}
           </button>
         </form>
@@ -32,7 +32,7 @@ import { safeNext } from './portal';
           </label>
           @if (error()) { <p class="text-sm text-red-400" role="alert">{{ error() }}</p> }
           <button type="submit" [disabled]="codeForm.invalid || busy()"
-                  class="w-full rounded bg-emerald-500 px-4 py-2 font-medium text-slate-950 disabled:opacity-50">
+                  class="btn-primary w-full">
             {{ busy() ? 'Checking…' : 'Verify and continue' }}
           </button>
           <button type="button" class="w-full text-sm text-slate-400 underline" (click)="sent.set(false)">

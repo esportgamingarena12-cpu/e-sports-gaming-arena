@@ -28,7 +28,7 @@ import { AuthService } from '../core/auth.service';
           <p class="text-sm text-red-400" role="alert">{{ error() }}</p>
         }
         <button type="submit" [disabled]="form.invalid || busy()"
-                class="w-full rounded bg-emerald-500 px-4 py-2 font-medium text-slate-950 disabled:opacity-50">
+                class="btn-primary w-full">
           {{ busy() ? 'Signing in…' : 'Sign in' }}
         </button>
       </form>

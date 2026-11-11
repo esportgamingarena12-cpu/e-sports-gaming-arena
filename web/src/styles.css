@@ -1,7 +1,65 @@
 @import "tailwindcss";
+@import "@fontsource/rajdhani/600.css";
+@import "@fontsource/rajdhani/700.css";
+@import "@fontsource-variable/inter";
 
-html, body { height: 100%; }
-body { @apply bg-slate-950 text-slate-100 antialiased; }
+/* ---- Theme: E-Sport Gaming Arena palette ----
+   The existing screens use the slate / emerald / orange / cyan scales, so remapping those scales
+   to the brand palette restyles everything at once. */
+@theme {
+  --font-display: 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* backgrounds and text: Deep Black, Dark Purple, Card Background, Primary Text */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f0fa;
+  --color-slate-200: #dad8ec;
+  --color-slate-300: #b9b7d3;
+  --color-slate-400: #9a98b8;
+  --color-slate-500: #8886a8;
+  --color-slate-600: #4a4766;
+  --color-slate-700: #34314f;
+  --color-slate-800: #25233b;
+  --color-slate-900: #17152b;
+  --color-slate-950: #0b0b14;
+
+  /* accents: Gaming Orange (actions), Electric Cyan (links), Neon Purple (glow) */
+  --color-orange-400: #ff8a5c;
+  --color-orange-500: #ff6b35;
+  --color-orange-600: #e5551f;
+  --color-cyan-300: #66e8ff;
+  --color-cyan-400: #00d9ff;
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+
+  /* functional: Available, Pending, Occupied */
+  --color-emerald-200: #bbf7d0;
+  --color-emerald-300: #86efac;
+  --color-emerald-400: #4ade80;
+  --color-emerald-500: #22c55e;
+  --color-emerald-600: #15803d;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+}
+
+html, body { min-height: 100%; }
+body {
+  @apply text-slate-50 antialiased;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(900px 420px at 85% -8%, rgb(139 92 246 / 0.20), transparent 65%),
+    radial-gradient(700px 380px at -10% 12%, rgb(0 217 255 / 0.07), transparent 60%),
+    #0b0b14;
+  background-attachment: fixed;
+}
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.01em; }
+:focus-visible { outline: 2px solid #00d9ff; outline-offset: 2px; }
 
 /* ---- Thermal receipt: hidden on screen, the only thing printed ---- */
 app-receipt { display: none; }
@@ -34,11 +92,22 @@ app-receipt { display: none; }
 
 @layer components {
   .field {
-    @apply mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:ring-2 focus:ring-emerald-500/60;
+    @apply mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-50 placeholder:text-slate-500 focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none;
   }
   .label { @apply block text-sm text-slate-300; }
-  .btn { @apply rounded border border-slate-700 px-3 py-2 text-sm text-slate-200 disabled:opacity-50; }
-  .btn-danger { @apply rounded bg-red-500 px-4 py-2 font-medium text-white disabled:opacity-50; }
-  .btn-primary { @apply rounded bg-emerald-500 px-4 py-2 font-medium text-slate-950 disabled:opacity-50; }
-  .card { @apply rounded border border-slate-800 bg-slate-900/50 p-3; }
+  .btn { @apply rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 hover:border-violet-500/60 hover:bg-slate-800 disabled:opacity-50; }
+  .btn-outline { @apply rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-400/10 disabled:opacity-50; }
+  .btn-danger { @apply rounded-lg bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500 disabled:opacity-50; }
+  .btn-primary { @apply rounded-lg bg-orange-500 px-4 py-2 font-semibold text-slate-950 shadow-[0_0_18px_-4px_rgb(255_107_53_/_0.6)] hover:bg-orange-400 disabled:opacity-50 disabled:shadow-none; }
+  .card { @apply rounded-xl border border-violet-500/25 bg-slate-900/80 p-3 shadow-[0_0_28px_-14px_rgb(139_92_246_/_0.7)]; }
+  .page-title { @apply font-display text-2xl font-bold tracking-wide text-slate-50 sm:text-3xl; }
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300; }
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
+  .dot { @apply inline-block size-2 rounded-full; }
+  .glow-text { background: linear-gradient(90deg, #a78bfa, #00d9ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+}
+
+/* Touch screens: every control is at least 44 px tall */
+@media (pointer: coarse) {
+  .btn, .btn-primary, .btn-danger, .btn-outline, .field, select.field, input.field { min-height: 2.75rem; }
 }

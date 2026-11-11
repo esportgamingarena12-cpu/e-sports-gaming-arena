@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   barHeight,
+  donutParts,
+  durationText,
+  playedMinutes,
+  stationState,
   buildCsv,
   csvCell,
   hourLabel,
@@ -103,5 +107,29 @@ describe('charts', () => {
     expect(hourLabel(9)).toBe('9 am');
     expect(hourLabel(12)).toBe('12 pm');
     expect(hourLabel(18)).toBe('6 pm');
+  });
+});
+
+describe('dashboard helpers', () => {
+  it('station state', () => {
+    const st = { id: 1, name: 'PC 1', type: 'pc', active: true };
+    expect(stationState(st, new Set())).toBe('free');
+    expect(stationState(st, new Set([1]))).toBe('busy');
+    expect(stationState({ ...st, active: false }, new Set([1]))).toBe('off');
+  });
+  it('played minutes remove pauses and never go negative', () => {
+    const base = { id: 1, station_id: 1, customer_name: null, status: 'running' as const };
+    const start = Date.parse('2026-11-11T10:00:00Z');
+    expect(playedMinutes({ ...base, started_at: '2026-11-11T10:00:00Z', paused_seconds: 600 }, start + 70 * 60000)).toBe(60);
+    expect(playedMinutes({ ...base, started_at: '2026-11-11T10:00:00Z', paused_seconds: 9999 }, start + 60000)).toBe(0);
+  });
+  it('duration text', () => {
+    expect(durationText(54)).toBe('54 min');
+    expect(durationText(130)).toBe('2 h 10 min');
+  });
+  it('donut parts add up to 100', () => {
+    const p = donutParts(10, 18, 4);
+    expect(p.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 5);
+    expect(donutParts(0, 0, 0)).toEqual([0, 0, 0]);
   });
 });

@@ -91,16 +91,19 @@ test('first booking: profile, PS5 6-7 pm tomorrow, visible on the counter within
   await page.goto(bookUrl);
   await slotButton(page, '6:00 pm').click();
   await page.locator('[data-book]').click();
-  // no profile yet: asked for name and phone first, then returned to the same choice
-  await expect(page).toHaveURL(/\/book\/profile\?next=/);
-  await page.locator('[data-name]').fill('E2E One');
-  await page.locator('[data-phone]').fill('9000000001');
-  await page.locator('[data-save]').click();
-  await expect(page).toHaveURL(/\/book\?type=ps5/);
-  await expect(page.locator('[data-confirm]')).toContainText('6:00 pm');
-
-  await page.locator('[data-book]').click();
-  const t0 = Date.now();
+  // a first-time customer is asked for name and phone, then returned to the same choice
+  // (on a re-run the profile already exists and the booking goes straight through)
+  await page.waitForURL(/\/book\/(profile\?next=|my-bookings)/);
+  let t0 = Date.now();
+  if (page.url().includes('/book/profile')) {
+    await page.locator('[data-name]').fill('E2E One');
+    await page.locator('[data-phone]').fill('9000000001');
+    await page.locator('[data-save]').click();
+    await expect(page).toHaveURL(/\/book\?type=ps5/);
+    await expect(page.locator('[data-confirm]')).toContainText('6:00 pm');
+    await page.locator('[data-book]').click();
+    t0 = Date.now();
+  }
   await expect(page).toHaveURL(/\/book\/my-bookings/);
   await expect(page.locator('[data-booking]')).toHaveCount(1);
 
@@ -200,7 +203,11 @@ test('customers can only reach their own data', async ({ request }) => {
   // but the public booking facts work
   const info = await rpc(request, null, 'booking_info', {});
   expect(info.ok()).toBeTruthy();
-  expect(((await info.json()) as { types: string[] }).types).toContain('ps5');
+  const facts = (await info.json()) as { types: string[]; rates: { type: string; rate_per_hour: number }[] };
+  expect(facts.types).toContain('ps5');
+  // rates are public (the landing page shows them) but carry nothing else about the stations
+  expect(facts.rates.find((r) => r.type === 'ps5')?.rate_per_hour).toBeGreaterThan(0);
+  expect(Object.keys(facts.rates[0]).sort()).toEqual(['rate_per_hour', 'type']);
 });
 
 test('no sideways scrolling at 360 px', async ({ page, request }) => {
