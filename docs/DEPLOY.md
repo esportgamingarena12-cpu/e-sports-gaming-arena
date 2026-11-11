@@ -13,7 +13,7 @@ a domain name for the site, and Node 22 on your PC.
    (Project Settings > API). Never copy the `service_role` key into `web/`.
 3. Database > Extensions: enable `pg_cron`, `pg_net` and `btree_gist` (the migrations try to enable them and print a
    notice if they cannot).
-4. Apply the migrations `supabase/migrations/0001` to `0014`, in order. Either:
+4. Apply the migrations `supabase/migrations/0001` to `0015`, in order. Either:
    - With the CLI (needs Docker only for local work, not for this):
      ```bash
      npx supabase login

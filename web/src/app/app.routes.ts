@@ -16,6 +16,7 @@ import { MyBookings } from './book/my-bookings';
 import { Bills } from './counter/bills/bills';
 import { CounterBookings } from './counter/bookings/bookings';
 import { Canteen } from './counter/canteen/canteen';
+import { Customers } from './counter/customers/customers';
 import { CounterPasses } from './counter/passes/passes';
 import { CounterStations } from './counter/stations/stations';
 import { StockScreen } from './counter/stock/stock';
@@ -53,6 +54,7 @@ export const routes: Routes = [
       { path: 'canteen', component: Canteen },
       { path: 'bills', component: Bills },
       { path: 'stock', component: StockScreen },
+      { path: 'customers', component: Customers },
       { path: 'passes', component: CounterPasses },
       { path: 'today', component: Today },
     ],

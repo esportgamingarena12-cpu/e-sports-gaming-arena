@@ -16,6 +16,8 @@ export interface BookingRules {
 }
 
 export interface BookingPrefill {
+  name?: string;
+  phone?: string;
   stationId?: number;
   day?: string;
   startMinutes?: number;
@@ -160,6 +162,8 @@ export class NewBookingDialog implements OnInit {
       day: p?.day ?? todayIst(),
       slots: Math.min(2, this.rules().max_slots),
       station: station?.id ?? null,
+      name: p?.name ?? '',
+      phone: p?.phone ?? '',
     });
     this.wantedStart = p?.day !== undefined && p.startMinutes !== undefined ? slotStartMs(p.day, p.startMinutes) : null;
   }

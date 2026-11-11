@@ -57,7 +57,7 @@ import { SalesSummaryView } from './sales-summary';
                   <tr class="border-t border-slate-800">
                     <td class="py-1 pr-2">{{ d.day }}</td><td class="pr-2 text-right">{{ d.bills }}</td>
                     <td class="pr-2 text-right">{{ inr(d.gaming) }}</td><td class="pr-2 text-right">{{ inr(d.canteen) }}</td>
-                    <td class="pr-2 text-right">{{ inr(d.passes ?? 0) }}</td>
+                    <td class="pr-2 text-right">{{ inr(d.passes) }}</td>
                     <td class="pr-2 text-right">{{ inr(d.discounts) }}</td><td class="pr-2 text-right font-medium">{{ inr(d.sales) }}</td>
                     <td class="text-right">{{ d.voids }}</td>
                   </tr>

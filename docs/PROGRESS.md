@@ -16,6 +16,7 @@
 | 11 | New look (mockup palette, mobile first) | Done (verified on the dev project) | 2026-11-11 | Brand palette and fonts as theme tokens; sidebar layout with phone menu and bottom bar for staff/admin, top bar for customers; landing page with hero, booking card and real rates; dashboard redesign (tiles, station quick view, donut, live sessions, quick actions); every screen checked at 360 px and 1280 px. Migration 0011 (rates in booking_info). 99 unit tests; 12 Playwright tests. |
 | 12 | Memberships (prepaid passes) | Done (verified on the dev project) | 2026-11-11 | Migrations 0012 (pass types, sold passes, sell / start / look up / cancel, billing, void, reports) and 0013 (pass name on the bill line). Admin Pass setup, counter Passes screen, Start dialog finds a customer's pass by phone, customers see My passes. 62 pgTAP checks (16) and the RLS test extended (47); 117 unit tests; 18 Playwright tests. |
 | 13 | Mockup design (landing page, dashboard, illustrations) | Done (verified on the dev project) | 2026-11-11 | Migration 0014 (passes and a "most popular" flag in booking_info). Landing page like the mockup: hero with neon illustration, feature strip, studio section, Choose Your Plan cards from real rates and passes, booking card, closing band. Dashboard: live sessions with amounts, highlights, area chart; sidebar illustration. 128 unit tests; 18 Playwright tests; all routes checked at 360 and 1280 px. |
+| 14 | Customers screen | Done (verified on the dev project) | 2026-11-11 | Migration 0015 (staff note, customer_list, customer_detail, update_customer; the notes column hidden from every direct read). /counter/customers: search by name, phone or login email; detail with bookings, passes, bills, spend, no-show warning, editable details and a staff note; Book for this customer and Sell a pass hand-overs. 49 pgTAP checks (17); 134 unit tests; 23 Playwright tests. |
 
 ## Environment (no Docker / no local Supabase)
 - Hosted dev project: org "E Gaming Era", project ref `rfwozldwehmtjvgqpvid`. `web/` uses its URL and **anon** key only.
@@ -155,6 +156,17 @@
 3. Left out of the mockup because they are not features of the app: Experience, Events, Gallery, Contact, Tournaments, Community and "Join Now", notification bell, global search, avatar menu, and the maintenance status (a switched-off station takes its place in orange).
 4. Dashboard: the live sessions list shows time played and the amount so far (same pricing formula as the counter and the database); a "Today's highlights" card with real counts; the 30-day sales chart has a soft area fill.
 5. The hero text uses the italic display font like the mockup.
+
+## Decisions made in Phase 14
+1. The Customers screen lists everyone in the `customers` table: counter and phone customers, and customers who signed in online. Walk-in sessions that only have a typed name and phone are not customers (they stay on their bills). Online logins are still not merged with counter customers by phone number.
+2. Search matches part of a name, part of a login email, or at least 3 digits of a phone number (spaces and brackets ignored). The list shows the most recent booker first, with badges for online login, active pass and two or more no-shows.
+3. The detail shows counts (bookings, attended, no-shows, cancelled), spend, the passes, up to 50 bookings and the bills tied to the customer (bills of their checked-in bookings and the passes they bought). Spend counts paid bills only; voided bills stay in the list but not in the total.
+4. Staff can fix a counter customer's name and phone (the phone must stay unique among counter customers) and keep a private note. A customer who signed in online owns their name and phone; staff can only add a note for them.
+5. The staff note is private: `customers.notes` is excluded from the columns that signed-in users may select directly, so neither a customer nor the app can read it from the table; only `customer_detail` (staff) returns it. All other screens select named columns, so nothing else changed.
+6. "Book for this customer" opens the booking form pre-filled; "Sell a pass" opens the Passes screen pre-filled (with the login email when there is one).
+7. The top bar no longer flashes the signed-out buttons after a page reload: it waits until the stored session has been restored. `CLAUDE.md` and `START-HERE.md` now use the name E-Sports Gaming Arena (the spec keeps its original wording).
+8. Found by the 360 px check: the list was 44 px too wide because the grid had no explicit single column on phones; fixed.
+9. Known and unchanged: the first-load JavaScript is about 840 kB, over the 500 kB budget warning of the build. Splitting the admin screens into lazily loaded parts would fix it if load time on slow phones becomes a concern.
 
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).

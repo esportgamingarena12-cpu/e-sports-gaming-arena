@@ -66,7 +66,7 @@
         @if (auth.profile(); as p) {
           <span class="hidden max-w-40 truncate text-sm text-slate-300 sm:inline">{{ p.full_name || p.email }}</span>
           <button type="button" (click)="logout()" class="btn">Logout</button>
-        } @else {
+        } @else if (auth.ready()) {
           <a routerLink="/book/login" class="btn-outline hidden sm:inline-flex sm:items-center">Customer login</a>
           <a routerLink="/login" class="btn hidden sm:inline-flex sm:items-center">Staff</a>
         }
@@ -82,7 +82,7 @@
             <app-icon [name]="item.icon" /> {{ item.label }}
           </a>
         }
-        @if (!auth.profile()) {
+        @if (!auth.profile() && auth.ready()) {
           <a routerLink="/book/login" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-cyan-300 hover:bg-slate-800"><app-icon name="user" /> Customer login</a>
           <a routerLink="/login" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 hover:bg-slate-800"><app-icon name="users" /> Staff login</a>
         }

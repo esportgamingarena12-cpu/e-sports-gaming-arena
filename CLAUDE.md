@@ -1,4 +1,4 @@
-# E Gaming Era – Billing & Booking
+# E-Sports Gaming Arena – Billing & Booking
 
 ## Spec
 - Full specification: docs/spec.md (Part A: Documentation, Part B: Build plan).

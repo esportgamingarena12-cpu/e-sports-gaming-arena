@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PassType } from '../../admin/passes/pass-types';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
@@ -143,6 +143,7 @@ export class CounterPasses implements OnInit {
   private readonly sb = inject(SupabaseService).client;
   private readonly fb = inject(FormBuilder);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
 
   protected readonly types = signal<PassType[]>([]);
@@ -220,6 +221,11 @@ export class CounterPasses implements OnInit {
     this.passes.set((p.data ?? []) as unknown as SoldPass[]);
     this.now.set(Date.now());
     if (!this.typeId() && this.types().length) this.form.controls.type.setValue('' + this.types()[0].id);
+    // arriving from the Customers screen: start with that customer filled in
+    const q = this.route.snapshot.queryParamMap;
+    if (q.get('name') || q.get('phone') || q.get('email')) {
+      this.form.patchValue({ name: q.get('name') ?? '', phone: q.get('phone') ?? '', email: q.get('email') ?? '' });
+    }
   }
 
   protected async sell(): Promise<void> {

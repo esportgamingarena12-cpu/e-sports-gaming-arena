@@ -19,6 +19,8 @@ export class AuthService {
   readonly profile = signal<Profile | null>(null);
   /** The customer's booking profile (name and phone); null until they save it. */
   readonly customer = signal<CustomerRecord | null>(null);
+  /** True once the stored session (if any) has been restored; until then the top bar shows neither login nor logout. */
+  readonly ready = signal(false);
   /** Message shown on the login pages (e.g. account disabled). */
   readonly notice = signal<string | null>(null);
 
@@ -42,6 +44,7 @@ export class AuthService {
   private async init(): Promise<void> {
     const { data } = await this.sb.auth.getSession();
     await this.apply(data.session);
+    this.ready.set(true);
     // Do not call Supabase from inside this callback (auth lock): defer it.
     this.sb.auth.onAuthStateChange((_event, session) => {
       setTimeout(() => void this.apply(session), 0);

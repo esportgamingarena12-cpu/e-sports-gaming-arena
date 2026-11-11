@@ -1,5 +1,5 @@
-import { Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, computed, effect, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ServerClock } from '../../core/server-clock';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
@@ -200,6 +200,7 @@ export class CounterBookings implements OnInit, OnDestroy {
   private readonly sb = inject(SupabaseService).client;
   private readonly clock = inject(ServerClock);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly day = signal(todayIst());
   protected readonly search = signal('');
@@ -238,6 +239,17 @@ export class CounterBookings implements OnInit, OnDestroy {
   private readonly activeDay = computed(() => this.dayRows().filter((b) => b.status === 'confirmed' || b.status === 'checked_in'));
 
   constructor() {
+    // arriving from the Customers screen: open the booking form for that customer once the stations are loaded
+    const q = this.route.snapshot.queryParamMap;
+    const who = { name: q.get('name') ?? '', phone: q.get('phone') ?? '' };
+    if (who.name || who.phone) {
+      const opener = effect(() => {
+        if (this.store.stations().length > 0) {
+          untracked(() => this.dialog.set(who));
+          opener.destroy();
+        }
+      });
+    }
     // reload the lists whenever anything changes anywhere (Realtime) or the date changes
     effect(() => {
       this.store.changes();

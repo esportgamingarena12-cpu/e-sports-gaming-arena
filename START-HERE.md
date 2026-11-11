@@ -1,4 +1,4 @@
-# Start here – building E Gaming Era with Claude Code
+# Start here – building E-Sports Gaming Arena with Claude Code
 
 ## 1. One-time setup (your PC)
 
@@ -9,7 +9,7 @@
 ## 2. First message (paste once, at the start of the project)
 
 ```text
-You are building the E Gaming Era billing and slot-booking system.
+You are building the E-Sports Gaming Arena billing and slot-booking system.
 
 Read CLAUDE.md and docs/spec.md completely before doing anything.
 - Part A of docs/spec.md is the specification (roles, requirements, billing rules, data model).
@@ -32,7 +32,7 @@ Confirm you have read both files by summarising in 10 lines or fewer: the three 
 Paste the **Prompt** block for that phase from `docs/spec.md` (Part B). For a new Claude Code session, paste this first:
 
 ```text
-Read CLAUDE.md, docs/spec.md and docs/PROGRESS.md. We are continuing the E Gaming Era build. Tell me which phase is next according to PROGRESS.md and wait.
+Read CLAUDE.md, docs/spec.md and docs/PROGRESS.md. We are continuing the E-Sports Gaming Arena build. Tell me which phase is next according to PROGRESS.md and wait.
 ```
 
 ## 4. Useful follow-up prompts

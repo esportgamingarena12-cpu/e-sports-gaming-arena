@@ -8,6 +8,7 @@ describe('App', () => {
   beforeEach(async () => {
     const auth = {
       profile: signal(null),
+      ready: signal(true),
       role: signal(null),
       isStaff: signal(false),
       signOut: () => Promise.resolve(),
