@@ -5,7 +5,10 @@ import { Products } from './admin/products/products';
 import { ShopSettings } from './admin/settings/shop-settings';
 import { StaffAdmin } from './admin/staff/staff';
 import { Stations } from './admin/stations/stations';
+import { BookHome } from './book/book-home';
 import { BookLogin } from './book/book-login';
+import { BookProfile } from './book/book-profile';
+import { MyBookings } from './book/my-bookings';
 import { Bills } from './counter/bills/bills';
 import { CounterBookings } from './counter/bookings/bookings';
 import { Canteen } from './counter/canteen/canteen';
@@ -49,14 +52,10 @@ export const routes: Routes = [
   {
     path: 'book',
     children: [
-      { path: '', pathMatch: 'full', component: Placeholder, data: { title: 'Book a slot' } },
+      { path: '', pathMatch: 'full', component: BookHome },
       { path: 'login', component: BookLogin },
-      {
-        path: 'my-bookings',
-        canActivate: [customerGuard],
-        component: Placeholder,
-        data: { title: 'My bookings' },
-      },
+      { path: 'profile', canActivate: [customerGuard], component: BookProfile },
+      { path: 'my-bookings', canActivate: [customerGuard], component: MyBookings },
     ],
   },
   { path: '**', component: NotFound },

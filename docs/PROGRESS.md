@@ -10,7 +10,7 @@
 | 5 | Canteen and stock | Done (verified on hosted dev project) | 2026-11-10 | Migration 0006 (recent_stock_moves, Realtime for products + stock_moves); /counter/canteen and /counter/stock; 24 new pgTAP checks (09), 41 web unit tests total. Browser-verified at 360 px. |
 | 6 | Checkout and receipts | Done (verified on hosted dev project) | 2026-11-11 | No new migration. Checkout dialog (station Bill + walk-in), split payments, UPI QR, receipt print layout 58/80 mm, /counter/bills with reprint and admin void. 23 new pgTAP checks (10); 53 unit tests; 2 Playwright tests. Browser-verified at 360 px. |
 | 7 | Bookings | Done (verified on hosted dev project) | 2026-11-11 | Migration 0007 (customers, bookings, overlap rule, availability/create/cancel/reschedule/check-in/no-show functions, pg_cron job); /counter/bookings with list, day grid, search, New booking, Check in, Cancel, No-show; walk-in conflict warning. 92 pgTAP checks (11); 69 unit tests. Browser-verified at 360 px; scheduled job proven live. |
-| 8 | Customer portal | Not started | | |
+| 8 | Customer portal | Done (verified on hosted dev project) | 2026-11-11 | Migration 0008 (booking_info, save_my_profile, my_bills, get_reschedule_availability, shared availability logic). Public /book with free times, /book/profile, /book/my-bookings (change time, cancel, past bills), login keeps the chosen slot. 43 pgTAP checks (12); 79 unit tests; 6 Playwright customer tests (8 e2e in all). Booking reached the counter screen in about 1 s. |
 | 9 | Dashboard and reports | Not started | | |
 | 10 | Notifications, PWA, deploy | Not started | | |
 
@@ -91,7 +91,20 @@
 10. Not built: Pending payment status (advance payment, D3), booking emails (Phase 10), customer screens (Phase 8), automatic station swap at check-in.
 11. Test data (bookings, test customers, one test bill/session) was removed after verification; the scheduled job and extensions stay.
 
+## Decisions made in Phase 8
+1. `0008_customer_portal.sql`. Customers cannot read stations, settings or bills, so small functions give them exactly what they need: `booking_info()` (public: slot length, rules, bookable types), `save_my_profile`, `my_bills()`, `get_reschedule_availability`. `get_availability` now sits on a shared internal function (signature unchanged).
+2. A login is never merged with a counter customer who has the same phone number (numbers are not verified, so merging would expose someone else's history). It always gets its own customer record.
+3. "Past bills" are the bills of the customer's own checked-in bookings (via `sessions.booking_id`). Walk-in bills are not linked to a login. Payment references are never shown to customers.
+4. Changing a booking keeps its length and station type; the booking's own slot does not count against itself. Customers can change or cancel until 2 h before the start (database rule; the screen hides the buttons after that and says to call the counter).
+5. Free times are public; signing in is asked only on "Sign in to book". After login or the first-time name and phone page the customer returns to the same type, date, length and time. The `next` address is checked (in-app paths only).
+6. Customer pages refresh by polling every 15 s (no Realtime for customers).
+7. Playwright signs the customers in with a password through the auth API (`e2e.customer1..3@example.com`, shared password in the git-ignored `web/.env.e2e`) and hands the session to the page. The email-code login stays manually verified.
+8. Bug found by the race test: the "slot just taken" message was inside the confirm panel, which closes on reload, so it vanished. It now sits outside.
+9. Not covered by an automated browser test: the 1 h-before refusal on screen and past bills on screen (both covered by pgTAP 07 and 12 and unit tests). Test data was removed after verification; the three customer test logins remain.
+
 ## Open items / to do later
+- Delete the test logins `e2e.customer1..3@example.com` and `e2e.staff@example.com` before production.
+- Real email-code first sign-in for a brand-new customer was not repeated in Phase 8.
 - Bookings tables have no data of their own yet; the shop opens with the default hours 10:00-22:00 (change on Admin > Booking).
 - If the project is ever rebuilt from the migration files on another Supabase project, `pg_cron` may need switching on under Database > Extensions before the job is scheduled (the migration prints a notice if it cannot enable it).
 - **Not done by me:** a physical thermal printer test (Chrome print dialog: Margins None, Headers and footers off, Scale 100%) and scanning the UPI QR with a real UPI app. Layout was checked with print-media emulation and the QR was checked by decoding it back to the exact link.

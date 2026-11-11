@@ -3,6 +3,12 @@ import { Session } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
 import { homeFor, Profile, Role } from './models';
 
+export interface CustomerRecord {
+  id: number;
+  name: string;
+  phone: string | null;
+}
+
 export const ACCOUNT_DISABLED = 'Account disabled – contact Admin';
 
 @Injectable({ providedIn: 'root' })
@@ -11,6 +17,8 @@ export class AuthService {
 
   readonly session = signal<Session | null>(null);
   readonly profile = signal<Profile | null>(null);
+  /** The customer's booking profile (name and phone); null until they save it. */
+  readonly customer = signal<CustomerRecord | null>(null);
   /** Message shown on the login pages (e.g. account disabled). */
   readonly notice = signal<string | null>(null);
 
@@ -44,6 +52,7 @@ export class AuthService {
     if (!session) {
       this.session.set(null);
       this.profile.set(null);
+      this.customer.set(null);
       return;
     }
     const { data } = await this.sb
@@ -62,6 +71,18 @@ export class AuthService {
     }
     this.session.set(session);
     this.profile.set(profile);
+    await this.refreshCustomer();
+  }
+
+  /** Loads the signed-in customer's own record (null for staff or before the profile is saved). */
+  async refreshCustomer(): Promise<void> {
+    const p = this.profile();
+    if (!p || p.role !== 'customer') {
+      this.customer.set(null);
+      return;
+    }
+    const { data } = await this.sb.from('customers').select('id, name, phone').eq('profile_id', p.id).maybeSingle();
+    this.customer.set((data as CustomerRecord | null) ?? null);
   }
 
   /** Admin / staff login. Throws an Error with a user-friendly message. */
@@ -102,5 +123,6 @@ export class AuthService {
     await this.sb.auth.signOut();
     this.session.set(null);
     this.profile.set(null);
+    this.customer.set(null);
   }
 }

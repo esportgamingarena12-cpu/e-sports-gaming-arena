@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { safeNext } from './portal';
 
 @Component({
   selector: 'app-book-login',
@@ -58,6 +59,11 @@ export class BookLogin {
     code: ['', [Validators.required, Validators.pattern(/^\d{6,8}$/)]],
   });
 
+  private readonly route = inject(ActivatedRoute);
+  private next(): string | null {
+    return safeNext(this.route.snapshot.queryParamMap.get('next'));
+  }
+
   protected async sendCode(): Promise<void> {
     this.busy.set(true);
     this.error.set(null);
@@ -79,7 +85,14 @@ export class BookLogin {
         this.emailForm.getRawValue().email.trim(),
         this.codeForm.getRawValue().code.trim(),
       );
-      await this.router.navigateByUrl(p.role === 'customer' ? '/book/my-bookings' : this.auth.homeFor(p.role));
+      if (p.role !== 'customer') {
+        await this.router.navigateByUrl(this.auth.homeFor(p.role));
+      } else if (!this.auth.customer()) {
+        // first visit: ask for name and phone, then carry on to where they were going
+        await this.router.navigate(['/book/profile'], { queryParams: { next: this.next() ?? '/book' } });
+      } else {
+        await this.router.navigateByUrl(this.next() ?? '/book/my-bookings');
+      }
     } catch (e) {
       this.error.set((e as Error).message);
     } finally {

@@ -38,6 +38,7 @@ app-receipt { display: none; }
   }
   .label { @apply block text-sm text-slate-300; }
   .btn { @apply rounded border border-slate-700 px-3 py-2 text-sm text-slate-200 disabled:opacity-50; }
+  .btn-danger { @apply rounded bg-red-500 px-4 py-2 font-medium text-white disabled:opacity-50; }
   .btn-primary { @apply rounded bg-emerald-500 px-4 py-2 font-medium text-slate-950 disabled:opacity-50; }
   .card { @apply rounded border border-slate-800 bg-slate-900/50 p-3; }
 }
