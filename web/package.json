@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "e2e": "playwright test",
-    "check:keys": "node scripts/check-build-keys.mjs"
+    "check:keys": "node scripts/check-build-keys.mjs",
+    "deploy:cf": "npm run build && npm run check:keys && npx wrangler pages deploy dist/web/browser --project-name esport-gaming-arena --branch main"
   },
   "prettier": {
     "printWidth": 100,
