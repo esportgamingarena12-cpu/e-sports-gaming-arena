@@ -170,6 +170,13 @@ export class CounterStore {
     this.loaded.set(true);
   }
 
+  /** Like call(), but also returns the value the function returned (e.g. end_session's charge). */
+  async callData(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: string | null }> {
+    const { data, error } = await this.sb.rpc(fn, args);
+    await this.load();
+    return { data, error: error ? friendlyError(error) : null };
+  }
+
   /** Calls a database function, reloads, and returns an error message (or null on success). */
   async call(fn: string, args: Record<string, unknown>): Promise<string | null> {
     const { error } = await this.sb.rpc(fn, args);

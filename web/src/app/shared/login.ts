@@ -48,9 +48,10 @@ export class Login {
   });
 
   constructor() {
-    // already signed in -> go to your own area
+    // already signed in when the page opens -> go to your own area.
+    // (While signing in, submit() does the redirect, so this must not fire a second one.)
     effect(() => {
-      if (this.auth.profile()) void this.router.navigateByUrl(this.auth.home());
+      if (this.auth.profile() && !this.busy()) void this.router.navigateByUrl(this.auth.home());
     });
   }
 

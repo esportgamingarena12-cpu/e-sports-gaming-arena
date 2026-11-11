@@ -3,6 +3,35 @@
 html, body { height: 100%; }
 body { @apply bg-slate-950 text-slate-100 antialiased; }
 
+/* ---- Thermal receipt: hidden on screen, the only thing printed ---- */
+app-receipt { display: none; }
+
+.receipt {
+  box-sizing: border-box;
+  color: #000;
+  background: #fff;
+  font-family: 'Courier New', ui-monospace, monospace;
+  line-height: 1.25;
+  padding: 2mm;
+  word-break: break-word;
+}
+.receipt p { margin: 0; }
+.receipt hr { border: 0; border-top: 1px dashed #000; margin: 1.5mm 0; }
+.receipt-80 { width: 80mm; font-size: 12px; }
+.receipt-58 { width: 58mm; font-size: 11px; }
+.receipt .r-center { text-align: center; }
+.receipt .r-title { font-size: 1.25em; font-weight: bold; }
+.receipt .r-row { display: flex; justify-content: space-between; gap: 2mm; }
+.receipt .r-row span:last-child { text-align: right; white-space: nowrap; }
+.receipt .r-total { font-size: 1.15em; font-weight: bold; }
+.receipt .r-void { font-size: 1.3em; font-weight: bold; }
+
+@media print {
+  html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  app-root > *:not(app-receipt) { display: none !important; }
+  app-receipt { display: block !important; }
+}
+
 @layer components {
   .field {
     @apply mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:ring-2 focus:ring-emerald-500/60;

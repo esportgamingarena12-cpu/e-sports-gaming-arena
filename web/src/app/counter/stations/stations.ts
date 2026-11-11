@@ -5,6 +5,7 @@ import { chargeEndMs, formatDuration, packageRemainingMs, playedMs, sessionCharg
 import { ServerClock } from '../../core/server-clock';
 import { ToastService } from '../../shared/toast.service';
 import { CounterStore, OpenSession, Station, TabLine } from '../counter.store';
+import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
 import { StartDialog } from './start-dialog';
 
 interface Card {
@@ -19,7 +20,7 @@ interface Card {
 
 @Component({
   selector: 'app-counter-stations',
-  imports: [StartDialog, RouterLink],
+  imports: [StartDialog, CheckoutDialog, RouterLink],
   providers: [CounterStore],
   template: `
     <section class="p-4">
@@ -92,7 +93,7 @@ interface Card {
                       <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="act(s, 'reopen_session')">Resume</button>
                     }
                     <a class="btn" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
-                    <button type="button" class="btn" (click)="soon('Billing')">Bill</button>
+                    <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="bill(c)">Bill</button>
                     @if (isAdmin()) {
                       <button type="button" class="btn text-red-300" (click)="confirmCancel.set(s.id)">Cancel</button>
                     }
@@ -109,6 +110,10 @@ interface Card {
       @if (startFor(); as st) {
         <app-start-dialog [station]="st" [packages]="store.packages()" (started)="store.load()" (closed)="startFor.set(null)" />
       }
+
+      @if (billFor(); as src) {
+        <app-checkout-dialog [source]="src" (billed)="store.load()" (done)="closeBill()" (closed)="closeBill()" />
+      }
     </section>
   `,
 })
@@ -120,6 +125,7 @@ export class CounterStations implements OnInit, OnDestroy {
   protected readonly isAdmin = computed(() => this.auth.role() === 'admin');
 
   protected readonly startFor = signal<Station | null>(null);
+  protected readonly billFor = signal<BillSource | null>(null);
   protected readonly busy = signal<number | null>(null);
   protected readonly confirmCancel = signal<number | null>(null);
 
@@ -217,7 +223,34 @@ export class CounterStations implements OnInit, OnDestroy {
     else this.toast.success('Session cancelled');
   }
 
-  protected soon(what: string): void {
-    this.toast.success(`${what} arrives in a later phase`);
+  /** Bill: freeze the timer (end_session), then open the checkout with the server's charge. */
+  protected async bill(c: Card): Promise<void> {
+    const s = c.session;
+    if (!s) return;
+    this.busy.set(s.id);
+    const { data, error } = await this.store.callData('end_session', { p_session: s.id });
+    this.busy.set(null);
+    if (error) {
+      this.toast.error(error);
+      return;
+    }
+    // the session is now ended, so its played time and tab are frozen
+    const ended = this.store.sessions().find((x) => x.id === s.id) ?? s;
+    const items = this.store.tabs().filter((t) => t.session_id === s.id);
+    this.billFor.set({
+      kind: 'station',
+      sessionId: s.id,
+      title: c.station.name,
+      gamingLabel: `Gaming – ${c.station.name} (${s.package_name ?? 'per hour'})`,
+      gaming: Number(data),
+      played: formatDuration(playedMs(ended, chargeEndMs(ended, this.clock.now()))),
+      customerName: s.customer_name,
+      items: items.map((t) => ({ productId: t.product_id, name: t.name, qty: t.qty, price: t.price })),
+    });
+  }
+
+  protected closeBill(): void {
+    this.billFor.set(null);
+    void this.store.load();
   }
 }

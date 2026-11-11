@@ -2,7 +2,7 @@
 
 update settings set
   shop_name = 'E-Sports Gaming Arena',
-  address = 'Add shop address in Settings',
+  address = null,  -- shown on receipts, so leave empty until the real address is set in Admin > Settings
   upi_id = null,
   upi_payee_name = 'E-Sports Gaming Arena';
 

@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth.service';
+import { ReceiptView } from './counter/receipt/receipt';
 import { ToastOutlet } from './shared/toast-outlet';
 
 interface NavItem {
@@ -10,7 +11,7 @@ interface NavItem {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet, ReceiptView],
   templateUrl: './app.html',
 })
 export class App {
@@ -32,12 +33,14 @@ export class App {
           { label: 'Staff', path: '/admin/staff' },
           { label: 'Counter', path: '/counter/stations' },
           { label: 'Canteen', path: '/counter/canteen' },
+          { label: 'Bills', path: '/counter/bills' },
           { label: 'Stock', path: '/counter/stock' },
         ];
       case 'staff':
         return [
           { label: 'Stations', path: '/counter/stations' },
           { label: 'Canteen', path: '/counter/canteen' },
+          { label: 'Bills', path: '/counter/bills' },
           { label: 'Stock', path: '/counter/stock' },
         ];
       case 'customer':

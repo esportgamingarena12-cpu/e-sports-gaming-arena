@@ -3,11 +3,13 @@ import { ActivatedRoute } from '@angular/router';
 import { ToastService } from '../../shared/toast.service';
 import { cartCount, cartTotal } from '../cart';
 import { CartService } from '../cart.service';
+import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
 import { CounterStore, Product } from '../counter.store';
 import { availableQty } from '../stock-utils';
 
 @Component({
   selector: 'app-canteen',
+  imports: [CheckoutDialog],
   providers: [CounterStore],
   template: `
     <section class="p-4">
@@ -115,6 +117,10 @@ import { availableQty } from '../stock-utils';
             <li class="col-span-full text-slate-400">No products match.</li>
           }
         </ul>
+      }
+
+      @if (checkoutSource(); as src) {
+        <app-checkout-dialog [source]="src" (billed)="onBilled()" (done)="checkoutSource.set(null)" (closed)="checkoutSource.set(null)" />
       }
     </section>
   `,
@@ -236,8 +242,23 @@ export class Canteen implements OnInit, OnDestroy {
     this.cart.add(p.id, this.maxFor(p));
   }
 
+  protected readonly checkoutSource = signal<BillSource | null>(null);
+
   protected checkout(): void {
-    this.toast.success('Checkout arrives in a later phase');
+    const lines = this.cartView().map((l) => ({
+      productId: l.product.id,
+      name: l.product.name,
+      qty: l.qty,
+      price: l.product.price,
+    }));
+    if (lines.length === 0) return;
+    this.checkoutSource.set({ kind: 'walkin', items: lines });
+  }
+
+  /** The bill is saved: the cart is spent and stock has changed. */
+  protected onBilled(): void {
+    this.cart.clear();
+    void this.store.load();
   }
 
   protected async addToTab(): Promise<void> {

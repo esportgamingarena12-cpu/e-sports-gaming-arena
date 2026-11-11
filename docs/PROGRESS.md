@@ -8,7 +8,7 @@
 | 3 | Admin settings | Done (verified on hosted dev project) | 2026-11-10 | Migration 0004 (booking_settings, opening_hours); 5 admin screens; 37 new pgTAP checks (06, 07); 13 web unit tests total. Browser-verified save/reload and validation on every screen. |
 | 4 | Counter: stations | Done (verified on hosted dev project) | 2026-11-10 | Migration 0005 (server_now); /counter/stations with live timers, Realtime, start/pause/resume/stop/reopen/cancel; core/pricing.ts verified against 140 golden values from session_charge. Browser-verified. |
 | 5 | Canteen and stock | Done (verified on hosted dev project) | 2026-11-10 | Migration 0006 (recent_stock_moves, Realtime for products + stock_moves); /counter/canteen and /counter/stock; 24 new pgTAP checks (09), 41 web unit tests total. Browser-verified at 360 px. |
-| 6 | Checkout and receipts | Not started | | |
+| 6 | Checkout and receipts | Done (verified on hosted dev project) | 2026-11-11 | No new migration. Checkout dialog (station Bill + walk-in), split payments, UPI QR, receipt print layout 58/80 mm, /counter/bills with reprint and admin void. 23 new pgTAP checks (10); 53 unit tests; 2 Playwright tests. Browser-verified at 360 px. |
 | 7 | Bookings | Not started | | |
 | 8 | Customer portal | Not started | | |
 | 9 | Dashboard and reports | Not started | | |
@@ -63,7 +63,25 @@
 6. `+ Items` on a station card opens the canteen with that station's tab preselected (applied once).
 7. Test data (a session, tab items, five stock moves, adjusted stock) was removed/restored to the seed values.
 
+## Decisions made in Phase 6
+1. No migration. Bills, bill_items and payments were already readable by staff; void_bill existed. The Bookings migration in Phase 7 is `0007`.
+2. `Bill` on a station freezes the timer (end_session) and opens the checkout with the server's charge; cancelling the dialog leaves the station "Ended - not billed" (Resume still works).
+3. After Confirm the dialog shows Print receipt (no auto-print) and Done. Reprint any bill from Bills.
+4. UPI QR covers only the UPI part of the bill. With no UPI ID in Settings the dialog says so and shows no QR (UPI can still be recorded).
+5. Bills screen refreshes on load, on date change, after a void, every 60 s and when the tab regains focus (no live push; `bills` is not in the Realtime publication).
+6. Receipt page size is set with `@page { size: <58|80>mm auto; margin: 0 }`; the receipt is hidden on screen and the only thing visible when printing.
+7. Playwright runs in the installed Google Chrome (`channel: 'chrome'`), uses a staff test account from the git-ignored `web/.env.e2e`, and leaves one bill per run behind. Run with `npm run e2e` from `web/`.
+8. The seed no longer sets a placeholder shop address (it printed on receipts).
+9. Test data (bills, sessions, stock moves, UPI ID, address) was removed/restored after verification and the bill counter reset to 1.
+
+## Bugs found and fixed while verifying Phase 6
+- A method named `void` on the Bills screen was read by Angular as the `void` operator, so the Void button did nothing (renamed `voidBill`).
+- Logging in triggered two redirects to the home page, which could override a click made right after login (found by Playwright; fixed in `login.ts`).
+
 ## Open items / to do later
+- **Not done by me:** a physical thermal printer test (Chrome print dialog: Margins None, Headers and footers off, Scale 100%) and scanning the UPI QR with a real UPI app. Layout was checked with print-media emulation and the QR was checked by decoding it back to the exact link.
+- Set the real shop address, phone, UPI ID and receipt width in Admin > Settings before going live.
+- Playwright test account `e2e.staff@example.com` and the older `staff.test@example.com` exist in the dev project; remove them before production.
 - Rename the Supabase organisation/project and the SMTP sender name (Authentication > Emails > SMTP Settings) to "E-Sports Gaming Arena" if wanted; the sender name needs the user (SMTP settings).
 - Update `CLAUDE.md`, `docs/spec.md`, `START-HERE.md` titles/PWA app name to the new name if wanted (spec Phase 10 says PWA app name "E Gaming Era").
 - pricing.ts uses millisecond timestamps; the database uses microseconds, so a charge could differ by one block only when a session sits within a millisecond of a block boundary. The live number is display only; the bill is calculated by the server in Phase 6.

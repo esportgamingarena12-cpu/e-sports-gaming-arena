@@ -11,6 +11,14 @@ export const integer: ValidatorFn = (c: AbstractControl): ValidationErrors | nul
   return Number.isInteger(Number(v)) ? null : { integer: true };
 };
 
+/** Money amounts have at most two decimals (empty is left to Validators.required). */
+export const twoDecimals: ValidatorFn = (c: AbstractControl): ValidationErrors | null => {
+  const v = c.value;
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) && Math.abs(n * 100 - Math.round(n * 100)) < 1e-6 ? null : { twoDecimals: true };
+};
+
 /** Optional UPI ID such as shop@okbank. */
 export const upiId: ValidatorFn = (c: AbstractControl): ValidationErrors | null => {
   const v = typeof c.value === 'string' ? c.value.trim() : '';

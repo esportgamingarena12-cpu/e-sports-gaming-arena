@@ -5,3 +5,6 @@ web/.angular/
 .env.*
 supabase/.temp/
 supabase/.branches/
+.env.e2e
+test-results/
+playwright-report/

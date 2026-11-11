@@ -6,6 +6,7 @@ import { ShopSettings } from './admin/settings/shop-settings';
 import { StaffAdmin } from './admin/staff/staff';
 import { Stations } from './admin/stations/stations';
 import { BookLogin } from './book/book-login';
+import { Bills } from './counter/bills/bills';
 import { Canteen } from './counter/canteen/canteen';
 import { CounterStations } from './counter/stations/stations';
 import { StockScreen } from './counter/stock/stock';
@@ -39,6 +40,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'stations' },
       { path: 'stations', component: CounterStations },
       { path: 'canteen', component: Canteen },
+      { path: 'bills', component: Bills },
       { path: 'stock', component: StockScreen },
     ],
   },
