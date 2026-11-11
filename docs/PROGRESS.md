@@ -11,7 +11,7 @@
 | 6 | Checkout and receipts | Done (verified on hosted dev project) | 2026-11-11 | No new migration. Checkout dialog (station Bill + walk-in), split payments, UPI QR, receipt print layout 58/80 mm, /counter/bills with reprint and admin void. 23 new pgTAP checks (10); 53 unit tests; 2 Playwright tests. Browser-verified at 360 px. |
 | 7 | Bookings | Done (verified on hosted dev project) | 2026-11-11 | Migration 0007 (customers, bookings, overlap rule, availability/create/cancel/reschedule/check-in/no-show functions, pg_cron job); /counter/bookings with list, day grid, search, New booking, Check in, Cancel, No-show; walk-in conflict warning. 92 pgTAP checks (11); 69 unit tests. Browser-verified at 360 px; scheduled job proven live. |
 | 8 | Customer portal | Done (verified on hosted dev project) | 2026-11-11 | Migration 0008 (booking_info, save_my_profile, my_bills, get_reschedule_availability, shared availability logic). Public /book with free times, /book/profile, /book/my-bookings (change time, cancel, past bills), login keeps the chosen slot. 43 pgTAP checks (12); 79 unit tests; 6 Playwright customer tests (8 e2e in all). Booking reached the counter screen in about 1 s. |
-| 9 | Dashboard and reports | Not started | | |
+| 9 | Dashboard and reports | Done (verified on hosted dev project) | 2026-11-11 | Migration 0009 (dashboard_today, sales_trend, busy_hours, sales_report admin-only; today_report for staff). /admin dashboard with tiles and SVG charts, /admin/reports with range and CSV export, /counter/today for staff. 44 pgTAP checks (13); 89 unit tests; 12 Playwright tests in all (4 new). Checked at 360 px. |
 | 10 | Notifications, PWA, deploy | Not started | | |
 
 ## Environment (no Docker / no local Supabase)
@@ -102,7 +102,18 @@
 8. Bug found by the race test: the "slot just taken" message was inside the confirm panel, which closes on reload, so it vanished. It now sits outside.
 9. Not covered by an automated browser test: the 1 h-before refusal on screen and past bills on screen (both covered by pgTAP 07 and 12 and unit tests). Test data was removed after verification; the three customer test logins remain.
 
+## Decisions made in Phase 9
+1. `0009_reports.sql`. Sales = total of PAID bills (after discount) on the India day the bill was created. Void bills are left out of sales and payments and counted separately (count and value). One shared internal function builds the report for both the admin range report and the staff Today report.
+2. Staff get `today_report()` only (no date input), so they cannot read other days (D11). The dashboard, trend, busy-hours and range report refuse staff, customers and visitors.
+3. Occupancy % per day = played minutes of sessions started that day (pauses removed) divided by active stations x opening minutes. It uses today's station list and opening hours for every day, so old days shift if stations or hours change later.
+4. Busiest hours count sessions by their start hour (India time) over the last 30 days; the hour's sales are the paid bills of those sessions (walk-in canteen sales have no session, so they are not in it).
+5. CSV: one row per day plus a TOTAL row, then payment modes and top items. UTF-8 with a byte order mark so Excel shows the rupee sign in the column titles; amounts are plain numbers (2 decimals) so Excel can add them. Download name `sales-FROM_to_TO.csv`.
+6. Charts are inline SVG (no chart library). The 30-day chart draws sales (scaled to a round top value shown in the legend) and occupancy (0-100%) on one plot.
+7. Test admin login `e2e.admin@example.com` (password in the git-ignored `web/.env.e2e`) was added to the dev project for Playwright. Test data was removed after verification and the bill counter reset.
+8. Not checked: opening the CSV in real Excel (checked the byte order mark, columns and totals in the downloaded file); the dashboard with a month of real history (the dev project has none).
+
 ## Open items / to do later
+- Delete the test login `e2e.admin@example.com` before production.
 - Delete the test logins `e2e.customer1..3@example.com` and `e2e.staff@example.com` before production.
 - Real email-code first sign-in for a brand-new customer was not repeated in Phase 8.
 - Bookings tables have no data of their own yet; the shop opens with the default hours 10:00-22:00 (change on Admin > Booking).

@@ -1,4 +1,7 @@
 import { Routes } from '@angular/router';
+import { Dashboard } from './admin/reports/dashboard';
+import { Reports } from './admin/reports/reports';
+import { Today } from './counter/today/today';
 import { BookingSettings } from './admin/booking/booking-settings';
 import { Packages } from './admin/packages/packages';
 import { Products } from './admin/products/products';
@@ -17,7 +20,6 @@ import { StockScreen } from './counter/stock/stock';
 import { adminGuard, customerGuard, staffGuard } from './core/guards';
 import { Login } from './shared/login';
 import { NotFound } from './shared/not-found';
-import { Placeholder } from './shared/placeholder';
 
 // Remaining admin / counter / book screens arrive in later phases.
 export const routes: Routes = [
@@ -28,7 +30,8 @@ export const routes: Routes = [
     path: 'admin',
     canActivate: [adminGuard],
     children: [
-      { path: '', pathMatch: 'full', component: Placeholder, data: { title: 'Admin dashboard' } },
+      { path: '', pathMatch: 'full', component: Dashboard },
+      { path: 'reports', component: Reports },
       { path: 'settings', component: ShopSettings },
       { path: 'stations', component: Stations },
       { path: 'packages', component: Packages },
@@ -47,6 +50,7 @@ export const routes: Routes = [
       { path: 'canteen', component: Canteen },
       { path: 'bills', component: Bills },
       { path: 'stock', component: StockScreen },
+      { path: 'today', component: Today },
     ],
   },
   {

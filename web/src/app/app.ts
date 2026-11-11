@@ -24,7 +24,8 @@ export class App {
     switch (this.auth.role()) {
       case 'admin':
         return [
-          { label: 'Admin', path: '/admin' },
+          { label: 'Dashboard', path: '/admin' },
+          { label: 'Reports', path: '/admin/reports' },
           { label: 'Settings', path: '/admin/settings' },
           { label: 'Stations', path: '/admin/stations' },
           { label: 'Packages', path: '/admin/packages' },
@@ -44,6 +45,7 @@ export class App {
           { label: 'Canteen', path: '/counter/canteen' },
           { label: 'Bills', path: '/counter/bills' },
           { label: 'Stock', path: '/counter/stock' },
+          { label: 'Today', path: '/counter/today' },
         ];
       case 'customer':
         return [
