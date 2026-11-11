@@ -19,7 +19,7 @@
 | 14 | Customers screen | Done (verified on the dev project) | 2026-11-11 | Migration 0015 (staff note, customer_list, customer_detail, update_customer; the notes column hidden from every direct read). /counter/customers: search by name, phone or login email; detail with bookings, passes, bills, spend, no-show warning, editable details and a staff note; Book for this customer and Sell a pass hand-overs. 49 pgTAP checks (17); 134 unit tests; 23 Playwright tests. |
 | 15 | Mockup match (second pass) | Done (verified on the dev project) | 2026-11-11 | Landing page and admin shell rebuilt to follow the mockup: hero art bleeding to the edge, overlapping feature panel, studio, plan cards, controller band; sidebar with mockup names and gradient pill; top bar with customer search (Ctrl + K), alerts bell and user menu; dashboard with icon tiles, systems quick view, revenue overview (week / 7 / 30 days, % vs previous, smooth chart), session donut, live sessions table with avatars and amounts, quick actions and highlights. 150 unit tests; 28 Playwright tests; every route checked at 360, 768, 1280 and 1536 px. |
 | 16 | Login look | Done (one older e2e test needs a data cleanup, see below) | 2026-11-11 | Both login pages are now split screens: an animated neon arena banner (moving screens, sweeping beams, sparks, floating controller, flickering sign) beside a glowing form card with icons and a show/hide password button. The customer banner shows the real hourly rates. 153 unit tests; 9 new Playwright tests. |
-| 17 | Move to one account (Supabase, GitHub, Cloudflare) | In progress | 2026-11-11 | New Supabase project `cwioasxspzutwglvnthl` (migrations 0001-0015 applied with the CLI, admin and staff roles, starter data); app points at it; code on GitHub `esportgamingarena12-cpu/e-sports-gaming-arena`; live on Cloudflare Pages `e-sports-gaming-arena.pages.dev` (builds on every push to main). Still to do: Site URL in Supabase, Edge Functions and mail settings, Resend, new e2e test logins, delete the old project. |
+| 17 | Move to one account (Supabase, GitHub, Cloudflare) | In progress: waiting on the owner for the Resend key, SMTP and Site URL | 2026-11-11 | New Supabase project `cwioasxspzutwglvnthl`: migrations 0001-0015, admin `esport.gamingarena12@gmail.com`, staff `egamerera1@gmail.com`, starter data, 5 PC (Rs 90/h) and 3 PS5 (Rs 110/h) stations, both Edge Functions deployed, mail_config set, `booking-mail` and `release-no-shows` jobs active. Code on GitHub `esportgamingarena12-cpu/e-sports-gaming-arena`; live on Cloudflare Pages `e-sports-gaming-arena.pages.dev` (rebuilds on every push to main). Buttons are now purple with white text. |
 
 ## Environment (no Docker / no local Supabase)
 - Hosted dev project: org "E Gaming Era", project ref `rfwozldwehmtjvgqpvid`. `web/` uses its URL and **anon** key only.
@@ -189,6 +189,14 @@
 5. The show/hide button is outside the password label and named "Show typed characters", so screen readers and `getByLabel('Password')` still find only the field.
 6. No database change and no new migration; login logic is unchanged.
 7. Test data note: the customer e2e spec (`first booking`) expects an empty bookings table. After a failed run, remove the leftover E2E bookings/customers (the cleanup SQL used in earlier phases) before running it again.
+
+## Decisions made in Phase 17
+1. One owner email for every service: Supabase, GitHub, Cloudflare (and Resend). The old Supabase project (`rfwozldwehmtjvgqpvid`) is no longer used; delete it when the new one is confirmed.
+2. The new project was built with `supabase db push --remote` (CLI login by the owner; no database password was needed). Nothing was copied from the old project because it held only test data.
+3. The owner login is `esport.gamingarena12@gmail.com`; the staff login uses the email the owner used before. Both were created by the owner in the dashboard so passwords never passed through chat.
+4. Stations follow the printed rate card: 5 PC and 3 PS5. Hourly rates are the card's 1-hour prices (PC 90, PS5 110). The card's other prices (30 minutes, PS5 by number of players) do not fit one hourly rate and still need a decision (fixed-price packages are the suggested way). The food menu on the card is also not entered yet.
+5. Buttons: primary actions use a violet-to-fuchsia gradient with white text; selected chips and the "Most popular" tag match.
+6. Still the owner's: `RESEND_API_KEY` secret, SMTP in Supabase Auth, Site URL / Redirect URLs, a verified sending domain in Resend, test logins for the browser tests, deleting the old project.
 
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
