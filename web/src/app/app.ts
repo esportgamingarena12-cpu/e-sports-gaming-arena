@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth.service';
 import { ReceiptView } from './counter/receipt/receipt';
@@ -18,6 +18,14 @@ export class App {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   protected readonly appName = 'E-Sports Gaming Arena';
+
+  /** False while the device has no connection (the installed app still opens its saved shell). */
+  protected readonly online = signal(typeof navigator === 'undefined' ? true : navigator.onLine);
+
+  constructor() {
+    window.addEventListener('online', () => this.online.set(true));
+    window.addEventListener('offline', () => this.online.set(false));
+  }
 
   /** Role-based navigation. Signed-out visitors only see Book. */
   protected readonly nav = computed<NavItem[]>(() => {

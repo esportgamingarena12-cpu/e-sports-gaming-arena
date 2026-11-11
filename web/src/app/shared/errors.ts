@@ -1,6 +1,10 @@
 /** Turns a Supabase / Postgres error into a short message for the user. */
 export function friendlyError(e: { message?: string; code?: string } | null | undefined): string {
   if (!e) return 'Something went wrong';
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(e.message ?? '') ||
+      (!e.code && !e.message && typeof navigator !== 'undefined' && !navigator.onLine)) {
+    return 'No connection. Check your internet and try again.';
+  }
   switch (e.code) {
     case '23505':
       return 'That name already exists';

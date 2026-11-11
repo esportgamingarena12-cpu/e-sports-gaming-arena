@@ -12,7 +12,7 @@
 | 7 | Bookings | Done (verified on hosted dev project) | 2026-11-11 | Migration 0007 (customers, bookings, overlap rule, availability/create/cancel/reschedule/check-in/no-show functions, pg_cron job); /counter/bookings with list, day grid, search, New booking, Check in, Cancel, No-show; walk-in conflict warning. 92 pgTAP checks (11); 69 unit tests. Browser-verified at 360 px; scheduled job proven live. |
 | 8 | Customer portal | Done (verified on hosted dev project) | 2026-11-11 | Migration 0008 (booking_info, save_my_profile, my_bills, get_reschedule_availability, shared availability logic). Public /book with free times, /book/profile, /book/my-bookings (change time, cancel, past bills), login keeps the chosen slot. 43 pgTAP checks (12); 79 unit tests; 6 Playwright customer tests (8 e2e in all). Booking reached the counter screen in about 1 s. |
 | 9 | Dashboard and reports | Done (verified on hosted dev project) | 2026-11-11 | Migration 0009 (dashboard_today, sales_trend, busy_hours, sales_report admin-only; today_report for staff). /admin dashboard with tiles and SVG charts, /admin/reports with range and CSV export, /counter/today for staff. 44 pgTAP checks (13); 89 unit tests; 12 Playwright tests in all (4 new). Checked at 360 px. |
-| 10 | Notifications, PWA, deploy | Not started | | |
+| 10 | Notifications, PWA, deploy | Built and tested on the dev project; real emails and production deploy waiting on the owner | 2026-11-11 | Migration 0010 (email outbox, triggers, 1-hour reminder job), Edge Function send-booking-email, PWA (manifest, icons, offline banner), RLS review (docs/RLS-REVIEW.md, test 15), docs/DEPLOY.md, netlify.toml, build key scan. 23 + 32 new pgTAP checks (14, 15); 95 unit tests; 12 Playwright tests. |
 
 ## Environment (no Docker / no local Supabase)
 - Hosted dev project: org "E Gaming Era", project ref `rfwozldwehmtjvgqpvid`. `web/` uses its URL and **anon** key only.
@@ -112,7 +112,18 @@
 7. Test admin login `e2e.admin@example.com` (password in the git-ignored `web/.env.e2e`) was added to the dev project for Playwright. Test data was removed after verification and the bill counter reset.
 8. Not checked: opening the CSV in real Excel (checked the byte order mark, columns and totals in the downloaded file); the dashboard with a month of real history (the dev project has none).
 
+## Decisions made in Phase 10
+1. `0010_booking_emails.sql`. An outbox table (`booking_emails`) is filled by triggers on `bookings`: confirmation on create, "moved" on reschedule, cancellation on cancel, only for customers who have an email (logins). A job `booking-mail` runs every minute: it queues the reminder (booking starts within the hour, not made less than an hour before it starts, once per start time) and then calls the Edge Function through `pg_net`. A moved booking gets a fresh reminder.
+2. `send-booking-email` reads the queue with the service key (inside the function only), sends through Resend, retries 3 times, then marks `failed` with the reason. It accepts only calls with the `x-mail-secret` header. Secrets: `RESEND_API_KEY`, `MAIL_FUNCTION_SECRET`, optional `MAIL_FROM`. Where to find the function is stored in `mail_config` (no one but the server can read it).
+3. PWA: manifest "E-Sports Gaming Arena" (the spec says "E Gaming Era"; the new name is used), own icons (any and maskable), service worker caches the app shell only. API calls are never cached. An offline banner shows when the device has no connection; network errors read "No connection".
+4. RLS review: no gaps. Result in `docs/RLS-REVIEW.md`; `15_rls_review.test.sql` keeps it true (every table has RLS, visitors have no table access, ledger tables cannot be written directly, helper functions are not callable).
+5. `npm run check:keys` scans the built site and fails on anything but the public anon key (also runs in the Netlify build). The production `environment.ts` still holds a placeholder, so that check fails on purpose until real keys are put in.
+6. Playwright runs against the dev project (there is no separate staging project).
+7. Not done by me (needs the owner): verifying a sending domain in Resend; deploying `send-booking-email` and setting its secrets; creating the production Supabase project and the Netlify site; installing the app on Android and iPhone; seeing a real email arrive. `docs/DEPLOY.md` has every step.
+8. Verified here: emails are queued by real customer bookings in the browser tests (3 confirmations, 1 moved, 1 cancelled); the reminder rules and privacy by pgTAP; the app shell opens offline and the manifest has no installability errors in Chrome (only "in-incognito", from the test browser).
+
 ## Open items / to do later
+- Phase 10 acceptance still open: emails arriving (needs the Resend key as a function secret), installs on Android and iPhone, production end-to-end.
 - Delete the test login `e2e.admin@example.com` before production.
 - Delete the test logins `e2e.customer1..3@example.com` and `e2e.staff@example.com` before production.
 - Real email-code first sign-in for a brand-new customer was not repeated in Phase 8.

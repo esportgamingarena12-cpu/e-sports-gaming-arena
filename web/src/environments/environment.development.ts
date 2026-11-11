@@ -1,5 +1,5 @@
 // Development Supabase project for E-Sports Gaming Arena (hosted). Anon key only —
-// never put the service_role key in web/.
+// never put the secret (service) key in web/.
 export const environment = {
   production: false,
   SUPABASE_URL: 'https://rfwozldwehmtjvgqpvid.supabase.co',
