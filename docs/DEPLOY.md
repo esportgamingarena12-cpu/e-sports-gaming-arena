@@ -3,8 +3,8 @@
 Order matters: database, then email, then the web app, then the first login. Plan about 1 to 2 hours.
 Do not use the secret (service) key anywhere in `web/`. It lives only inside Supabase.
 
-You need: a Supabase account, a Resend account with a **verified sending domain**, a Netlify (or Vercel) account,
-a domain name for the site, and Node 22 on your PC.
+You need: a Supabase account, a Resend account with a **verified sending domain**, a Cloudflare account (Pages) and a GitHub account,
+a domain name for the site (optional: the free address is `<project>.pages.dev`), and Node 22 on your PC.
 
 ## 1. Production database (Supabase)
 
@@ -77,10 +77,18 @@ Two functions live in `supabase/functions/`: `admin-create-staff` and `send-book
    npm run check:keys
    ```
    `check:keys` fails if the build contains anything but the anon key.
-3. Netlify > Add new site > Import from Git (or drag the folder). Settings are in `web/netlify.toml`:
-   base directory `web`, build command `npm run build && node scripts/check-build-keys.mjs`,
-   publish directory `dist/web/browser`, and the single-page redirect rule.
-4. Add your domain (Domain management) and switch on HTTPS. Use the same address in Supabase URL Configuration.
+3. Cloudflare Pages: Workers & Pages > Create > Pages > Import an existing Git repository, pick the repo and branch `main`, then:
+   - Framework preset: None
+   - Root directory: `web`
+   - Build command: `npm ci --legacy-peer-deps && npm run build && npm run check:keys`
+   - Build output directory: `dist/web/browser`
+   - Environment variable: `NODE_VERSION` = `22`
+
+   The single-page redirect rule (`web/public/_redirects`) and the cache/security headers (`web/public/_headers`) are
+   copied into the build automatically. Every push to `main` rebuilds and publishes the site.
+   Without Git you can also run `cd web && npm run deploy:cf` (needs `npx wrangler login` once).
+4. Optional: add your own domain (project > Custom domains); HTTPS is automatic. Put the site address (the `pages.dev` one or
+   your own) in Supabase > Authentication > URL Configuration as Site URL and as a Redirect URL.
 5. Open the site: the Book page should list free times after you add stations (step 5).
 
 ## 5. First login
@@ -111,4 +119,4 @@ Two functions live in `supabase/functions/`: `admin-create-staff` and `send-book
 ## Updating later
 
 - Database changes: add a new numbered file in `supabase/migrations/` and apply it (never edit an applied one).
-- Web changes: push to the connected branch; Netlify rebuilds. Installed apps update on the next open.
+- Web changes: push to `main`; Cloudflare Pages rebuilds. Installed apps update on the next open.
