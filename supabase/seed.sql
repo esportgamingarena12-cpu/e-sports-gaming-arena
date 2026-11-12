@@ -31,14 +31,13 @@ insert into packages (name, minutes, price, station_type) values
   ('PS5 4 Players 30 Min',  30, 120.00, 'ps5'),
   ('PS5 4 Players 1 Hour',  60, 250.00, 'ps5');
 
--- Phase 6 worked example uses Maggi 50 and Coffee 40.
+-- Food menu from the printed rate card. Opening stock is a starting guess: change it in Stock.
 insert into products (name, category, price, stock_qty, low_stock_level) values
-  ('Maggi',      'Snacks', 50.00, 30, 5),
-  ('Coffee',     'Drinks', 40.00, 40, 5),
-  ('Cold Drink', 'Drinks', 30.00, 48, 10),
-  ('Chips',      'Snacks', 20.00, 50, 10),
-  ('Water 500ml','Drinks', 20.00, 60, 12),
-  ('Sandwich',   'Snacks', 60.00, 15, 5);
+  ('Sweet Corn Pizza', 'Food', 150.00, 20, 5),
+  ('Veg Pizza',        'Food', 120.00, 20, 5),
+  ('Veg Sandwich',     'Food',  50.00, 20, 5),
+  ('Corn Sandwich',    'Food',  60.00, 20, 5),
+  ('Samosa',           'Food',  15.00, 20, 5);
 
 insert into stock_moves (product_id, move_type, qty, note, user_id)
 select id, 'purchase', stock_qty, 'Opening stock', null from products;
