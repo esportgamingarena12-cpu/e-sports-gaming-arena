@@ -1,31 +1,16 @@
 import { Routes } from '@angular/router';
-import { GamesAdmin } from './admin/games/games';
-import { Dashboard } from './admin/reports/dashboard';
-import { Reports } from './admin/reports/reports';
-import { Today } from './counter/today/today';
-import { BookingSettings } from './admin/booking/booking-settings';
-import { Packages } from './admin/packages/packages';
-import { PassTypes } from './admin/passes/pass-types';
-import { Products } from './admin/products/products';
-import { ShopSettings } from './admin/settings/shop-settings';
-import { StaffAdmin } from './admin/staff/staff';
-import { Stations } from './admin/stations/stations';
 import { BookHome } from './book/book-home';
 import { BookLogin } from './book/book-login';
-import { BookProfile } from './book/book-profile';
-import { MyBookings } from './book/my-bookings';
-import { Bills } from './counter/bills/bills';
-import { CounterBookings } from './counter/bookings/bookings';
-import { Canteen } from './counter/canteen/canteen';
-import { Customers } from './counter/customers/customers';
-import { CounterPasses } from './counter/passes/passes';
-import { CounterStations } from './counter/stations/stations';
-import { StockScreen } from './counter/stock/stock';
 import { adminGuard, customerGuard, staffGuard } from './core/guards';
 import { Login } from './shared/login';
 import { NotFound } from './shared/not-found';
 
-// Remaining admin / counter / book screens arrive in later phases.
+/**
+ * The public pages a visitor lands on (home, login, 404) are part of the first download. Everything behind a
+ * login (the admin and counter screens, and the customer's own bookings) is loaded only when it is opened, so a
+ * customer on a phone does not download the staff screens. The service worker still caches every piece, so the
+ * app keeps working offline once installed.
+ */
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'book' },
   { path: 'login', component: Login },
@@ -34,16 +19,16 @@ export const routes: Routes = [
     path: 'admin',
     canActivate: [adminGuard],
     children: [
-      { path: '', pathMatch: 'full', component: Dashboard },
-      { path: 'reports', component: Reports },
-      { path: 'settings', component: ShopSettings },
-      { path: 'stations', component: Stations },
-      { path: 'packages', component: Packages },
-      { path: 'passes', component: PassTypes },
-      { path: 'products', component: Products },
-      { path: 'games', component: GamesAdmin },
-      { path: 'booking-settings', component: BookingSettings },
-      { path: 'staff', component: StaffAdmin },
+      { path: '', pathMatch: 'full', loadComponent: () => import('./admin/reports/dashboard').then((m) => m.Dashboard) },
+      { path: 'reports', loadComponent: () => import('./admin/reports/reports').then((m) => m.Reports) },
+      { path: 'settings', loadComponent: () => import('./admin/settings/shop-settings').then((m) => m.ShopSettings) },
+      { path: 'stations', loadComponent: () => import('./admin/stations/stations').then((m) => m.Stations) },
+      { path: 'packages', loadComponent: () => import('./admin/packages/packages').then((m) => m.Packages) },
+      { path: 'passes', loadComponent: () => import('./admin/passes/pass-types').then((m) => m.PassTypes) },
+      { path: 'products', loadComponent: () => import('./admin/products/products').then((m) => m.Products) },
+      { path: 'games', loadComponent: () => import('./admin/games/games').then((m) => m.GamesAdmin) },
+      { path: 'booking-settings', loadComponent: () => import('./admin/booking/booking-settings').then((m) => m.BookingSettings) },
+      { path: 'staff', loadComponent: () => import('./admin/staff/staff').then((m) => m.StaffAdmin) },
     ],
   },
   {
@@ -51,14 +36,14 @@ export const routes: Routes = [
     canActivate: [staffGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'stations' },
-      { path: 'stations', component: CounterStations },
-      { path: 'bookings', component: CounterBookings },
-      { path: 'canteen', component: Canteen },
-      { path: 'bills', component: Bills },
-      { path: 'stock', component: StockScreen },
-      { path: 'customers', component: Customers },
-      { path: 'passes', component: CounterPasses },
-      { path: 'today', component: Today },
+      { path: 'stations', loadComponent: () => import('./counter/stations/stations').then((m) => m.CounterStations) },
+      { path: 'bookings', loadComponent: () => import('./counter/bookings/bookings').then((m) => m.CounterBookings) },
+      { path: 'canteen', loadComponent: () => import('./counter/canteen/canteen').then((m) => m.Canteen) },
+      { path: 'bills', loadComponent: () => import('./counter/bills/bills').then((m) => m.Bills) },
+      { path: 'stock', loadComponent: () => import('./counter/stock/stock').then((m) => m.StockScreen) },
+      { path: 'customers', loadComponent: () => import('./counter/customers/customers').then((m) => m.Customers) },
+      { path: 'passes', loadComponent: () => import('./counter/passes/passes').then((m) => m.CounterPasses) },
+      { path: 'today', loadComponent: () => import('./counter/today/today').then((m) => m.Today) },
     ],
   },
   {
@@ -66,8 +51,8 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', component: BookHome },
       { path: 'login', component: BookLogin },
-      { path: 'profile', canActivate: [customerGuard], component: BookProfile },
-      { path: 'my-bookings', canActivate: [customerGuard], component: MyBookings },
+      { path: 'profile', canActivate: [customerGuard], loadComponent: () => import('./book/book-profile').then((m) => m.BookProfile) },
+      { path: 'my-bookings', canActivate: [customerGuard], loadComponent: () => import('./book/my-bookings').then((m) => m.MyBookings) },
     ],
   },
   { path: '**', component: NotFound },
