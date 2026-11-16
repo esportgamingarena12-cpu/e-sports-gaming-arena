@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 /*
  * Neon illustrations drawn in code (SVG), in the brand palette. They scale to any size, add no image files and
@@ -277,3 +277,44 @@ export class ControllerArt {}
   `,
 })
 export class SideArt {}
+
+/**
+ * A neon wall clock showing the shop's time (India time, passed in as minutes since midnight). The rim is cyan while
+ * the shop is open and magenta while it is closed.
+ */
+@Component({
+  selector: 'app-clock-art',
+  template: `
+    <svg viewBox="0 0 300 300" class="h-auto w-full" role="img" [attr.aria-label]="'Clock showing ' + time()">
+      <defs>
+        <radialGradient id="ck-face" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#2a1166" /><stop offset="1" stop-color="#0b0820" /></radialGradient>
+        <filter id="ck-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7" /></filter>
+      </defs>
+      <circle cx="150" cy="150" r="138" fill="none" [attr.stroke]="rim()" stroke-width="14" opacity="0.55" filter="url(#ck-blur)" />
+      <circle cx="150" cy="150" r="130" fill="url(#ck-face)" [attr.stroke]="rim()" stroke-width="5" />
+      <circle cx="150" cy="150" r="112" fill="none" stroke="#a855f7" stroke-opacity="0.35" stroke-width="1.5" />
+      @for (t of ticks; track t.a) {
+        <line x1="150" [attr.y1]="t.y1" x2="150" y2="34" [attr.stroke]="t.major ? '#ede9fe' : '#7c6bd6'" [attr.stroke-width]="t.major ? 4 : 2" stroke-linecap="round" [attr.transform]="'rotate(' + t.a + ' 150 150)'" />
+      }
+      <g [attr.transform]="'rotate(' + hourAngle() + ' 150 150)'"><line x1="150" y1="160" x2="150" y2="92" stroke="#ede9fe" stroke-width="9" stroke-linecap="round" /></g>
+      <g [attr.transform]="'rotate(' + minuteAngle() + ' 150 150)'"><line x1="150" y1="162" x2="150" y2="62" [attr.stroke]="rim()" stroke-width="6" stroke-linecap="round" /></g>
+      <circle cx="150" cy="150" r="9" fill="#f97316" /><circle cx="150" cy="150" r="4" fill="#0b0820" />
+      <text x="150" y="214" text-anchor="middle" fill="#ddd6fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="22" letter-spacing="3">{{ time() }}</text>
+    </svg>
+  `,
+})
+export class ClockArt {
+  /** minutes since midnight, India time */
+  readonly minutes = input(0);
+  readonly open = input(true);
+
+  protected readonly ticks = Array.from({ length: 60 }, (_, i) => ({ a: i * 6, major: i % 5 === 0, y1: i % 5 === 0 ? 52 : 44 }));
+  protected readonly rim = computed(() => (this.open() ? '#22d3ee' : '#d946ef'));
+  protected readonly hourAngle = computed(() => ((this.minutes() % 720) / 720) * 360);
+  protected readonly minuteAngle = computed(() => (this.minutes() % 60) * 6);
+  protected readonly time = computed(() => {
+    const m = this.minutes();
+    const h = Math.floor(m / 60) % 24;
+    return `${h % 12 === 0 ? 12 : h % 12}:${String(m % 60).padStart(2, '0')} ${h >= 12 ? 'pm' : 'am'}`;
+  });
+}

@@ -180,3 +180,44 @@ export function savePercent(price: number, was: number | null | undefined): numb
   if (was === null || was === undefined || !(was > price) || price < 0) return null;
   return Math.round((1 - price / was) * 100);
 }
+
+export interface GameHighlight {
+  type: string;
+  /** "PC", "PS5" */
+  label: string;
+  icon: 'monitor' | 'gamepad';
+  /** the lowest starting price, or null when nothing is priced */
+  price: number | null;
+  /** what the price covers: "30 min", "hour", "2 hours" */
+  per: string;
+  /** "Up to 4 players", "Per PC seat" or empty */
+  note: string;
+}
+
+const perText = (m: number): string => (m % 60 === 0 ? (m === 60 ? 'hour' : `${m / 60} hours`) : `${m} min`);
+
+/**
+ * One highlight per game on offer: its cheapest starting price (the shortest package, else the hourly rate) and a
+ * short note. Players are read from the package names ("PS5 4 Players 1 Hour" -> "Up to 4 players").
+ */
+export function gameHighlights(
+  info: { types: string[]; rates: { type: string; rate_per_hour: number }[]; packages: PublicPackage[] } | null | undefined,
+): GameHighlight[] {
+  if (!info) return [];
+  return (info.types ?? []).map((t) => {
+    const pk = (info.packages ?? []).filter((p) => p.station_type === t && Number(p.minutes) > 0);
+    let price: number | null = null;
+    let per = 'hour';
+    if (pk.length) {
+      const shortest = Math.min(...pk.map((p) => Number(p.minutes)));
+      price = Math.min(...pk.filter((p) => Number(p.minutes) === shortest).map((p) => Number(p.price)));
+      per = perText(shortest);
+    } else {
+      const rates = (info.rates ?? []).filter((r) => r.type === t).map((r) => Number(r.rate_per_hour));
+      price = rates.length ? Math.min(...rates) : null;
+    }
+    const players = pk.map((p) => Number(/(\d+)\s*players?/i.exec(p.name)?.[1] ?? 0)).reduce((a, b) => Math.max(a, b), 0);
+    const note = players > 0 ? `Up to ${players} player${players === 1 ? '' : 's'}` : t === 'pc' ? 'Per PC seat' : '';
+    return { type: t, label: typeLabel(t), icon: t === 'pc' ? 'monitor' : 'gamepad', price, per, note };
+  });
+}

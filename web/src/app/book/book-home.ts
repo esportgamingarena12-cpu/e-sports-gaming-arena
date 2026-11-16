@@ -3,14 +3,15 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { formatIstTime, todayIst } from '../shared/format';
 import { RouterLink } from '@angular/router';
-import { ControllerArt, HeroArt, RoomArt } from '../shared/art';
+import { ClockArt, ControllerArt, HeroArt, RoomArt } from '../shared/art';
+import { HeroSlide, HeroSlider } from '../shared/hero-slider';
 import { Icon } from '../shared/icon';
 import { BookingInfo, BookingService, FreeSlot } from './booking.service';
 import { lengthLabel, typeLabel } from './portal';
 import { buildPlans } from './plans';
 import { FoodPic } from '../shared/food-image';
 import { ServerClock } from '../core/server-clock';
-import { buildRateCard, HoursGroup, hoursSummary, minutesLabel, openStatus } from './rate-card';
+import { buildRateCard, gameHighlights, HoursGroup, hoursSummary, istParts, minutesLabel, openStatus } from './rate-card';
 
 const addDays = (day: string, n: number): string =>
   new Date(Date.parse(`${day}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -18,7 +19,7 @@ const addDays = (day: string, n: number): string =>
 /** Public booking page: anyone can see free times; signing in is asked only when they pick one. */
 @Component({
   selector: 'app-book-home',
-  imports: [Icon, HeroArt, RoomArt, ControllerArt, RouterLink, FoodPic],
+  imports: [Icon, HeroArt, RoomArt, ControllerArt, ClockArt, RouterLink, FoodPic, HeroSlider, HeroSlide],
   template: `
     <!-- Hero -->
     <section class="relative px-4 pb-10 pt-8 sm:pt-12">
@@ -26,7 +27,9 @@ const addDays = (day: string, n: number): string =>
         <div class="absolute -left-32 -top-10 h-[130%] w-80 -skew-x-12 bg-linear-to-b from-fuchsia-600/45 via-violet-700/20 to-transparent blur-2xl"></div>
         <div class="absolute right-0 top-0 h-full w-2/3 bg-radial from-violet-700/30 to-transparent"></div>
       </div>
-      <div class="relative mx-auto grid max-w-7xl items-center gap-4 md:grid-cols-[1fr_1.25fr]">
+      <div class="relative mx-auto max-w-7xl pb-8">
+       <app-hero-slider label="Arena highlights" data-hero-slider>
+        <div appSlide class="grid items-center gap-4 md:grid-cols-[1fr_1.25fr]" data-slide-welcome>
         <div>
           <p class="eyebrow">Welcome to</p>
           <h1 class="mt-2 font-display text-5xl font-bold italic leading-[0.95] tracking-wide sm:text-6xl lg:text-7xl">
@@ -45,6 +48,105 @@ const addDays = (day: string, n: number): string =>
           </div>
         </div>
         <div class="mx-auto w-full max-w-md animate-float md:max-w-none"><app-hero-art /></div>
+        </div>
+
+        <!-- Slide 2: games available -->
+        @if (games().length > 0) {
+          <div appSlide class="grid items-center gap-6 md:grid-cols-[1fr_1.25fr]" data-slide-games>
+            <div>
+              <p class="eyebrow">Games available</p>
+              <h2 class="mt-2 font-display text-4xl font-bold leading-[1] tracking-wide sm:text-5xl lg:text-6xl">
+                Games available in <span class="glow-text">{{ gamesText() }}</span>
+              </h2>
+              <p class="mt-4 max-w-md text-sm text-slate-300">Pick your game, choose your time and walk in ready to play. Fixed prices, no surprises.</p>
+              <div class="mt-6 flex flex-wrap gap-3">
+                <a href="#book" class="btn-primary inline-flex items-center gap-2">Book a Gaming Slot <app-icon name="play" [size]="16" /></a>
+                <a href="#rates" class="btn-outline inline-flex items-center">View Rates</a>
+              </div>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2" data-game-tiles>
+              @for (g of games(); track g.type) {
+                <button type="button" (click)="chooseType(g.type)" [attr.data-game-tile]="g.label"
+                        class="group relative flex flex-col items-center gap-2 overflow-hidden rounded-3xl border border-cyan-400/50 bg-linear-to-b from-violet-700/40 via-slate-900 to-slate-950 p-6 text-center shadow-[0_0_50px_-16px_rgb(34_211_238_/_0.8)] transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_0_60px_-10px_rgb(34_211_238_/_0.9)]">
+                  <span class="pointer-events-none absolute -top-16 left-1/2 size-48 -translate-x-1/2 rounded-full bg-fuchsia-600/25 blur-3xl" aria-hidden="true"></span>
+                  <span class="relative grid size-24 place-items-center rounded-3xl bg-linear-to-br from-violet-600 to-fuchsia-500 text-white shadow-[0_0_40px_-6px_rgb(217_70_239_/_0.9)]"><app-icon [name]="g.icon" [size]="52" /></span>
+                  <span class="relative font-display text-4xl font-bold">{{ g.label }}</span>
+                  @if (g.note) { <span class="relative text-sm text-slate-300">{{ g.note }}</span> }
+                  @if (g.price !== null) {
+                    <span class="relative rounded-full border border-cyan-300/50 bg-slate-950/70 px-4 py-1 font-display text-xl font-bold text-cyan-100" data-game-price>From ₹{{ g.price }} <span class="text-sm font-medium text-slate-400">/ {{ g.per }}</span></span>
+                  }
+                  <span class="relative inline-flex items-center gap-1 text-sm font-semibold text-cyan-300 group-hover:text-cyan-200">Book now <app-icon name="arrow" [size]="16" /></span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Slide 3: timings -->
+        @if (hours().length > 0) {
+          <div appSlide class="grid items-center gap-6 md:grid-cols-[1.25fr_1fr]" data-slide-timings>
+            <div>
+              <p class="eyebrow">Timings</p>
+              <h2 class="mt-2 font-display text-4xl font-bold leading-[1] tracking-wide sm:text-5xl lg:text-6xl">When we are <span class="glow-text">open</span></h2>
+              @if (status(); as st) {
+                <p class="mt-4">
+                  <span class="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold ring-1"
+                        [class]="st.open ? 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/50' : 'bg-fuchsia-500/15 text-fuchsia-200 ring-fuchsia-400/50'" data-slide-status>
+                    <span class="relative flex size-2.5">
+                      <span class="absolute inline-flex size-full animate-ping rounded-full opacity-75" [class]="st.open ? 'bg-emerald-400' : 'bg-fuchsia-400'"></span>
+                      <span class="relative inline-flex size-2.5 rounded-full" [class]="st.open ? 'bg-emerald-400' : 'bg-fuchsia-400'"></span>
+                    </span>
+                    {{ st.text }}
+                  </span>
+                </p>
+              }
+              <ul class="mt-5 max-w-lg space-y-2.5">
+                @for (h of hours(); track h.days) {
+                  <li class="flex items-center justify-between gap-2 rounded-2xl border px-3 py-3 sm:gap-3 sm:px-5 sm:py-3.5"
+                      [class]="isToday(h) ? 'border-cyan-300/70 bg-linear-to-r from-cyan-400/15 to-violet-500/10 shadow-[0_0_30px_-10px_rgb(34_211_238_/_0.9)]' : 'border-slate-700/60 bg-slate-900/60'"
+                      [attr.data-slide-hours]="h.days">
+                    <span class="flex items-center gap-2 whitespace-nowrap text-sm font-medium sm:text-base">
+                      <span class="text-violet-300"><app-icon name="clock" [size]="20" /></span>{{ h.days }}
+                      @if (isToday(h)) { <span class="badge bg-cyan-400/20 text-cyan-200">Today</span> }
+                    </span>
+                    <span class="whitespace-nowrap font-display text-base font-bold sm:text-xl lg:text-2xl">{{ h.time }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+            <div class="mx-auto w-full max-w-[11rem] animate-float sm:max-w-[16rem] md:max-w-sm"><app-clock-art [minutes]="istMinutes()" [open]="status()?.open ?? true" /></div>
+          </div>
+        }
+
+        <!-- Slide 4: canteen facility -->
+        @if (canteen(); as c) {
+          <div appSlide class="grid items-center gap-6 md:grid-cols-[1fr_1.25fr]" data-slide-canteen>
+            <div>
+              <span class="grid size-14 place-items-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_0_30px_-4px_rgb(217_70_239_/_0.9)]"><app-icon name="cup" [size]="30" /></span>
+              <p class="eyebrow mt-3">Canteen</p>
+              <h2 class="mt-2 font-display text-4xl font-bold leading-[1] tracking-wide sm:text-5xl lg:text-6xl">Snacks &amp; food, <span class="glow-text">right where you play</span></h2>
+              <p class="mt-4 max-w-md text-sm text-slate-300">Hungry mid-game? Add food and drinks to your gaming bill and pay once at the counter.</p>
+              <ul class="mt-4 flex flex-wrap gap-2">
+                @for (cat of c.categories; track cat) {
+                  <li class="rounded-full border border-fuchsia-300/40 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-fuchsia-100">{{ cat }}</li>
+                }
+              </ul>
+              <a href="#canteen" class="btn-outline mt-5 inline-flex items-center gap-2">See the canteen <app-icon name="arrow" [size]="16" /></a>
+            </div>
+            <ul class="grid grid-cols-2 gap-3 sm:gap-4" data-slide-canteen-items>
+              @for (it of c.items.slice(0, 4); track it.name) {
+                <li class="overflow-hidden rounded-2xl border border-violet-400/40 bg-slate-950/60 shadow-[0_0_34px_-14px_rgb(217_70_239_/_0.9)]" [attr.data-slide-canteen-item]="it.name">
+                  <app-food-pic class="aspect-[16/10] w-full" [path]="it.image_path" [name]="it.name" />
+                  <div class="flex items-center justify-between gap-2 p-3">
+                    <span class="min-w-0 truncate text-sm font-semibold sm:text-base">{{ it.name }}</span>
+                    <span class="shrink-0 rounded-full bg-linear-to-r from-violet-600 to-fuchsia-500 px-2.5 py-0.5 text-sm font-bold text-white">₹{{ it.price }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+       </app-hero-slider>
       </div>
 
       <div class="relative z-10 mx-auto -mb-16 mt-2 grid max-w-7xl grid-cols-2 divide-slate-700/60 rounded-xl border border-violet-500/30 bg-slate-900/85 shadow-[0_0_40px_-12px_rgb(139_92_246_/_0.8)] backdrop-blur md:-mt-4 md:grid-cols-4 md:divide-x" data-features>
@@ -395,6 +497,10 @@ export class BookHome implements OnInit {
   protected minutesText = minutesLabel;
   /** "Open now · closes 10:00 pm" / "Opens tomorrow at 12:00 pm", in India time, updated every second with the shared clock. */
   protected readonly status = computed(() => openStatus(this.info()?.hours, this.clock.now()));
+  /** One highlight per game for the "Games available" slide. */
+  protected readonly games = computed(() => gameHighlights(this.info()));
+  /** The shop's clock (India time) in minutes since midnight, for the clock picture. */
+  protected readonly istMinutes = computed(() => istParts(this.clock.now()).minutes);
   protected isToday(h: HoursGroup): boolean {
     return h.weekdays.includes(this.status()?.today ?? -1);
   }

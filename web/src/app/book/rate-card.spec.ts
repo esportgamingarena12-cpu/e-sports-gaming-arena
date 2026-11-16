@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRateCard, hoursSummary, istParts, minutesLabel, openStatus, OpeningDay, packageBase, PublicPackage, rowLabel, savePercent, timeLabel } from './rate-card';
+import { buildRateCard, gameHighlights, hoursSummary, istParts, minutesLabel, openStatus, OpeningDay, packageBase, PublicPackage, rowLabel, savePercent, timeLabel } from './rate-card';
 
 const pk = (name: string, minutes: number, price: number, station_type: string): PublicPackage => ({ name, minutes, price, station_type });
 
@@ -186,5 +186,49 @@ describe('open now', () => {
     expect(openStatus(SHOP.map((d) => ({ ...d, closed: true })), ist('2026-11-16T15:00:00'))!.text).toBe('Closed');
     expect(openStatus([], 0)).toBeNull();
     expect(openStatus(null, 0)).toBeNull();
+  });
+});
+
+describe('game highlights', () => {
+  const pk = (name: string, minutes: number, price: number, station_type: string): PublicPackage => ({ name, minutes, price, station_type });
+  const info = {
+    types: ['pc', 'ps5'],
+    rates: [
+      { type: 'pc', rate_per_hour: 90 },
+      { type: 'ps5', rate_per_hour: 110 },
+    ],
+    packages: [
+      pk('PC 1', 30, 50, 'pc'),
+      pk('PC 2', 60, 90, 'pc'),
+      pk('PS5 1 Player 30 Min', 30, 60, 'ps5'),
+      pk('PS5 4 Players 30 Min', 30, 120, 'ps5'),
+      pk('PS5 2 Players 30 Min', 30, 70, 'ps5'),
+      pk('PS5 4 Players 1 Hour', 60, 250, 'ps5'),
+    ],
+  };
+
+  it('starts each game at its cheapest shortest package', () => {
+    const [pc, ps5] = gameHighlights(info);
+    expect(pc).toMatchObject({ label: 'PC', icon: 'monitor', price: 50, per: '30 min', note: 'Per PC seat' });
+    expect(ps5).toMatchObject({ label: 'PS5', icon: 'gamepad', price: 60, per: '30 min', note: 'Up to 4 players' });
+  });
+  it('falls back to the hourly rate when a game has no packages', () => {
+    const [pc] = gameHighlights({ ...info, packages: [] });
+    expect(pc).toMatchObject({ price: 90, per: 'hour' });
+  });
+  it('says hour or hours for whole-hour packages', () => {
+    const one = gameHighlights({ types: ['pc'], rates: [], packages: [pk('PC Hour', 60, 90, 'pc')] })[0];
+    expect(one).toMatchObject({ price: 90, per: 'hour' });
+    const two = gameHighlights({ types: ['pc'], rates: [], packages: [pk('PC Two', 120, 160, 'pc')] })[0];
+    expect(two.per).toBe('2 hours');
+  });
+  it('has no price when there is nothing to price, and no card without data', () => {
+    expect(gameHighlights({ types: ['vr'], rates: [], packages: [] })[0]).toMatchObject({ price: null, note: '' });
+    expect(gameHighlights(null)).toEqual([]);
+    expect(gameHighlights({ types: [], rates: [], packages: [] })).toEqual([]);
+  });
+  it('a single player reads singular', () => {
+    const [g] = gameHighlights({ types: ['ps5'], rates: [], packages: [pk('PS5 1 Player 30 Min', 30, 60, 'ps5')] });
+    expect(g.note).toBe('Up to 1 player');
   });
 });
