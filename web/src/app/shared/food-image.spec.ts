@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extensionFor, foodImagePath, foodImageUrl, foodInitial, MAX_FOOD_IMAGE_BYTES, validateFoodImage } from './food-image';
+import { extensionFor, foodImagePath, foodImageUrl, foodInitial, gameImageUrl, MAX_FOOD_IMAGE_BYTES, publicImageUrl, validateFoodImage } from './food-image';
 
 describe('food photo address', () => {
   const base = 'https://abc.supabase.co';
@@ -55,5 +55,17 @@ describe('tile without a photo', () => {
     expect(foodInitial('samosa')).toBe('S');
     expect(foodInitial('  veg pizza')).toBe('V');
     expect(foodInitial('')).toBe('?');
+  });
+});
+
+describe('game poster address', () => {
+  const base = 'https://abc.supabase.co';
+  it('uses the game-images bucket', () => {
+    expect(gameImageUrl('gta-6-1.jpg', base)).toBe('https://abc.supabase.co/storage/v1/object/public/game-images/gta-6-1.jpg');
+  });
+  it('any bucket works, and no file means no address', () => {
+    expect(publicImageUrl('other', 'a/b.png', base)).toBe('https://abc.supabase.co/storage/v1/object/public/other/a/b.png');
+    expect(gameImageUrl(null, base)).toBeNull();
+    expect(gameImageUrl('', base)).toBeNull();
   });
 });

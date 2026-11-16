@@ -13,7 +13,7 @@ a domain name for the site (optional: the free address is `<project>.pages.dev`)
    (Project Settings > API). Never copy the `service_role` key into `web/`.
 3. Database > Extensions: enable `pg_cron`, `pg_net` and `btree_gist` (the migrations try to enable them and print a
    notice if they cannot).
-4. Apply the migrations `supabase/migrations/0001` to `0017`, in order. Either:
+4. Apply the migrations `supabase/migrations/0001` to `0019`, in order. Either:
    - With the CLI (needs Docker only for local work, not for this):
      ```bash
      npx supabase login
@@ -21,7 +21,7 @@ a domain name for the site (optional: the free address is `<project>.pages.dev`)
      npx supabase db push
      ```
    - Or paste each file into **SQL Editor** one after another, 0001 first. (This is how the dev project was built.)
-   Migration 0016 also creates the public Storage bucket `food-images` for food photos (only the admin can add or remove files).
+   Migrations 0016 and 0018 also create the public Storage buckets `food-images` and `game-images` for food photos and game posters (only the admin can add or remove files).
 5. Optional starting data: run `supabase/seed.sql` once in SQL Editor (sample stations, packages and products; edit
    them in the app afterwards). Do **not** run anything from `supabase/tests/` on production, and make sure the
    `pgtap` extension is switched off (Database > Extensions).

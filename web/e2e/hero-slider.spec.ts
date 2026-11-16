@@ -44,13 +44,14 @@ test.describe('home page slider', () => {
     await expect.poll(() => activeIndex(page)).toBe(3);
   });
 
-  test('the games slide shows each game with a starting price and jumps to booking', async ({ page }) => {
+  test('the games slide lists the games with starting prices, and booking follows the chosen game type', async ({ page }) => {
     await open(page);
     await page.locator('[data-dot-index="1"]').click();
-    const tiles = page.locator('[data-game-tile]');
-    expect(await tiles.count()).toBeGreaterThanOrEqual(2);
-    await expect(tiles.first().locator('[data-game-price]')).toContainText('From ₹');
-    await page.locator('[data-game-tile="PS5"]').click();
+    await expect.poll(() => page.locator('[data-game-card]').count()).toBeGreaterThanOrEqual(1);
+    await expect(page.locator('[data-filter="PS5"]')).toContainText('from ₹');
+    await expect(page.locator('[data-filter="PC"]')).toContainText('from ₹');
+    await page.locator('[data-filter="PS5"]').click();
+    await page.locator('[data-slide-book]').click();
     await expect(page.locator('[data-type]')).toHaveValue('ps5');
   });
 

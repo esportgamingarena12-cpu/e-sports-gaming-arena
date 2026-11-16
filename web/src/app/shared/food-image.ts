@@ -6,12 +6,24 @@ export const FOOD_BUCKET = 'food-images';
 export const MAX_FOOD_IMAGE_BYTES = 2 * 1024 * 1024;
 export const FOOD_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-/** The public address of a stored photo, or null when the item has none. */
-export function foodImageUrl(path: string | null | undefined, baseUrl: string = environment.SUPABASE_URL): string | null {
+/** The public address of a file in a public Storage bucket, or null when there is no file. */
+export function publicImageUrl(bucket: string, path: string | null | undefined, baseUrl: string = environment.SUPABASE_URL): string | null {
   const p = (path ?? '').trim();
   if (!p) return null;
   const base = baseUrl.replace(/\/+$/, '');
-  return `${base}/storage/v1/object/public/${FOOD_BUCKET}/${p.split('/').map(encodeURIComponent).join('/')}`;
+  return `${base}/storage/v1/object/public/${bucket}/${p.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+/** The public address of a stored food photo, or null when the item has none. */
+export function foodImageUrl(path: string | null | undefined, baseUrl: string = environment.SUPABASE_URL): string | null {
+  return publicImageUrl(FOOD_BUCKET, path, baseUrl);
+}
+
+/** Game posters live in the public bucket "game-images", with the same rules as food photos. */
+export const GAME_BUCKET = 'game-images';
+
+export function gameImageUrl(path: string | null | undefined, baseUrl: string = environment.SUPABASE_URL): string | null {
+  return publicImageUrl(GAME_BUCKET, path, baseUrl);
 }
 
 /** A readable, URL-safe file name such as "sweet-corn-pizza-1731500000000.jpg". */

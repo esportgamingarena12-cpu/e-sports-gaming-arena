@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { GamesAdmin } from './admin/games/games';
 import { Dashboard } from './admin/reports/dashboard';
 import { Reports } from './admin/reports/reports';
 import { Today } from './counter/today/today';
@@ -40,6 +41,7 @@ export const routes: Routes = [
       { path: 'packages', component: Packages },
       { path: 'passes', component: PassTypes },
       { path: 'products', component: Products },
+      { path: 'games', component: GamesAdmin },
       { path: 'booking-settings', component: BookingSettings },
       { path: 'staff', component: StaffAdmin },
     ],

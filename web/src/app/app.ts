@@ -83,6 +83,7 @@ export class App {
               { label: 'Packages', path: '/admin/packages', icon: 'box' },
               { label: 'Pass setup', path: '/admin/passes', icon: 'tag' },
               { label: 'Products', path: '/admin/products', icon: 'tag' },
+              { label: 'Games', path: '/admin/games', icon: 'gamepad' },
               { label: 'Booking rules', path: '/admin/booking-settings', icon: 'clock' },
               { label: 'Staff Management', short: 'Staff', path: '/admin/staff', icon: 'users' },
             ],

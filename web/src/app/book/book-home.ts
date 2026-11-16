@@ -4,6 +4,7 @@ import { AuthService } from '../core/auth.service';
 import { formatIstTime, todayIst } from '../shared/format';
 import { RouterLink } from '@angular/router';
 import { ClockArt, ControllerArt, HeroArt, RoomArt } from '../shared/art';
+import { GamePoster } from '../shared/game-poster';
 import { HeroSlide, HeroSlider } from '../shared/hero-slider';
 import { Icon } from '../shared/icon';
 import { BookingInfo, BookingService, FreeSlot } from './booking.service';
@@ -11,6 +12,7 @@ import { lengthLabel, typeLabel } from './portal';
 import { buildPlans } from './plans';
 import { FoodPic } from '../shared/food-image';
 import { ServerClock } from '../core/server-clock';
+import { gamesFor, tickerItems } from './games';
 import { buildRateCard, gameHighlights, HoursGroup, hoursSummary, istParts, minutesLabel, openStatus } from './rate-card';
 
 const addDays = (day: string, n: number): string =>
@@ -19,8 +21,29 @@ const addDays = (day: string, n: number): string =>
 /** Public booking page: anyone can see free times; signing in is asked only when they pick one. */
 @Component({
   selector: 'app-book-home',
-  imports: [Icon, HeroArt, RoomArt, ControllerArt, ClockArt, RouterLink, FoodPic, HeroSlider, HeroSlide],
+  imports: [Icon, HeroArt, RoomArt, ControllerArt, ClockArt, RouterLink, FoodPic, GamePoster, HeroSlider, HeroSlide],
   template: `
+    <!-- Coming-soon ticker: upcoming games and the new ones, set by the owner in Admin > Games -->
+    @if (ticker().length > 0) {
+      <div class="relative border-y border-fuchsia-400/30 bg-linear-to-r from-violet-900/70 via-slate-950 to-fuchsia-900/60" role="region" aria-label="Coming soon" data-ticker>
+        <div class="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2">
+          <span class="shrink-0 rounded-full bg-linear-to-r from-violet-600 to-fuchsia-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_16px_-2px_rgb(217_70_239_/_0.9)]">Coming soon</span>
+          <div class="ticker-viewport relative min-w-0 flex-1 overflow-hidden" tabindex="0" aria-label="Upcoming and new games">
+            <ul class="ticker-track flex w-max items-center gap-10 whitespace-nowrap" [style.--ticker-time]="tickerSeconds()" [style.--ticker-shift]="tickerShift()">
+              @for (c of tickerCopies(); track c) {
+                @for (it of ticker(); track $index) {
+                  <li class="flex items-center gap-2 text-sm" [class.ticker-copy]="c > 0" [attr.aria-hidden]="c > 0 ? 'true' : null" data-ticker-item>
+                    <span class="badge" [class]="it.kind === 'soon' ? 'bg-fuchsia-500/25 text-fuchsia-200' : 'bg-emerald-500/20 text-emerald-300'">{{ it.kind === 'soon' ? 'SOON' : 'NEW' }}</span>
+                    <span class="font-medium text-slate-100">{{ it.text }}</span>
+                  </li>
+                }
+              }
+            </ul>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Hero -->
     <section class="relative px-4 pb-10 pt-8 sm:pt-12">
       <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -51,34 +74,78 @@ const addDays = (day: string, n: number): string =>
         </div>
 
         <!-- Slide 2: games available -->
-        @if (games().length > 0) {
-          <div appSlide class="grid items-center gap-6 md:grid-cols-[1fr_1.25fr]" data-slide-games>
+        @if (games().length > 0 || posterGames().length > 0) {
+          <div appSlide class="grid items-center gap-6 md:grid-cols-[1fr_1.45fr]" data-slide-games>
             <div>
               <p class="eyebrow">Games available</p>
               <h2 class="mt-2 font-display text-4xl font-bold leading-[1] tracking-wide sm:text-5xl lg:text-6xl">
                 Games available in <span class="glow-text">{{ gamesText() }}</span>
               </h2>
-              <p class="mt-4 max-w-md text-sm text-slate-300">Pick your game, choose your time and walk in ready to play. Fixed prices, no surprises.</p>
-              <div class="mt-6 flex flex-wrap gap-3">
-                <a href="#book" class="btn-primary inline-flex items-center gap-2">Book a Gaming Slot <app-icon name="play" [size]="16" /></a>
+              <p class="mt-4 max-w-md text-sm text-slate-300">
+                @if (posterGames().length > 0) { Our players' favourites, from the latest hits to the classics. Pick your game, choose your time and walk in ready to play. }
+                @else { Pick your game, choose your time and walk in ready to play. Fixed prices, no surprises. }
+              </p>
+              @if (posterGames().length > 0 && games().length > 1) {
+                <div class="mt-4 flex flex-wrap gap-2" role="group" aria-label="Show games for" data-game-filter>
+                  <button type="button" class="rounded-full border px-3.5 py-1.5 text-sm font-semibold transition"
+                          [class]="gameFilter() === null ? 'border-violet-300 bg-linear-to-r from-violet-600 to-fuchsia-500 text-white' : 'border-slate-600 text-slate-300 hover:border-cyan-300'"
+                          (click)="gameFilter.set(null)" data-filter-all>All</button>
+                  @for (g of games(); track g.type) {
+                    <button type="button" class="rounded-full border px-3.5 py-1.5 text-sm font-semibold transition"
+                            [class]="gameFilter() === g.type ? 'border-violet-300 bg-linear-to-r from-violet-600 to-fuchsia-500 text-white' : 'border-slate-600 text-slate-300 hover:border-cyan-300'"
+                            (click)="gameFilter.set(g.type)" [attr.data-filter]="g.label">
+                      {{ g.label }}@if (g.price !== null) { <span class="ml-1 text-xs font-medium opacity-80">from ₹{{ g.price }}</span> }
+                    </button>
+                  }
+                </div>
+              }
+              <div class="mt-5 flex flex-wrap gap-3">
+                <button type="button" class="btn-primary inline-flex items-center gap-2" (click)="chooseType(gameFilter())" data-slide-book>Book a Gaming Slot <app-icon name="play" [size]="16" /></button>
                 <a href="#rates" class="btn-outline inline-flex items-center">View Rates</a>
               </div>
-            </div>
-            <div class="grid gap-4 sm:grid-cols-2" data-game-tiles>
-              @for (g of games(); track g.type) {
-                <button type="button" (click)="chooseType(g.type)" [attr.data-game-tile]="g.label"
-                        class="group relative flex flex-col items-center gap-2 overflow-hidden rounded-3xl border border-cyan-400/50 bg-linear-to-b from-violet-700/40 via-slate-900 to-slate-950 p-6 text-center shadow-[0_0_50px_-16px_rgb(34_211_238_/_0.8)] transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_0_60px_-10px_rgb(34_211_238_/_0.9)]">
-                  <span class="pointer-events-none absolute -top-16 left-1/2 size-48 -translate-x-1/2 rounded-full bg-fuchsia-600/25 blur-3xl" aria-hidden="true"></span>
-                  <span class="relative grid size-24 place-items-center rounded-3xl bg-linear-to-br from-violet-600 to-fuchsia-500 text-white shadow-[0_0_40px_-6px_rgb(217_70_239_/_0.9)]"><app-icon [name]="g.icon" [size]="52" /></span>
-                  <span class="relative font-display text-4xl font-bold">{{ g.label }}</span>
-                  @if (g.note) { <span class="relative text-sm text-slate-300">{{ g.note }}</span> }
-                  @if (g.price !== null) {
-                    <span class="relative rounded-full border border-cyan-300/50 bg-slate-950/70 px-4 py-1 font-display text-xl font-bold text-cyan-100" data-game-price>From ₹{{ g.price }} <span class="text-sm font-medium text-slate-400">/ {{ g.per }}</span></span>
-                  }
-                  <span class="relative inline-flex items-center gap-1 text-sm font-semibold text-cyan-300 group-hover:text-cyan-200">Book now <app-icon name="arrow" [size]="16" /></span>
-                </button>
+              @if (upcomingNames().length > 0) {
+                <p class="mt-4 text-xs text-slate-400" data-slide-upcoming>
+                  <span class="mr-1 font-semibold uppercase tracking-wider text-fuchsia-300">Coming soon</span>{{ upcomingNames().join(' · ') }}
+                </p>
               }
             </div>
+
+            @if (posterGames().length > 0) {
+              <div>
+                <ul class="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3" data-game-posters>
+                  @for (g of shownGames(); track g.title) {
+                    <li class="group relative overflow-hidden rounded-2xl border border-violet-400/40 bg-slate-950 shadow-[0_0_30px_-12px_rgb(168_85_247_/_0.9)] transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_0_34px_-8px_rgb(34_211_238_/_0.9)]" [attr.data-game-card]="g.title">
+                      <app-game-poster class="aspect-[3/4] w-full" [path]="g.image_path" [title]="g.title" />
+                      <div class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950 via-slate-950/85 to-transparent p-2 pt-9">
+                        <p class="truncate text-xs font-bold sm:text-sm">{{ g.title }}</p>
+                        <p class="truncate text-[10px] font-semibold uppercase tracking-wider text-cyan-300">{{ g.station_type ? label(g.station_type) : typesText() }}</p>
+                      </div>
+                      <div class="absolute left-1.5 top-1.5 flex flex-col gap-1">
+                        @if (g.hot) { <span class="badge bg-linear-to-r from-orange-500 to-rose-500 text-white shadow" data-badge-hot>HOT</span> }
+                        @if (g.is_new) { <span class="badge bg-emerald-500 text-white shadow" data-badge-new>NEW</span> }
+                      </div>
+                    </li>
+                  }
+                </ul>
+                @if (moreGames() > 0) { <p class="mt-2 text-right text-xs text-slate-400" data-more-games>+ {{ moreGames() }} more at the studio</p> }
+              </div>
+            } @else {
+              <div class="grid gap-4 sm:grid-cols-2" data-game-tiles>
+                @for (g of games(); track g.type) {
+                  <button type="button" (click)="chooseType(g.type)" [attr.data-game-tile]="g.label"
+                          class="group relative flex flex-col items-center gap-2 overflow-hidden rounded-3xl border border-cyan-400/50 bg-linear-to-b from-violet-700/40 via-slate-900 to-slate-950 p-6 text-center shadow-[0_0_50px_-16px_rgb(34_211_238_/_0.8)] transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_0_60px_-10px_rgb(34_211_238_/_0.9)]">
+                    <span class="pointer-events-none absolute -top-16 left-1/2 size-48 -translate-x-1/2 rounded-full bg-fuchsia-600/25 blur-3xl" aria-hidden="true"></span>
+                    <span class="relative grid size-24 place-items-center rounded-3xl bg-linear-to-br from-violet-600 to-fuchsia-500 text-white shadow-[0_0_40px_-6px_rgb(217_70_239_/_0.9)]"><app-icon [name]="g.icon" [size]="52" /></span>
+                    <span class="relative font-display text-4xl font-bold">{{ g.label }}</span>
+                    @if (g.note) { <span class="relative text-sm text-slate-300">{{ g.note }}</span> }
+                    @if (g.price !== null) {
+                      <span class="relative rounded-full border border-cyan-300/50 bg-slate-950/70 px-4 py-1 font-display text-xl font-bold text-cyan-100" data-game-price>From ₹{{ g.price }} <span class="text-sm font-medium text-slate-400">/ {{ g.per }}</span></span>
+                    }
+                    <span class="relative inline-flex items-center gap-1 text-sm font-semibold text-cyan-300 group-hover:text-cyan-200">Book now <app-icon name="arrow" [size]="16" /></span>
+                  </button>
+                }
+              </div>
+            }
           </div>
         }
 
@@ -497,6 +564,30 @@ export class BookHome implements OnInit {
   protected minutesText = minutesLabel;
   /** "Open now · closes 10:00 pm" / "Opens tomorrow at 12:00 pm", in India time, updated every second with the shared clock. */
   protected readonly status = computed(() => openStatus(this.info()?.hours, this.clock.now()));
+  /** Which game type the games list is filtered to (null = all). */
+  protected readonly gameFilter = signal<string | null>(null);
+  /** The games the owner listed (hot first). Without any, the slide falls back to the PC / PS5 price tiles. */
+  protected readonly posterGames = computed(() => this.info()?.games ?? []);
+  protected readonly shownGames = computed(() => gamesFor(this.posterGames(), this.gameFilter()).slice(0, 8));
+  protected readonly moreGames = computed(() => Math.max(0, gamesFor(this.posterGames(), this.gameFilter()).length - 8));
+  protected readonly upcomingNames = computed(() => (this.info()?.upcoming ?? []).map((u) => u.title));
+  protected readonly typesText = computed(() => (this.info()?.types ?? []).map((t) => typeLabel(t)).join(' · '));
+  /** Changes once an hour, so the ticker's countdown words update without rebuilding the strip every second. */
+  private readonly hourNow = computed(() => Math.floor(this.clock.now() / 3_600_000) * 3_600_000);
+  /** The ticker lines: upcoming games first, then games marked New. */
+  protected readonly ticker = computed(() => tickerItems(this.info()?.upcoming, this.info()?.games, this.hourNow()));
+  /** Copies of the list (always an even number, at least 2) so the strip is wider than the screen even with one game. */
+  protected readonly tickerCopies = computed(() => {
+    const n = Math.max(1, this.ticker().length);
+    return Array.from({ length: 2 * Math.ceil(12 / (2 * n)) }, (_, i) => i);
+  });
+  /** How far the strip moves per loop: exactly one copy. */
+  protected readonly tickerShift = computed(() => `-${100 / this.tickerCopies().length}%`);
+  /** Seconds for one copy of the list to pass, so the speed is steady for any number of games. */
+  protected readonly tickerSeconds = computed(() => {
+    const chars = this.ticker().reduce((sum, it) => sum + it.text.length + 8, 0);
+    return `${Math.max(10, Math.round(chars * 0.2))}s`; // about 40 pixels a second whatever the length
+  });
   /** One highlight per game for the "Games available" slide. */
   protected readonly games = computed(() => gameHighlights(this.info()));
   /** The shop's clock (India time) in minutes since midnight, for the clock picture. */

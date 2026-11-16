@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '../core/supabase.service';
 import { portalError, PortalBooking } from './portal';
+import { PublicGame, UpcomingGame } from './games';
 import { OpeningDay, PublicPackage } from './rate-card';
 
 export interface BookingInfo {
@@ -17,6 +18,9 @@ export interface BookingInfo {
   packages: PublicPackage[];
   /** categories on offer and up to 6 highlighted items (featured first) */
   canteen?: PublicCanteen;
+  /** games to play now (hot first) and the ones coming soon */
+  games?: PublicGame[];
+  upcoming?: UpcomingGame[];
   passes: PublicPass[];
 }
 

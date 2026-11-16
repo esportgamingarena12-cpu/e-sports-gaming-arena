@@ -124,3 +124,15 @@ app-receipt { display: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---- Coming-soon ticker (the home page strip) ---- */
+@keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(var(--ticker-shift, -50%)); } }
+.ticker-track { animation: ticker-scroll var(--ticker-time, 30s) linear infinite; }
+.ticker-viewport:hover .ticker-track,
+.ticker-viewport:focus-within .ticker-track,
+.ticker-viewport:active .ticker-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  /* no scrolling: show the lines as a wrapped list, once */
+  .ticker-track { width: auto !important; flex-wrap: wrap; white-space: normal !important; row-gap: 0.25rem; }
+  .ticker-copy { display: none !important; }
+}
