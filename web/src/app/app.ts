@@ -141,7 +141,7 @@ export class App {
   protected readonly topLinks = computed<{ label: string; path: string; fragment?: string }[]>(() => [
     { label: 'Home', path: '/book' },
     { label: 'The Studio', path: '/book', fragment: 'studio' },
-    { label: 'Plans', path: '/book', fragment: 'plans' },
+    { label: 'Rates', path: '/book', fragment: 'rates' },
     { label: 'Book', path: '/book', fragment: 'book' },
     ...(this.auth.role() === 'customer' ? [{ label: 'My bookings', path: '/book/my-bookings' }] : []),
   ]);

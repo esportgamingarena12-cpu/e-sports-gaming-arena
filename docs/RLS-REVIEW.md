@@ -68,3 +68,4 @@ The staff note on a customer (`customers.notes`) is excluded from the columns th
 - `delete_product(bigint)`: admin only (staff and visitors get `42501`); a product with sales history is switched off, never removed.
 - `set_session_alarm` / `extend_session_alarm`: staff and admin only; visitors get `42501`. They change only the reminder columns, never billing.
 - `booking_info()` is public by design and now also returns the opening hours, the active packages and a pass's usual price. It exposes nothing about customers, sessions or sold passes.
+- Phase 18b (`supabase/tests/19_home_highlights.test.sql`): `products.featured` can be changed only by the admin (column grant plus the existing admin-only update policy). The public canteen block lists only active items that are in stock or not stock-tracked, at most 6, and exposes only name, price, category and photo path (never stock counts); visitors still get `42501` on the products table.

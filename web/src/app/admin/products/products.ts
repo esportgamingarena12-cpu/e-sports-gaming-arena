@@ -24,6 +24,7 @@ interface Product {
   low_stock_level: number;
   track_stock: boolean;
   active: boolean;
+  featured: boolean;
   image_path: string | null;
 }
 
@@ -95,6 +96,9 @@ interface Product {
           <label class="flex items-center gap-2 text-sm">
             <input type="checkbox" formControlName="active" /> Active (shown in the canteen)
           </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" formControlName="featured" data-featured /> Show on the home page (up to 6 items are highlighted, featured ones first)
+          </label>
 
           @if (confirmDelete()) {
             <div class="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm" data-delete-confirm>
@@ -129,6 +133,7 @@ interface Product {
                   (alert at {{ p.low_stock_level }})
                 } @else { · not tracked }
                 @if (!p.active) { · inactive }
+                @if (p.featured) { · <span class="text-fuchsia-300">on home page</span> }
               </p>
             </div>
             <button type="button" class="btn" (click)="edit(p)" data-edit>Edit</button>
@@ -168,6 +173,7 @@ export class Products implements OnInit, OnDestroy {
     opening_stock: [0, [Validators.required, Validators.min(0), integer]],
     track_stock: [true],
     active: [true],
+    featured: [false],
   });
 
   ngOnInit(): void {
@@ -181,7 +187,7 @@ export class Products implements OnInit, OnDestroy {
   private async load(): Promise<void> {
     const { data, error } = await this.sb
       .from('products')
-      .select('id, name, category, price, stock_qty, low_stock_level, track_stock, active, image_path')
+      .select('id, name, category, price, stock_qty, low_stock_level, track_stock, active, featured, image_path')
       .order('category')
       .order('name');
     if (error) return this.toast.error(friendlyError(error));
@@ -204,7 +210,7 @@ export class Products implements OnInit, OnDestroy {
   }
 
   protected startNew(): void {
-    this.form.reset({ name: '', category: 'General', price: 0, low_stock_level: 0, opening_stock: 0, track_stock: true, active: true });
+    this.form.reset({ name: '', category: 'General', price: 0, low_stock_level: 0, opening_stock: 0, track_stock: true, active: true, featured: false });
     this.resetPhoto(null);
     this.editingId.set(0);
   }
@@ -218,6 +224,7 @@ export class Products implements OnInit, OnDestroy {
       opening_stock: 0,
       track_stock: p.track_stock,
       active: p.active,
+      featured: p.featured,
     });
     this.resetPhoto(p.image_path);
     this.editingId.set(p.id);
@@ -303,6 +310,7 @@ export class Products implements OnInit, OnDestroy {
       low_stock_level: Number(v.low_stock_level),
       track_stock: v.track_stock,
       active: v.active,
+      featured: v.featured,
       image_path: imagePath,
     };
 

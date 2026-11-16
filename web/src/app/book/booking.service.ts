@@ -15,7 +15,21 @@ export interface BookingInfo {
   /** opening hours per weekday and the fixed-price packages (the rate card) */
   hours: OpeningDay[];
   packages: PublicPackage[];
+  /** categories on offer and up to 6 highlighted items (featured first) */
+  canteen?: PublicCanteen;
   passes: PublicPass[];
+}
+
+export interface PublicCanteenItem {
+  name: string;
+  price: number;
+  category: string;
+  image_path: string | null;
+}
+
+export interface PublicCanteen {
+  categories: string[];
+  items: PublicCanteenItem[];
 }
 
 export interface PublicPass {

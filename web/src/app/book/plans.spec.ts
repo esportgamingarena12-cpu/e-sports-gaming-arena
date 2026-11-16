@@ -69,12 +69,13 @@ describe('buildPlans', () => {
     expect(buildPlans(null)).toEqual([]);
     expect(buildPlans(info({ rates: [], passes: [] }))).toEqual([]);
   });
-  it('lists the hourly rate of each game first, then the passes', () => {
+  it('lists only the passes: the hourly prices are in the rate card, not repeated here', () => {
     const plans = buildPlans(info({ passes: [pass(), pass({ name: 'Day', price: 399, validity_days: 1 })] }));
-    expect(plans.map((p) => p.title)).toEqual(['PC by the hour', 'PS5 by the hour', 'Weekly PC', 'Day']);
-    expect(plans[0].price).toBe(60);
-    expect(plans[1].price).toBe(120);
-    expect(plans[0].per).toBe('hour');
+    expect(plans.map((p) => p.title)).toEqual(['Weekly PC', 'Day']);
+    expect(plans.some((p) => p.title.includes('by the hour'))).toBe(false);
+  });
+  it('has no plan cards when there are no passes, even though there are hourly rates', () => {
+    expect(buildPlans(info({ passes: [] }))).toEqual([]);
   });
   it('keys are unique', () => {
     const plans = buildPlans(info({ passes: [pass(), pass({ name: 'Day' })] }));
@@ -114,8 +115,5 @@ describe('daily pass and discounted plans', () => {
     expect(p.save).toBeNull();
     const q = passPlan(pass({ price: '1600.00' as unknown as number, original_price: '2000.00' as unknown as number }));
     expect(q.save).toBe(20);
-  });
-  it('hourly rate cards never carry a discount badge', () => {
-    expect(buildPlans(info()).every((p) => p.was === null && p.save === null)).toBe(true);
   });
 });

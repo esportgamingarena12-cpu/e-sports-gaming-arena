@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRateCard, hoursSummary, minutesLabel, OpeningDay, packageBase, PublicPackage, rowLabel, savePercent, timeLabel } from './rate-card';
+import { buildRateCard, hoursSummary, istParts, minutesLabel, openStatus, OpeningDay, packageBase, PublicPackage, rowLabel, savePercent, timeLabel } from './rate-card';
 
 const pk = (name: string, minutes: number, price: number, station_type: string): PublicPackage => ({ name, minutes, price, station_type });
 
@@ -87,23 +87,25 @@ describe('opening hours', () => {
 
   it('groups the week: Monday to Friday, then Saturday and Sunday', () => {
     expect(hoursSummary(SHOP)).toEqual([
-      { days: 'Mon – Fri', time: '12:00 pm – 10:00 pm' },
-      { days: 'Sat – Sun', time: '11:00 am – 10:00 pm' },
+      { days: 'Mon – Fri', time: '12:00 pm – 10:00 pm', weekdays: [1, 2, 3, 4, 5] },
+      { days: 'Sat – Sun', time: '11:00 am – 10:00 pm', weekdays: [6, 0] },
     ]);
   });
 
   it('shows a closed day and a single day', () => {
     const odd = SHOP.map((d) => (d.weekday === 3 ? { ...d, closed: true } : d));
     expect(hoursSummary(odd)).toEqual([
-      { days: 'Mon – Tue', time: '12:00 pm – 10:00 pm' },
-      { days: 'Wed', time: 'Closed' },
-      { days: 'Thu – Fri', time: '12:00 pm – 10:00 pm' },
-      { days: 'Sat – Sun', time: '11:00 am – 10:00 pm' },
+      { days: 'Mon – Tue', time: '12:00 pm – 10:00 pm', weekdays: [1, 2] },
+      { days: 'Wed', time: 'Closed', weekdays: [3] },
+      { days: 'Thu – Fri', time: '12:00 pm – 10:00 pm', weekdays: [4, 5] },
+      { days: 'Sat – Sun', time: '11:00 am – 10:00 pm', weekdays: [6, 0] },
     ]);
   });
 
   it('shows one line when every day is the same, and none without data', () => {
-    expect(hoursSummary(SHOP.map((d) => ({ ...d, open: '10:00' })))).toEqual([{ days: 'Mon – Sun', time: '10:00 am – 10:00 pm' }]);
+    expect(hoursSummary(SHOP.map((d) => ({ ...d, open: '10:00' })))).toEqual([
+      { days: 'Mon – Sun', time: '10:00 am – 10:00 pm', weekdays: [1, 2, 3, 4, 5, 6, 0] },
+    ]);
     expect(hoursSummary([])).toEqual([]);
     expect(hoursSummary(null)).toEqual([]);
   });
@@ -120,5 +122,69 @@ describe('discount badge', () => {
     expect(savePercent(100, undefined)).toBeNull();
     expect(savePercent(100, 100)).toBeNull();
     expect(savePercent(100, 80)).toBeNull();
+  });
+});
+
+describe('open now', () => {
+  const day = (weekday: number, open: string, close: string, closed = false): OpeningDay => ({ weekday, open, close, closed });
+  const SHOP: OpeningDay[] = [
+    day(0, '11:00', '22:00'),
+    day(1, '12:00', '22:00'),
+    day(2, '12:00', '22:00'),
+    day(3, '12:00', '22:00'),
+    day(4, '12:00', '22:00'),
+    day(5, '12:00', '22:00'),
+    day(6, '11:00', '22:00'),
+  ];
+  // India time is UTC + 5:30. 2026-11-16 is a Monday.
+  const ist = (iso: string): number => Date.parse(`${iso}+05:30`);
+
+  it('reads the weekday and the minutes in India, not the viewer\'s zone', () => {
+    expect(istParts(ist('2026-11-16T12:30:00'))).toEqual({ weekday: 1, minutes: 12 * 60 + 30 });
+    expect(istParts(ist('2026-11-21T23:59:00'))).toEqual({ weekday: 6, minutes: 23 * 60 + 59 });
+    // 20:00 UTC on Monday is already 01:30 on Tuesday in India
+    expect(istParts(Date.parse('2026-11-16T20:00:00Z'))).toEqual({ weekday: 2, minutes: 90 });
+  });
+
+  it('is open between opening and closing, and says when it closes', () => {
+    const s = openStatus(SHOP, ist('2026-11-16T15:00:00'))!;
+    expect(s.open).toBe(true);
+    expect(s.text).toBe('Open now · closes 10:00 pm');
+    expect(s.today).toBe(1);
+  });
+
+  it('opens at the opening minute and closes at the closing minute', () => {
+    expect(openStatus(SHOP, ist('2026-11-16T12:00:00'))!.open).toBe(true);
+    expect(openStatus(SHOP, ist('2026-11-16T11:59:00'))!.open).toBe(false);
+    expect(openStatus(SHOP, ist('2026-11-16T21:59:00'))!.open).toBe(true);
+    expect(openStatus(SHOP, ist('2026-11-16T22:00:00'))!.open).toBe(false);
+  });
+
+  it('before opening it says when it opens today', () => {
+    expect(openStatus(SHOP, ist('2026-11-16T09:00:00'))!.text).toBe('Opens today at 12:00 pm');
+  });
+
+  it('after closing it says it opens tomorrow, with tomorrow\'s hours', () => {
+    expect(openStatus(SHOP, ist('2026-11-16T22:30:00'))!.text).toBe('Opens tomorrow at 12:00 pm');
+    // Friday night -> Saturday opens at 11:00 am
+    expect(openStatus(SHOP, ist('2026-11-20T23:00:00'))!.text).toBe('Opens tomorrow at 11:00 am');
+  });
+
+  it('skips a closed day and names the day it opens', () => {
+    const shut = SHOP.map((d) => (d.weekday === 2 ? { ...d, closed: true } : d)); // Tuesday closed
+    expect(openStatus(shut, ist('2026-11-16T22:30:00'))!.text).toBe('Opens Wed at 12:00 pm');
+    // on the closed Tuesday itself, Wednesday is tomorrow
+    expect(openStatus(shut, ist('2026-11-17T15:00:00'))!.text).toBe('Opens tomorrow at 12:00 pm');
+  });
+
+  it('weekend hours differ from weekdays', () => {
+    expect(openStatus(SHOP, ist('2026-11-21T11:30:00'))!.open).toBe(true); // Saturday 11:30 is open
+    expect(openStatus(SHOP, ist('2026-11-16T11:30:00'))!.open).toBe(false); // Monday 11:30 is not
+  });
+
+  it('says Closed when every day is closed, and nothing without hours', () => {
+    expect(openStatus(SHOP.map((d) => ({ ...d, closed: true })), ist('2026-11-16T15:00:00'))!.text).toBe('Closed');
+    expect(openStatus([], 0)).toBeNull();
+    expect(openStatus(null, 0)).toBeNull();
   });
 });

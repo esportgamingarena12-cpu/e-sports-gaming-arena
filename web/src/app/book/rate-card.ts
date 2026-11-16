@@ -91,22 +91,88 @@ export function timeLabel(hhmm: string): string {
   return `${h12}:${String(m ?? 0).padStart(2, '0')} ${suffix}`;
 }
 
-/** Opening hours grouped by identical days: [{ days: "Mon – Fri", time: "12:00 pm – 10:00 pm" }, ...] */
-export function hoursSummary(days: OpeningDay[] | null | undefined): { days: string; time: string }[] {
+export interface HoursGroup {
+  /** "Mon – Fri" */
+  days: string;
+  /** "12:00 pm – 10:00 pm", or "Closed" */
+  time: string;
+  /** the weekdays in this group (0 = Sunday), so today's group can be highlighted */
+  weekdays: number[];
+}
+
+/** Opening hours grouped by identical days: [{ days: "Mon – Fri", time: "12:00 pm – 10:00 pm", weekdays: [1,2,3,4,5] }, ...] */
+export function hoursSummary(days: OpeningDay[] | null | undefined): HoursGroup[] {
   const byDay = new Map((days ?? []).map((d) => [d.weekday, d]));
-  const groups: { first: number; last: number; time: string }[] = [];
+  const groups: { first: number; last: number; time: string; weekdays: number[] }[] = [];
   for (const wd of WEEK_ORDER) {
     const d = byDay.get(wd);
     if (!d) continue;
     const time = d.closed ? 'Closed' : `${timeLabel(d.open)} – ${timeLabel(d.close)}`;
     const prev = groups[groups.length - 1];
-    if (prev && prev.time === time) prev.last = wd;
-    else groups.push({ first: wd, last: wd, time });
+    if (prev && prev.time === time) {
+      prev.last = wd;
+      prev.weekdays.push(wd);
+    } else groups.push({ first: wd, last: wd, time, weekdays: [wd] });
   }
   return groups.map((g) => ({
     days: g.first === g.last ? DAY_NAMES[g.first] : `${DAY_NAMES[g.first]} – ${DAY_NAMES[g.last]}`,
     time: g.time,
+    weekdays: g.weekdays,
   }));
+}
+
+/** The weekday (0 = Sunday) and minutes since midnight in India at a moment. */
+export function istParts(nowMs: number): { weekday: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(nowMs));
+  const get = (t: string): string => parts.find((p) => p.type === t)?.value ?? '';
+  return {
+    weekday: DAY_NAMES.indexOf(get('weekday')),
+    minutes: Number(get('hour')) * 60 + Number(get('minute')),
+  };
+}
+
+export interface OpenStatus {
+  open: boolean;
+  /** "Open now · closes 10:00 pm", "Opens today at 12:00 pm", "Opens tomorrow at 11:00 am", "Opens Sat at 11:00 am" */
+  text: string;
+  /** today's weekday in India (0 = Sunday) */
+  today: number;
+}
+
+const toMinutes = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map((x) => Number(x));
+  return h * 60 + (m ?? 0);
+};
+
+/** Is the shop open at this moment (India time), and when does it open or close next? Null without hours. */
+export function openStatus(days: OpeningDay[] | null | undefined, nowMs: number): OpenStatus | null {
+  const byDay = new Map((days ?? []).map((d) => [d.weekday, d]));
+  if (byDay.size === 0) return null;
+  const { weekday, minutes } = istParts(nowMs);
+  const today = byDay.get(weekday);
+  if (today && !today.closed) {
+    if (minutes >= toMinutes(today.open) && minutes < toMinutes(today.close)) {
+      return { open: true, text: `Open now · closes ${timeLabel(today.close)}`, today: weekday };
+    }
+    if (minutes < toMinutes(today.open)) {
+      return { open: false, text: `Opens today at ${timeLabel(today.open)}`, today: weekday };
+    }
+  }
+  for (let i = 1; i <= 7; i++) {
+    const wd = (weekday + i) % 7;
+    const d = byDay.get(wd);
+    if (d && !d.closed) {
+      const when = i === 1 ? 'tomorrow' : DAY_NAMES[wd];
+      return { open: false, text: `Opens ${when} at ${timeLabel(d.open)}`, today: weekday };
+    }
+  }
+  return { open: false, text: 'Closed', today: weekday };
 }
 
 /** Whole-number percentage saved against the "was" price, or null when there is no discount. */

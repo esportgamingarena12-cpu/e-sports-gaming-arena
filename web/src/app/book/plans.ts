@@ -50,23 +50,13 @@ export function passPlan(p: PublicPass): Plan {
   };
 }
 
-/** The hourly rate of each game, then the passes, cheapest first. Nothing is invented: no data, no card. */
+/**
+ * The passes that are for sale, cheapest first. The hourly and package prices are not repeated here: they are
+ * in the rate card. Nothing is invented: no passes, no cards.
+ */
 export function buildPlans(info: BookingInfo | null): Plan[] {
   if (!info) return [];
-  const rates: Plan[] = (info.rates ?? []).map((r) => ({
-    key: `rate:${r.type}`,
-    title: `${typeLabel(r.type)} by the hour`,
-    icon: r.type === 'pc' ? 'monitor' : 'gamepad',
-    price: num(r.rate_per_hour),
-    per: 'hour',
-    lines: [`Play on any ${typeLabel(r.type)} station`, 'Billed by the minute, rounded up to a fair block', 'Pay at the counter'],
-    popular: false,
-    was: null,
-    save: null,
-    type: r.type,
-  }));
-  const passes = (info.passes ?? []).map(passPlan);
-  return [...rates, ...passes];
+  return (info.passes ?? []).map(passPlan);
 }
 
 /** Small facts for the login banner: each game type with its lowest hourly rate, e.g. "PC from ₹60/h". */

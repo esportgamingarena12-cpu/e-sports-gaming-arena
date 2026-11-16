@@ -51,7 +51,7 @@ test('visitors get the section links, Login and Book a Slot', async ({ page }) =
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/book');
   const nav = page.getByRole('navigation', { name: 'Main' });
-  for (const l of ['Home', 'The Studio', 'Plans', 'Book']) await expect(nav.getByRole('link', { name: l, exact: true })).toBeVisible();
+  for (const l of ['Home', 'The Studio', 'Rates', 'Book']) await expect(nav.getByRole('link', { name: l, exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Login', exact: true })).toBeVisible();
   await expect(page.locator('[data-top-book]')).toBeVisible();
   await expect(page.locator('[data-hero-book]')).toBeVisible();

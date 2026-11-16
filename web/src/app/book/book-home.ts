@@ -8,7 +8,9 @@ import { Icon } from '../shared/icon';
 import { BookingInfo, BookingService, FreeSlot } from './booking.service';
 import { lengthLabel, typeLabel } from './portal';
 import { buildPlans } from './plans';
-import { buildRateCard, hoursSummary, minutesLabel } from './rate-card';
+import { FoodPic } from '../shared/food-image';
+import { ServerClock } from '../core/server-clock';
+import { buildRateCard, HoursGroup, hoursSummary, minutesLabel, openStatus } from './rate-card';
 
 const addDays = (day: string, n: number): string =>
   new Date(Date.parse(`${day}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -16,7 +18,7 @@ const addDays = (day: string, n: number): string =>
 /** Public booking page: anyone can see free times; signing in is asked only when they pick one. */
 @Component({
   selector: 'app-book-home',
-  imports: [Icon, HeroArt, RoomArt, ControllerArt, RouterLink],
+  imports: [Icon, HeroArt, RoomArt, ControllerArt, RouterLink, FoodPic],
   template: `
     <!-- Hero -->
     <section class="relative px-4 pb-10 pt-8 sm:pt-12">
@@ -39,7 +41,7 @@ const addDays = (day: string, n: number): string =>
           </p>
           <div class="mt-6 flex flex-wrap gap-3">
             <a href="#book" class="btn-primary inline-flex items-center gap-2" data-hero-book>Book a Gaming Slot <app-icon name="play" [size]="16" /></a>
-            <a href="#plans" class="btn-outline inline-flex items-center" data-view-plans>View Plans</a>
+            <a href="#rates" class="btn-outline inline-flex items-center" data-view-rates>View Rates</a>
           </div>
         </div>
         <div class="mx-auto w-full max-w-md animate-float md:max-w-none"><app-hero-art /></div>
@@ -74,84 +76,160 @@ const addDays = (day: string, n: number): string =>
       </div>
     </section>
 
-    <!-- Games available, rate card and opening hours (real data from the shop settings) -->
+    <!-- Rates, timings and games (real data from the shop settings) -->
     @if (info(); as i) {
-      @if (i.types.length > 0 || rateCard()) {
-        <section id="rates" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-8" data-rates-section>
-          <div class="grid gap-4 lg:grid-cols-[1fr_1.5fr]">
-            <div class="space-y-4">
-              <div class="rounded-2xl border border-violet-500/40 bg-linear-to-br from-violet-700/30 via-slate-900 to-slate-900 p-5 shadow-[0_0_40px_-14px_rgb(168_85_247_/_0.9)]" data-games>
-                <p class="eyebrow">Games Available</p>
-                <h2 class="mt-1 font-display text-2xl font-bold sm:text-3xl">Games available in <span class="glow-text">{{ gamesText() }}</span></h2>
-                <div class="mt-4 grid grid-cols-2 gap-3">
-                  @for (t of i.types; track t) {
-                    <button type="button" class="flex flex-col items-center gap-2 rounded-xl border border-cyan-400/40 bg-slate-950/60 p-4 text-center transition hover:border-cyan-300 hover:shadow-[0_0_24px_-6px_rgb(34_211_238_/_0.8)]"
-                            (click)="chooseType(t)" [attr.data-game]="label(t)">
-                      <span class="text-cyan-300"><app-icon [name]="t === 'pc' ? 'monitor' : 'gamepad'" [size]="36" /></span>
-                      <span class="font-display text-xl font-bold">{{ label(t) }}</span>
-                      <span class="text-xs text-slate-400">{{ t === 'pc' ? 'Per PC seat' : 'Up to 4 players' }}</span>
-                    </button>
-                  }
+      @if (rateCard() || hours().length || i.types.length > 0) {
+        <section id="rates" class="relative mx-auto max-w-7xl scroll-mt-20 px-4 py-10" data-rates-section>
+          <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-radial from-violet-700/25 to-transparent" aria-hidden="true"></div>
+          <div class="text-center">
+            <p class="eyebrow">Rates &amp; timings</p>
+            <h2 class="mt-1 font-display text-4xl font-bold sm:text-5xl">Simple, <span class="glow-text">fixed prices</span></h2>
+            <p class="mx-auto mt-2 max-w-xl text-sm text-slate-300">Pick a game, pick your time. What you see here is what you pay, at the counter.</p>
+          </div>
+
+          <div class="mt-8 grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+            @if (rateCard(); as rc) {
+              <div class="relative overflow-hidden rounded-3xl border border-violet-400/40 bg-slate-900/70 shadow-[0_0_60px_-18px_rgb(168_85_247_/_0.9)] backdrop-blur" data-rate-card>
+                <div class="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full bg-fuchsia-600/20 blur-3xl" aria-hidden="true"></div>
+                <div class="relative flex items-center justify-between gap-3 border-b border-violet-500/30 bg-linear-to-r from-violet-700/50 via-fuchsia-700/20 to-transparent px-5 py-4">
+                  <div>
+                    <p class="eyebrow">Rate card</p>
+                    <h3 class="font-display text-2xl font-bold sm:text-3xl">Pay by the pack</h3>
+                  </div>
+                  <span class="hidden size-12 place-items-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_0_24px_-4px_rgb(217_70_239_/_0.8)] sm:grid"><app-icon name="rupee" [size]="26" /></span>
+                </div>
+
+                <div class="relative px-3 pb-2 pt-3 sm:px-5">
+                  <div class="grid items-center gap-2 px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 sm:text-xs" [style.grid-template-columns]="cols(rc.minutes.length)">
+                    <span>Game</span>
+                    @for (m of rc.minutes; track m) { <span class="text-center">{{ minutesText(m) }}</span> }
+                  </div>
+                  <ul class="space-y-2">
+                    @for (r of rc.rows; track r.label) {
+                      <li class="grid items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-950/50 px-3 py-3 transition hover:border-cyan-400/60 hover:bg-slate-950/80 hover:shadow-[0_0_28px_-10px_rgb(34_211_238_/_0.9)]"
+                          [style.grid-template-columns]="cols(rc.minutes.length)" data-rate-row [attr.data-row]="r.label">
+                        <span class="flex min-w-0 items-center gap-2 font-display text-base font-bold sm:text-lg">
+                          <span class="hidden size-8 shrink-0 place-items-center rounded-lg bg-violet-500/20 text-violet-200 sm:grid"><app-icon [name]="r.station_type === 'pc' ? 'monitor' : 'gamepad'" [size]="18" /></span>
+                          <span class="min-w-0 leading-tight">{{ r.label }}</span>
+                        </span>
+                        @for (m of rc.minutes; track m) {
+                          @if (r.prices[m] !== undefined) {
+                            <span class="mx-auto rounded-xl bg-linear-to-b from-cyan-400/20 to-cyan-400/5 px-2.5 py-1.5 font-display text-lg font-bold text-cyan-100 ring-1 ring-cyan-300/40 sm:px-3 sm:text-xl" [attr.data-price]="m">₹{{ r.prices[m] }}</span>
+                          } @else {
+                            <span class="text-center text-slate-600">–</span>
+                          }
+                        }
+                      </li>
+                    }
+                  </ul>
+                </div>
+
+                <div class="relative flex flex-wrap items-center justify-between gap-3 px-5 pb-5 pt-2">
+                  <p class="text-xs text-slate-400">Time beyond your pack is billed by the minute in fair blocks.</p>
+                  <a href="#book" class="btn-primary inline-flex items-center gap-2" data-rates-book>Book a slot <app-icon name="arrow" [size]="16" /></a>
                 </div>
               </div>
+            }
+
+            <div class="space-y-5">
               @if (hours().length) {
-                <div class="card !p-5" data-hours>
-                  <p class="eyebrow">Opening hours</p>
-                  <ul class="mt-2 space-y-1.5">
+                <div class="relative overflow-hidden rounded-3xl border border-cyan-400/40 bg-slate-900/70 p-5 shadow-[0_0_50px_-18px_rgb(34_211_238_/_0.8)] backdrop-blur" data-hours>
+                  <div class="pointer-events-none absolute -left-16 -top-16 size-48 rounded-full bg-cyan-400/10 blur-3xl" aria-hidden="true"></div>
+                  <div class="relative flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p class="eyebrow">Timings</p>
+                      <h3 class="font-display text-2xl font-bold">When we are open</h3>
+                    </div>
+                    @if (status(); as st) {
+                      <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ring-1"
+                            [class]="st.open ? 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/50' : 'bg-fuchsia-500/15 text-fuchsia-200 ring-fuchsia-400/50'" data-open-status [attr.data-open]="st.open">
+                        <span class="relative flex size-2">
+                          <span class="absolute inline-flex size-full animate-ping rounded-full opacity-75" [class]="st.open ? 'bg-emerald-400' : 'bg-fuchsia-400'"></span>
+                          <span class="relative inline-flex size-2 rounded-full" [class]="st.open ? 'bg-emerald-400' : 'bg-fuchsia-400'"></span>
+                        </span>
+                        {{ st.text }}
+                      </span>
+                    }
+                  </div>
+                  <ul class="relative mt-4 space-y-2">
                     @for (h of hours(); track h.days) {
-                      <li class="flex items-center justify-between gap-3 text-sm">
-                        <span class="flex items-center gap-2 text-slate-300"><span class="text-violet-300"><app-icon name="clock" [size]="16" /></span>{{ h.days }}</span>
-                        <span class="font-semibold text-slate-100" data-hours-row>{{ h.time }}</span>
+                      <li class="flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+                          [class]="isToday(h) ? 'border-cyan-300/70 bg-linear-to-r from-cyan-400/15 to-violet-500/10 shadow-[0_0_28px_-10px_rgb(34_211_238_/_0.9)]' : 'border-slate-700/60 bg-slate-950/50'"
+                          [attr.data-hours-group]="h.days" [attr.data-today]="isToday(h)">
+                        <span class="flex items-center gap-2 font-medium">
+                          <span class="text-violet-300"><app-icon name="clock" [size]="18" /></span>{{ h.days }}
+                          @if (isToday(h)) { <span class="badge bg-cyan-400/20 text-cyan-200">Today</span> }
+                        </span>
+                        <span class="font-display text-lg font-bold text-slate-50" data-hours-row>{{ h.time }}</span>
                       </li>
                     }
                   </ul>
                 </div>
               }
-            </div>
 
-            @if (rateCard(); as rc) {
-              <div class="card overflow-hidden !p-0" data-rate-card>
-                <div class="border-b border-violet-500/30 bg-linear-to-r from-violet-700/40 to-transparent px-4 py-3">
-                  <p class="eyebrow">Rate card</p>
-                  <h2 class="font-display text-2xl font-bold">Simple, fixed prices</h2>
+              @if (i.types.length > 0) {
+                <div class="rounded-3xl border border-violet-500/40 bg-linear-to-br from-violet-700/30 via-slate-900 to-slate-900 p-5 shadow-[0_0_40px_-14px_rgb(168_85_247_/_0.9)]" data-games>
+                  <p class="eyebrow">Games available</p>
+                  <h3 class="mt-1 font-display text-2xl font-bold">Games available in <span class="glow-text">{{ gamesText() }}</span></h3>
+                  <div class="mt-4 grid grid-cols-2 gap-3">
+                    @for (t of i.types; track t) {
+                      <button type="button" class="flex flex-col items-center gap-1.5 rounded-2xl border border-cyan-400/40 bg-slate-950/60 p-4 text-center transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-[0_0_26px_-6px_rgb(34_211_238_/_0.9)]"
+                              (click)="chooseType(t)" [attr.data-game]="label(t)">
+                        <span class="text-cyan-300"><app-icon [name]="t === 'pc' ? 'monitor' : 'gamepad'" [size]="34" /></span>
+                        <span class="font-display text-xl font-bold">{{ label(t) }}</span>
+                        <span class="text-xs text-slate-400">{{ t === 'pc' ? 'Per PC seat' : 'Up to 4 players' }}</span>
+                      </button>
+                    }
+                  </div>
                 </div>
-                <div class="overflow-x-auto">
-                  <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-400">
-                      <tr>
-                        <th class="px-4 py-2 font-semibold">Game</th>
-                        @for (m of rc.minutes; track m) { <th class="px-4 py-2 text-right font-semibold">{{ minutesText(m) }}</th> }
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800">
-                      @for (r of rc.rows; track r.label) {
-                        <tr class="hover:bg-violet-500/5" data-rate-row [attr.data-row]="r.label">
-                          <td class="px-4 py-3 font-medium text-slate-100">{{ r.label }}</td>
-                          @for (m of rc.minutes; track m) {
-                            <td class="px-4 py-3 text-right">
-                              @if (r.prices[m] !== undefined) {
-                                <span class="inline-block rounded-lg border border-cyan-400/40 bg-slate-950/70 px-3 py-1 font-display text-lg font-bold text-cyan-100" [attr.data-price]="m">₹{{ r.prices[m] }}</span>
-                              } @else { <span class="text-slate-600">–</span> }
-                            </td>
-                          }
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-                <p class="px-4 py-3 text-xs text-slate-400">Time beyond your pack is billed by the minute in fair blocks. Pay at the counter.</p>
-              </div>
-            }
+              }
+            </div>
           </div>
         </section>
       }
     }
 
-    <!-- Plans (the real hourly rates and the passes that are for sale) -->
+    <!-- Canteen: a few highlighted items, not the whole menu -->
+    @if (canteen(); as c) {
+      <section id="canteen" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-8" data-canteen>
+        <div class="relative overflow-hidden rounded-3xl border border-fuchsia-400/40 bg-linear-to-br from-fuchsia-700/25 via-slate-900 to-slate-900 p-5 shadow-[0_0_60px_-18px_rgb(217_70_239_/_0.9)] sm:p-8">
+          <div class="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-violet-600/20 blur-3xl" aria-hidden="true"></div>
+          <div class="relative grid gap-6 lg:grid-cols-[1fr_1.6fr] lg:items-center">
+            <div>
+              <span class="grid size-12 place-items-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_0_24px_-4px_rgb(217_70_239_/_0.8)]"><app-icon name="cup" [size]="26" /></span>
+              <p class="eyebrow mt-3">Canteen</p>
+              <h2 class="mt-1 font-display text-3xl font-bold sm:text-4xl">Snacks &amp; food, <span class="glow-text">right where you play</span></h2>
+              <p class="mt-3 text-sm text-slate-300">Hungry mid-game? Add food and drinks to your gaming bill and pay once at the counter.</p>
+              <ul class="mt-4 flex flex-wrap gap-2" data-canteen-categories>
+                @for (cat of c.categories; track cat) {
+                  <li class="rounded-full border border-fuchsia-300/40 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-fuchsia-100">{{ cat }}</li>
+                }
+              </ul>
+            </div>
+            <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3" data-canteen-items>
+              @for (it of c.items; track it.name) {
+                <li class="overflow-hidden rounded-2xl border border-violet-400/30 bg-slate-950/60 transition hover:-translate-y-1 hover:border-fuchsia-300/70 hover:shadow-[0_0_30px_-8px_rgb(217_70_239_/_0.9)]" [attr.data-canteen-item]="it.name">
+                  <app-food-pic class="aspect-[4/3] w-full" [path]="it.image_path" [name]="it.name" />
+                  <div class="flex items-center justify-between gap-2 p-3">
+                    <span class="min-w-0 truncate text-sm font-semibold">{{ it.name }}</span>
+                    <span class="shrink-0 rounded-full bg-linear-to-r from-violet-600 to-fuchsia-500 px-2.5 py-0.5 text-sm font-bold text-white">₹{{ it.price }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Passes (daily and monthly), only when the shop has some for sale -->
     @if (plans().length > 0) {
-      <section id="plans" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-8">
-        <h2 class="page-title text-center">Choose Your Plan</h2>
-        <p class="mt-1 text-center text-sm text-slate-400">Flexible gaming plans for every kind of player.</p>
+      <section id="passes" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-8" data-passes-section>
+        <div class="text-center">
+          <p class="eyebrow">Passes</p>
+          <h2 class="mt-1 font-display text-3xl font-bold sm:text-4xl">Play more, <span class="glow-text">pay less</span></h2>
+          <p class="mt-1 text-sm text-slate-400">Daily and monthly passes, bought at the counter and used when you start a session.</p>
+        </div>
         <div class="mt-6 flex flex-wrap justify-center gap-3" data-plans>
           @for (p of plans(); track p.key) {
             <div class="card relative flex w-full flex-col gap-3 p-4 sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]" [class]="p.popular ? '!border-fuchsia-400/70 shadow-[0_0_34px_-10px_rgb(217_70_239_/_0.7)]' : ''" [attr.data-plan]="p.title">
@@ -269,6 +347,7 @@ export class BookHome implements OnInit {
   private readonly svc = inject(BookingService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly clock = inject(ServerClock);
 
   protected readonly today = todayIst();
   protected readonly info = signal<BookingInfo | null>(null);
@@ -314,6 +393,20 @@ export class BookHome implements OnInit {
     return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
   });
   protected minutesText = minutesLabel;
+  /** "Open now · closes 10:00 pm" / "Opens tomorrow at 12:00 pm", in India time, updated every second with the shared clock. */
+  protected readonly status = computed(() => openStatus(this.info()?.hours, this.clock.now()));
+  protected isToday(h: HoursGroup): boolean {
+    return h.weekdays.includes(this.status()?.today ?? -1);
+  }
+  /** The canteen highlight (categories and up to 6 featured items), or nothing when the shop has none to show. */
+  protected readonly canteen = computed(() => {
+    const c = this.info()?.canteen;
+    return c && c.items.length > 0 ? c : null;
+  });
+  /** Grid columns for the rate card: the game, then one column per package length. */
+  protected cols(n: number): string {
+    return `minmax(0,1.35fr) repeat(${n}, minmax(0,1fr))`;
+  }
 
   protected chooseType(t: string | null): void {
     if (!t) {
@@ -331,10 +424,21 @@ export class BookHome implements OnInit {
     return lengthLabel(n, this.info()?.slot_minutes ?? 30);
   }
 
+  /**
+   * A link such as /book#rates (or a click on "Rates" before the data has arrived) cannot jump to a section that is
+   * not on the page yet. Once the data is in, scroll to the requested section.
+   */
+  private scrollToFragment(): void {
+    const fragment = this.route.snapshot.fragment;
+    if (!fragment) return;
+    setTimeout(() => document.getElementById(fragment)?.scrollIntoView({ block: 'start' }), 60);
+  }
+
   async ngOnInit(): Promise<void> {
     try {
       const i = await this.svc.info();
       this.info.set(i);
+      this.scrollToFragment();
       const q = this.route.snapshot.queryParamMap;
       const t = q.get('type');
       this.type.set(t && i.types.includes(t) ? t : (i.types[0] ?? ''));

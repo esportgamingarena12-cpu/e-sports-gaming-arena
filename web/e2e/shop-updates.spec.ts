@@ -21,8 +21,8 @@ test.describe('public home page', () => {
 
     const card = page.locator('[data-rate-card]');
     await expect(card).toBeVisible();
-    await expect(card.locator('thead')).toContainText('30 Minutes');
-    await expect(card.locator('thead')).toContainText('1 Hour');
+    await expect(card).toContainText('30 Minutes');
+    await expect(card).toContainText('1 Hour');
     await expect(card.locator('[data-rate-row]').first()).toContainText('₹');
     expect(await card.locator('[data-rate-row]').count()).toBeGreaterThanOrEqual(2);
 
@@ -31,6 +31,39 @@ test.describe('public home page', () => {
     await expect(hours).toContainText('12:00 pm – 10:00 pm');
     await expect(hours).toContainText('Sat – Sun');
     await expect(hours).toContainText('11:00 am – 10:00 pm');
+  });
+
+  test('timings say whether the shop is open now and highlight today', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/book');
+    const status = page.locator('[data-open-status]');
+    await expect(status).toBeVisible();
+    await expect(status).toHaveText(/Open now · closes 10:00 pm|Opens (today|tomorrow|[A-Z][a-z]{2}) at \d{1,2}:\d{2} (am|pm)/);
+    await expect(page.locator('[data-today="true"]')).toHaveCount(1);
+    await expect(page.locator('[data-today="true"]')).toContainText('Today');
+  });
+
+  test('the hourly prices are in the rate card only, not repeated as plan cards', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/book');
+    await expect(page.locator('[data-plan*="by the hour"]')).toHaveCount(0);
+    // the old "Plans" link is now "Rates" and jumps to the rate card
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Rates', exact: true }).click();
+    await expect(page).toHaveURL(/#rates$/);
+    await expect(page.locator('#rates')).toBeInViewport({ timeout: 15_000 });
+  });
+
+  test('the canteen is highlighted with a few items, not the whole menu', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/book');
+    const canteen = page.locator('[data-canteen]');
+    await expect(canteen).toBeVisible();
+    await expect(canteen).toContainText('Canteen');
+    const items = canteen.locator('[data-canteen-item]');
+    expect(await items.count()).toBeGreaterThanOrEqual(1);
+    expect(await items.count()).toBeLessThanOrEqual(6);
+    await expect(items.first()).toContainText('₹');
+    expect(await canteen.locator('[data-canteen-categories] li').count()).toBeGreaterThanOrEqual(1);
   });
 
   test('a game tile jumps to booking with that game chosen', async ({ page }) => {
