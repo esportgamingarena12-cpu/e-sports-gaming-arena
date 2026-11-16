@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
+import { googleRedirectUrl, PendingGoogle, rememberPending, takePending } from './google-login';
 import { homeFor, Profile, Role } from './models';
 
 export interface CustomerRecord {
@@ -103,6 +104,35 @@ export class AuthService {
       throw new Error('This login is for staff. Customers sign in from the Book page.');
     }
     return p;
+  }
+
+  /**
+   * Customer login with a Google account. Sends the browser to Google; Google sends the customer back to
+   * /book/login signed in. `next` is the page they wanted, kept for when they return.
+   * If Google sign-in has not been switched on in Supabase yet, the server answers 400 instead of redirecting:
+   * then the customer gets a clear message instead of a blank error page.
+   */
+  async signInWithGoogle(next: string | null): Promise<void> {
+    this.notice.set(null);
+    const { data, error } = await this.sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: googleRedirectUrl(window.location.origin), skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } },
+    });
+    if (error || !data.url) throw new Error('Google sign-in could not start. Please try again, or use an email code instead.');
+    let off = false;
+    try {
+      off = (await fetch(data.url, { redirect: 'manual' })).status === 400;
+    } catch {
+      /* the check itself could not run (offline, blocked): carry on and let Google answer */
+    }
+    if (off) throw new Error('Google sign-in is not switched on yet. Please use an email code instead.');
+    rememberPending(sessionStorage, next, Date.now());
+    window.location.assign(data.url);
+  }
+
+  /** On the way back from Google: the note left before leaving (and clears it), or null if this is not a Google return. */
+  takeGoogleReturn(): PendingGoogle | null {
+    return takePending(sessionStorage, Date.now());
   }
 
   /** Customer login step 1: send a 6-digit code to the email. */
