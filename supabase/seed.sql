@@ -41,3 +41,25 @@ insert into products (name, category, price, stock_qty, low_stock_level) values
 
 insert into stock_moves (product_id, move_type, qty, note, user_id)
 select id, 'purchase', stock_qty, 'Opening stock', null from products;
+
+-- Games on the home page: the owner's own list (Admin > Games edits it). The first run of migration 0018 loads a starter
+-- list of well-known titles; this replaces it with the games actually played at the studio. GTA VI stays as coming soon.
+delete from games
+ where status = 'available'
+   and lower(btrim(title)) not in ('call of duty: modern warfare ii', 'call of duty: modern warfare iv', 'mortal kombat', 'wwe 2k26',
+       'marvel''s spider-man 2', 'fifa 27', 'god of war', 'pubg: battlegrounds', 'valorant', 'free fire', 'asphalt');
+insert into games (title, station_type, status, hot, is_new, sort_order, active) values
+  ('PUBG: Battlegrounds',             'pc',  'available', false, false, 1, true),
+  ('Call of Duty: Modern Warfare II', 'ps5', 'available', false, false, 2, true),
+  ('Valorant',                        'pc',  'available', false, false, 3, true),
+  ('Call of Duty: Modern Warfare IV', 'ps5', 'available', false, false, 4, true),
+  ('Free Fire',                       'pc',  'available', false, false, 5, true),
+  ('Mortal Kombat',                   'ps5', 'available', false, false, 6, true),
+  ('Asphalt',                         'pc',  'available', false, false, 7, true),
+  ('WWE 2K26',                        'ps5', 'available', false, false, 8, true),
+  ('Marvel''s Spider-Man 2',          'ps5', 'available', false, false, 9, true),
+  ('FIFA 27',                         'ps5', 'available', false, false, 10, true),
+  ('God of War',                      'ps5', 'available', false, false, 11, true)
+on conflict ((lower(btrim(title)))) do update
+  set station_type = excluded.station_type, status = 'available', hot = false, is_new = false,
+      sort_order = excluded.sort_order, active = true;

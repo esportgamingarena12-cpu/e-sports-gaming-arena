@@ -18,14 +18,14 @@ async function openGamesSlide(page: Page, width = 1280): Promise<void> {
 }
 
 test.describe('games on the home page', () => {
-  test('the games slide lists real games with Hot and New badges', async ({ page }) => {
+  test('the games slide lists the games as posters', async ({ page }) => {
     await openGamesSlide(page);
     const cards = page.locator('[data-game-card]');
     await expect.poll(() => cards.count()).toBeGreaterThanOrEqual(1);
     expect(await cards.count()).toBeLessThanOrEqual(8);
     await expect(page.locator('[data-slide-games] h2')).toContainText('Games available in');
-    // the starter list marks some games hot
-    expect(await page.locator('[data-badge-hot]').count()).toBeGreaterThanOrEqual(1);
+    // every card has a title and a platform line
+    await expect(cards.first().locator('p').first()).not.toBeEmpty();
   });
 
   test('the PC / PS5 filter narrows the list and All brings everything back', async ({ page }) => {
@@ -139,6 +139,16 @@ test.describe('admin games', () => {
     await expect(page.locator('[data-ticker]')).toContainText('E2E Soon Game · 1 Jan 2030');
     await page.locator('[data-dot-index="1"]').click();
     await expect(page.locator('[data-game-card="E2E Hot Game"] [data-badge-hot]')).toBeVisible();
+
+    // a poster can be added straight from the list, without opening the form
+    await page.goto('/admin/games');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const row = page.locator('[data-game="E2E Hot Game"]');
+    await expect(row.locator('[data-no-poster]')).toBeVisible();
+    await row.locator('[data-quick-file]').setInputFiles({ name: 'poster.png', mimeType: 'image/png', buffer: png });
+    await expect(row.locator('[data-poster-img]')).toBeVisible({ timeout: 15_000 });
+    await expect(row.locator('[data-no-poster]')).toHaveCount(0);
+    await expect(row.locator('[data-poster-button]')).toContainText('Change poster');
 
     // delete both again
     await page.goto('/admin/games');

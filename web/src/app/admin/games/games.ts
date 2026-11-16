@@ -150,8 +150,13 @@ interface Game {
                     <span>{{ whenText(g) }}</span>
                   }
                   @if (!g.active) { <span>· hidden</span> }
+                  @if (!g.image_path) { <span class="text-slate-500" data-no-poster>· no poster yet</span> }
                 </p>
               </div>
+              <label class="btn-outline hidden cursor-pointer items-center sm:inline-flex" [class.opacity-60]="posterBusy() === g.id" data-poster-button>
+                {{ posterBusy() === g.id ? 'Uploading…' : g.image_path ? 'Change poster' : 'Add poster' }}
+                <input type="file" class="sr-only" [accept]="accept" [disabled]="posterBusy() !== null" (change)="quickPoster(g, $event)" data-quick-file />
+              </label>
               <button type="button" class="btn" (click)="edit(g)" data-edit>Edit</button>
             </li>
           }
@@ -175,6 +180,8 @@ export class GamesAdmin implements OnInit, OnDestroy {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly confirmDelete = signal(false);
+  /** the game whose poster is being uploaded straight from the list */
+  protected readonly posterBusy = signal<number | null>(null);
 
   protected readonly currentPath = signal<string | null>(null);
   private pending: { blob: Blob; type: string } | null = null;
@@ -309,6 +316,43 @@ export class GamesAdmin implements OnInit, OnDestroy {
     this.pending = null;
     this.removeImage.set(true);
     this.photoError.set(null);
+  }
+
+  /** Add or change a poster straight from the list, without opening the form. */
+  protected async quickPoster(g: Game, event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!FOOD_IMAGE_TYPES.includes(file.type)) return this.toast.error(validateFoodImage(file) ?? 'Use a JPG, PNG or WebP poster');
+    this.posterBusy.set(g.id);
+    let blob: Blob = file;
+    try {
+      blob = await shrinkImage(file, 1000);
+    } catch {
+      blob = file;
+    }
+    const type = blob.type || file.type;
+    const problem = validateFoodImage({ type, size: blob.size });
+    if (problem) {
+      this.posterBusy.set(null);
+      return this.toast.error(problem);
+    }
+    const path = foodImagePath(g.title, extensionFor(type));
+    const up = await this.sb.storage.from(GAME_BUCKET).upload(path, blob, { contentType: type, upsert: false });
+    if (up.error) {
+      this.posterBusy.set(null);
+      return this.toast.error(`The poster could not be saved: ${friendlyError(up.error)}`);
+    }
+    const saved = await this.sb.from('games').update({ image_path: path }).eq('id', g.id).select('id');
+    this.posterBusy.set(null);
+    if (saved.error || !saved.data?.length) {
+      await this.deleteFile(path);
+      return this.toast.error(saved.error ? friendlyError(saved.error) : 'Not allowed');
+    }
+    if (g.image_path) await this.deleteFile(g.image_path);
+    this.toast.success(`Poster saved for ${g.title}`);
+    await this.load();
   }
 
   private async deleteFile(path: string | null): Promise<void> {

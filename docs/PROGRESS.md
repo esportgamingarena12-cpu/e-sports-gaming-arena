@@ -264,6 +264,11 @@
 2. Supabase still has its magic-link / email one-time-code endpoint switched on for the project (the Email provider's own setting); the app no longer uses it. To close it as well, switch off \"Allow users to sign in with a magic link or one-time password\" in Authentication > Sign In / Providers > Email.
 3. Forgotten password: there is still no reset flow (it would send an email that cannot be delivered until the Resend sending domain is verified). The sign-in tab says to sign in with Google instead. Add a reset flow once the domain is verified.
 
+## Phase 24: the owner's real games list and posters from the list
+1. The starter games (my guesses) were replaced by the owner's list, entered on 2026-11-16: PS5 Call of Duty: Modern Warfare II, Call of Duty: Modern Warfare IV, Mortal Kombat, WWE 2K26, Marvel's Spider-Man 2, FIFA 27, God of War; PC PUBG: Battlegrounds, Valorant, Free Fire, Asphalt. The order alternates PC and PS5 so both show among the first eight on the home page; none is marked Hot or New (the owner ticks those in Admin > Games). GTA VI stays as coming soon with no date. The same list is in `supabase/seed.sql`.
+2. Titles were typed exactly as written on the owner's list. \"Call of Duty: Modern Warfare IV\" and \"FIFA 27\" are not titles the author could verify; check the spelling and edit them in Admin > Games if needed.
+3. Posters: Admin > Games now has an **Add poster / Change poster** button on every game's row (a \"no poster yet\" hint shows where one is missing) as well as in the edit form. Choosing a file uploads it at once: it is made smaller in the browser, stored in the `game-images` bucket, attached to the game, and an old poster file is removed. On a phone use Edit > Add poster.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).
