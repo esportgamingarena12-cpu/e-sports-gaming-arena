@@ -53,13 +53,13 @@ export function oauthErrorFrom(url: { hash?: string; search?: string }): string 
   const description = parts.map((p) => p.get('error_description')).find(Boolean);
   if (!error && !code && !description) return null;
   if (error === 'access_denied' || /denied|cancel/i.test(description ?? '')) return 'Google sign-in was cancelled. You can try again.';
-  return 'Google sign-in did not work. Please try again, or use an email code instead.';
+  return 'Google sign-in did not work. Please try again, or sign in with your email and password.';
 }
 
 export type AfterLogin = { kind: 'url'; url: string } | { kind: 'profile'; next: string };
 
 /**
- * Where to go once a customer is signed in (by Google or by an email code):
+ * Where to go once a customer is signed in (with Google or with email and password):
  * staff and admins go to their own area; a customer who has not saved a name and phone yet is asked for them first
  * (and then continues to `next`); otherwise they go to `next`, or to their bookings.
  */

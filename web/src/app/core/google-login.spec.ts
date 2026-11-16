@@ -58,10 +58,10 @@ describe('errors on the way back', () => {
     expect(oauthErrorFrom({ hash: '#error=access_denied&error_code=otp_expired&error_description=Access+denied', search: '' })).toContain('cancelled');
     expect(oauthErrorFrom({ hash: '', search: '?error=access_denied' })).toContain('cancelled');
   });
-  it('any other error suggests trying again or the email code', () => {
+  it('any other error suggests trying again or the email and password', () => {
     const m = oauthErrorFrom({ hash: '', search: '?error=server_error&error_description=Unable+to+exchange+external+code' })!;
     expect(m).toContain('did not work');
-    expect(m).toContain('email code');
+    expect(m).toContain('email and password');
   });
 });
 

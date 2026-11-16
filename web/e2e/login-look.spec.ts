@@ -13,7 +13,7 @@ for (const path of ['/login', '/book/login']) {
       await page.setViewportSize({ width: s.w, height: s.h });
       await page.goto(path);
       await expect(page.locator('[data-stage]')).toBeVisible();
-      // the customer page leads with the Google button; its email form is behind "Use an email code instead"
+      // the customer page leads with the Google button, with email and password sign in under it
       if (path === '/book/login') await expect(page.locator('[data-google]')).toBeVisible();
       else await expect(page.locator('input').first()).toBeVisible();
       const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

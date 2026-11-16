@@ -164,14 +164,14 @@ export class AuthService {
       provider: 'google',
       options: { redirectTo: googleRedirectUrl(window.location.origin), skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } },
     });
-    if (error || !data.url) throw new Error('Google sign-in could not start. Please try again, or use an email code instead.');
+    if (error || !data.url) throw new Error('Google sign-in could not start. Please try again, or sign in with your email and password.');
     let off = false;
     try {
       off = (await fetch(data.url, { redirect: 'manual' })).status === 400;
     } catch {
       /* the check itself could not run (offline, blocked): carry on and let Google answer */
     }
-    if (off) throw new Error('Google sign-in is not switched on yet. Please use an email code instead.');
+    if (off) throw new Error('Google sign-in is not switched on yet. Please sign in with your email and password instead.');
     this.setRemember(true);
     rememberPending(sessionStorage, next, Date.now());
     window.location.assign(data.url);
@@ -180,24 +180,6 @@ export class AuthService {
   /** On the way back from Google: the note left before leaving (and clears it), or null if this is not a Google return. */
   takeGoogleReturn(): PendingGoogle | null {
     return takePending(sessionStorage, Date.now());
-  }
-
-  /** Customer login step 1: send a 6-digit code to the email. */
-  async requestOtp(email: string): Promise<void> {
-    this.notice.set(null);
-    const { error } = await this.sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-    if (error) throw new Error(error.message);
-  }
-
-  /** Customer login step 2: verify the code. */
-  async verifyOtp(email: string, token: string): Promise<Profile> {
-    const { data, error } = await this.sb.auth.verifyOtp({ email, token, type: 'email' });
-    if (error) throw new Error('That code is wrong or has expired');
-    this.setRemember(true);
-    await this.apply(data.session);
-    const p = this.profile();
-    if (!p) throw new Error(this.notice() ?? ACCOUNT_DISABLED);
-    return p;
   }
 
   async signOut(): Promise<void> {

@@ -29,7 +29,7 @@ async function fillSignUp(page: Page, over: { name?: string; email?: string; pas
 }
 
 test.describe('create account and sign in with a password', () => {
-  test('Google first, then Sign in and Create account tabs, with the email code as a small backup', async ({ page }) => {
+  test('Google first, then Sign in and Create account tabs, and nothing else', async ({ page }) => {
     await open(page);
     await expect(page.locator('[data-signin-form]')).toBeVisible();
     await expect(page.locator('[data-tab-signin]')).toHaveAttribute('aria-selected', 'true');
@@ -37,10 +37,9 @@ test.describe('create account and sign in with a password', () => {
     await expect(page.locator('[data-tab-signup]')).toHaveAttribute('aria-selected', 'true');
     for (const k of ['su-name', 'su-email', 'su-password', 'su-confirm']) await expect(page.locator(`[data-${k}]`)).toBeVisible();
     await expect(page.locator('[data-google]')).toBeVisible();
-    await page.locator('[data-use-code]').click();
-    await expect(page.getByRole('button', { name: 'Email me a code' })).toBeVisible();
-    await page.locator('[data-use-google]').click();
-    await expect(page.locator('[data-google]')).toBeVisible();
+    await expect(page.locator('[data-use-code]')).toHaveCount(0); // no emailed-code option any more
+    await page.locator('[data-tab-signin]').click();
+    await expect(page.locator('[data-signin-form]')).toBeVisible();
   });
 
   test('"Remember me" is ticked by default on both forms', async ({ page }) => {

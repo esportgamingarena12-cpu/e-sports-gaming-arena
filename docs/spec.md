@@ -238,7 +238,7 @@ Staff run the counter from five screens: Stations, Bookings, Canteen, Bills, Sto
 
 **Book a slot in advance**
 
-1. Open the E Gaming Era booking site or installed app → **Login** (email code, D1).
+1. Open the E Gaming Era booking site or installed app → **Login** (Google, or email and password; D1 changed by the owner in Phase 23).
 2. Choose station type (PC, PS5, ...), date, start time and duration.
 3. Free slots are shown; booked slots are greyed out.
 4. Confirm → booking is **Confirmed**.
@@ -410,7 +410,7 @@ Build the system in 11 phases, one Claude Code session per phase, verifying each
 
 | # | Decision | v1 choice | Later option |
 | --- | --- | --- | --- |
-| D1 | Customer login | Email OTP (Supabase email code, free) | Mobile OTP via SMS provider |
+| D1 | Customer login | ~~Email OTP (Supabase email code, free)~~ **Changed by the owner (Phase 23): Google sign-in, plus sign up and sign in with email and password. The emailed code was removed.** | Mobile OTP via SMS provider |
 | D2 | Staff/Admin login | Email + password; Admin creates staff accounts | – |
 | D3 | Advance payment | None; customer pays at counter | UPI advance via Razorpay |
 | D4 | Refunds | Not applicable in v1 (no advance) | With D3 |

@@ -2,7 +2,7 @@ import { expect, Page, test } from '@playwright/test';
 
 /**
  * Google sign-in on the customer login page. A real Google sign-in cannot be automated, so these tests check
- * everything up to the hand-off and the way back: the button, the backup email code, what happens when Google is
+ * everything up to the hand-off and the way back: the button, what happens when Google is
  * not switched on, what is sent to Supabase, where the customer is returned to, and a cancelled sign-in.
  * Authorize calls are answered by the test, so no real Google or Supabase account is involved.
  */
@@ -15,19 +15,14 @@ async function open(page: Page, width = 1280, path = '/book/login'): Promise<voi
 }
 
 test.describe('Google sign-in', () => {
-  test('Google is the main button and the email code is the backup', async ({ page }) => {
+  test('Google is the main button, with email and password sign in under it and no email-code option', async ({ page }) => {
     await open(page);
     await expect(page.locator('[data-google]')).toContainText('Continue with Google');
-    await expect(page.locator('[data-signin-form]')).toBeVisible(); // email and password sign in sits under Google
-    await expect(page.getByRole('button', { name: 'Email me a code' })).toHaveCount(0); // the code form is only on request
-
-    await page.locator('[data-use-code]').click();
-    await expect(page.getByPlaceholder('you@example.com')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Email me a code' })).toBeVisible();
-
-    await page.locator('[data-use-google]').click();
-    await expect(page.locator('[data-google]')).toBeVisible();
     await expect(page.locator('[data-signin-form]')).toBeVisible();
+    await expect(page.locator('[data-tab-signup]')).toBeVisible();
+    // the emailed code is gone
+    await expect(page.locator('[data-use-code]')).toHaveCount(0);
+    await expect(page.getByText(/email (me )?a code|email code/i)).toHaveCount(0);
   });
 
   test('when Google is not switched on, the customer gets a clear message and the code option', async ({ page }) => {
@@ -42,7 +37,7 @@ test.describe('Google sign-in', () => {
     await open(page);
     await page.locator('[data-google]').click();
     await expect(page.locator('[data-error]')).toContainText('not switched on yet');
-    await expect(page.locator('[data-error]')).toContainText('email code');
+    await expect(page.locator('[data-error]')).toContainText('email and password');
     await expect(page).toHaveURL(/\/book\/login$/);
     await expect(page.locator('[data-google]')).toBeEnabled(); // can try again
     expect(await page.evaluate(() => sessionStorage.getItem('google-login-pending'))).toBeNull();
@@ -74,10 +69,10 @@ test.describe('Google sign-in', () => {
     await expect(page.locator('[data-google]')).toBeEnabled();
   });
 
-  test('a failed return from Google suggests trying again or the email code', async ({ page }) => {
+  test('a failed return from Google suggests trying again or the email and password', async ({ page }) => {
     await open(page, 1280, '/book/login?error=server_error&error_description=Unable+to+exchange+external+code');
     await expect(page.locator('[data-error]')).toContainText('did not work');
-    await expect(page.locator('[data-error]')).toContainText('email code');
+    await expect(page.locator('[data-error]')).toContainText('email and password');
   });
 
   test('without a session, a note left by a Google sign-in explains that it did not finish, once', async ({ page }) => {
@@ -103,7 +98,7 @@ test.describe('Google sign-in', () => {
       await open(page, w);
       const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(over).toBeLessThanOrEqual(0);
-      await page.locator('[data-use-code]').click();
+      await page.locator('[data-tab-signup]').click();
       const over2 = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(over2).toBeLessThanOrEqual(0);
     });
