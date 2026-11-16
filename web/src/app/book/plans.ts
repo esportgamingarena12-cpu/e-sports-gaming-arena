@@ -1,5 +1,6 @@
 import { BookingInfo, PublicPass } from './booking.service';
 import { typeLabel } from './portal';
+import { savePercent } from './rate-card';
 
 export interface Plan {
   key: string;
@@ -9,6 +10,9 @@ export interface Plan {
   per: string;
   lines: string[];
   popular: boolean;
+  /** the usual price when discounted, and the whole-number percent saved */
+  was: number | null;
+  save: number | null;
   /** The game type to preselect when "Book Now" is pressed (null = keep the current choice). */
   type: string | null;
 }
@@ -36,9 +40,12 @@ export function passPlan(p: PublicPass): Plan {
       p.kind === 'unlimited' ? 'Unlimited play' : `${hoursText(p.minutes_total ?? 0)} of play`,
       `Valid for ${p.validity_days} day${p.validity_days === 1 ? '' : 's'}`,
       p.station_type ? `${typeLabel(p.station_type)} stations` : 'All PCs and consoles',
+      ...(p.validity_days === 1 ? ['Subject to seat availability'] : []),
       'Bought at the counter',
     ],
     popular: p.popular,
+    was: p.original_price ? num(p.original_price) : null,
+    save: savePercent(num(p.price), p.original_price ? num(p.original_price) : null),
     type: p.station_type,
   };
 }
@@ -54,6 +61,8 @@ export function buildPlans(info: BookingInfo | null): Plan[] {
     per: 'hour',
     lines: [`Play on any ${typeLabel(r.type)} station`, 'Billed by the minute, rounded up to a fair block', 'Pay at the counter'],
     popular: false,
+    was: null,
+    save: null,
     type: r.type,
   }));
   const passes = (info.passes ?? []).map(passPlan);

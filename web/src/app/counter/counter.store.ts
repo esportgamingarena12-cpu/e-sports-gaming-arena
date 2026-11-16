@@ -22,6 +22,9 @@ export interface OpenSession extends SessionSnapshot {
   package_name: string | null;
   pass_name: string | null;
   status: 'running' | 'paused' | 'ended';
+  /** hourly-session timer chosen at the start, and minutes added by Extend */
+  alarm_minutes?: number | null;
+  alarm_extra_minutes?: number | null;
 }
 
 export interface TabLine {
@@ -41,6 +44,7 @@ export interface Product {
   low_stock_level: number;
   track_stock: boolean;
   active: boolean;
+  image_path: string | null;
 }
 
 /** An active booking (confirmed or checked in) around now, for station cards and the walk-in warning. */
@@ -65,7 +69,7 @@ export interface Pack {
 
 const SESSION_COLUMNS =
   'id, station_id, customer_name, customer_phone, status, package_name, rate_per_hour, block_min, ' +
-  'min_bill_min, package_minutes, package_price, pass_id, pass_name, pass_minutes_left, started_at, paused_at, paused_seconds, ended_at';
+  'min_bill_min, package_minutes, package_price, pass_id, pass_name, pass_minutes_left, started_at, paused_at, paused_seconds, ended_at, alarm_minutes, alarm_extra_minutes';
 
 /**
  * Everything the counter screens need: stations, open sessions, tabs and packages.
@@ -149,7 +153,7 @@ export class CounterStore {
         .order('minutes'),
       this.sb
         .from('products')
-        .select('id, name, category, price, stock_qty, low_stock_level, track_stock, active')
+        .select('id, name, category, price, stock_qty, low_stock_level, track_stock, active, image_path')
         .order('category')
         .order('name'),
       this.sb

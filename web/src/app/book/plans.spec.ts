@@ -5,6 +5,7 @@ import { buildPlans, hoursText, loginChips, passPlan, perText } from './plans';
 const pass = (over: Partial<PublicPass> = {}): PublicPass => ({
   name: 'Weekly PC',
   price: 1499,
+  original_price: null,
   validity_days: 7,
   station_type: 'pc',
   kind: 'unlimited',
@@ -25,6 +26,8 @@ const info = (over: Partial<BookingInfo> = {}): BookingInfo => ({
     { type: 'pc', rate_per_hour: 60 },
     { type: 'ps5', rate_per_hour: 120 },
   ],
+  hours: [],
+  packages: [],
   passes: [],
   ...over,
 });
@@ -89,5 +92,30 @@ describe('login banner chips', () => {
   });
   it('falls back to the plain facts before the shop info has loaded', () => {
     expect(loginChips(null)).toEqual(['Easy booking', 'Pay at the counter']);
+  });
+});
+
+describe('daily pass and discounted plans', () => {
+  it('a one-day pass says it depends on free seats', () => {
+    expect(passPlan(pass({ name: 'Daily Pass', validity_days: 1 })).lines).toContain('Subject to seat availability');
+  });
+  it('a longer pass does not', () => {
+    expect(passPlan(pass({ validity_days: 30 })).lines).not.toContain('Subject to seat availability');
+  });
+  it('a discounted pass shows the usual price and the percent saved', () => {
+    const p = passPlan(pass({ name: 'Monthly', price: 1600, original_price: 2000, validity_days: 30 }));
+    expect(p.was).toBe(2000);
+    expect(p.save).toBe(20);
+    expect(p.price).toBe(1600);
+  });
+  it('a pass without a usual price shows no badge, and text prices still work', () => {
+    const p = passPlan(pass({ original_price: null }));
+    expect(p.was).toBeNull();
+    expect(p.save).toBeNull();
+    const q = passPlan(pass({ price: '1600.00' as unknown as number, original_price: '2000.00' as unknown as number }));
+    expect(q.save).toBe(20);
+  });
+  it('hourly rate cards never carry a discount badge', () => {
+    expect(buildPlans(info()).every((p) => p.was === null && p.save === null)).toBe(true);
   });
 });

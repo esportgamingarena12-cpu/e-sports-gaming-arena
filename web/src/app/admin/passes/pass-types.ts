@@ -10,6 +10,7 @@ export interface PassType {
   id: number;
   name: string;
   price: number;
+  original_price: number | null;
   validity_days: number;
   station_type: string | null;
   kind: 'unlimited' | 'hours';
@@ -45,6 +46,10 @@ export function bundleText(minutes: number): string {
             <input formControlName="name" class="field" data-name />
             <app-field-error [control]="form.controls.name" />
           </label>
+          <p class="rounded-lg border border-violet-500/30 bg-violet-500/5 p-2 text-xs text-slate-300" data-hint>
+            Daily pass: valid for <b>1</b> day (it is shown with "Subject to seat availability"). Monthly plan: valid for <b>30</b> days, with a usual price to show the discount.
+            Any number of customers can buy the same pass.
+          </p>
           <div class="grid grid-cols-2 gap-3">
             <label class="label">Price (₹)
               <input formControlName="price" type="number" inputmode="decimal" step="0.01" class="field" data-price />
@@ -55,6 +60,10 @@ export function bundleText(minutes: number): string {
               <app-field-error [control]="form.controls.validity_days" />
             </label>
           </div>
+          <label class="label">Usual price (₹), optional
+            <input formControlName="original_price" type="number" inputmode="decimal" step="0.01" class="field" placeholder="Leave empty for no discount" data-original-price />
+            <span class="mt-1 block text-xs text-slate-400">Shown crossed out with "Save n%" next to the price above.</span>
+          </label>
           <label class="label">Games
             <select formControlName="station_type" class="field" data-games>
               <option value="">All games</option>
@@ -94,7 +103,7 @@ export function bundleText(minutes: number): string {
             <div class="min-w-0 flex-1">
               <p class="truncate font-medium">{{ p.name }}</p>
               <p class="text-sm text-slate-400">
-                ₹{{ p.price }} · {{ p.validity_days }} day{{ p.validity_days === 1 ? '' : 's' }} ·
+                ₹{{ p.price }}@if (p.original_price) { <span class="line-through"> ₹{{ p.original_price }}</span> } · {{ p.validity_days }} day{{ p.validity_days === 1 ? '' : 's' }} ·
                 {{ p.station_type ? p.station_type.toUpperCase() : 'All games' }} ·
                 {{ p.kind === 'unlimited' ? 'unlimited play' : bundle(p.minutes_total) }}
                 @if (p.popular) { · most popular }
@@ -124,6 +133,7 @@ export class PassTypes implements OnInit {
   protected readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, notBlank]],
     price: [0, [Validators.required, Validators.min(0)]],
+    original_price: [null as number | null, [Validators.min(0)]],
     validity_days: [30, [Validators.required, Validators.min(1), Validators.max(366), integer]],
     station_type: [''],
     kind: ['unlimited' as 'unlimited' | 'hours'],
@@ -144,7 +154,7 @@ export class PassTypes implements OnInit {
     const [pt, st] = await Promise.all([
       this.sb
         .from('pass_types')
-        .select('id, name, price, validity_days, station_type, kind, minutes_total, active, popular')
+        .select('id, name, price, original_price, validity_days, station_type, kind, minutes_total, active, popular')
         .order('active', { ascending: false })
         .order('name'),
       this.sb.from('stations').select('type'),
@@ -155,7 +165,7 @@ export class PassTypes implements OnInit {
   }
 
   protected startNew(): void {
-    this.form.reset({ name: '', price: 0, validity_days: 30, station_type: '', kind: 'unlimited', hours: 10, active: true, popular: false });
+    this.form.reset({ name: '', price: 0, original_price: null, validity_days: 30, station_type: '', kind: 'unlimited', hours: 10, active: true, popular: false });
     this.error.set(null);
     this.editingId.set(0);
   }
@@ -164,6 +174,7 @@ export class PassTypes implements OnInit {
     this.form.reset({
       name: p.name,
       price: Number(p.price),
+      original_price: p.original_price === null ? null : Number(p.original_price),
       validity_days: p.validity_days,
       station_type: p.station_type ?? '',
       kind: p.kind,
@@ -190,9 +201,15 @@ export class PassTypes implements OnInit {
       this.error.set('Enter the hours in the bundle');
       return;
     }
+    const original = v.original_price === null || (v.original_price as unknown) === '' ? null : Number(v.original_price);
+    if (original !== null && !(original > Number(v.price))) {
+      this.error.set('The usual price must be higher than the price');
+      return;
+    }
     const row = {
       name: v.name.trim(),
       price: Number(v.price),
+      original_price: original,
       validity_days: Number(v.validity_days),
       station_type: v.station_type || null,
       kind: v.kind,

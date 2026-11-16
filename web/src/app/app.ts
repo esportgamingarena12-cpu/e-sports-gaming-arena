@@ -6,6 +6,7 @@ import { ReceiptView } from './counter/receipt/receipt';
 import { SideArt } from './shared/art';
 import { Icon } from './shared/icon';
 import { Logo } from './shared/logo';
+import { TimeUpAlerts } from './shared/time-up-alerts';
 import { TopTools } from './shared/top-tools';
 import { ToastOutlet } from './shared/toast-outlet';
 
@@ -24,7 +25,7 @@ interface NavGroup {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet, ReceiptView, Icon, Logo, SideArt, TopTools],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastOutlet, ReceiptView, Icon, Logo, SideArt, TopTools, TimeUpAlerts],
   templateUrl: './app.html',
 })
 export class App {

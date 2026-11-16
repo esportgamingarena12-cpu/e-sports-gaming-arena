@@ -65,6 +65,20 @@ interface FoundPass {
           }
         </fieldset>
 
+        @if (form.controls.passId.value || form.controls.plan.value === 'hour') {
+          <label class="label">Remind me when time is up
+            <select formControlName="timer" class="field" data-timer-select>
+              <option value="">No timer</option>
+              <option value="30">After 30 minutes</option>
+              <option value="60">After 1 hour</option>
+              <option value="90">After 1 hour 30 minutes</option>
+              <option value="120">After 2 hours</option>
+              <option value="180">After 3 hours</option>
+            </select>
+            <span class="mt-1 block text-xs text-slate-400">A pop-up with a sound appears on every counter screen when the time is up. Billing is not affected.</span>
+          </label>
+        }
+
         @if (!form.controls.passId.value) {
           <label class="label">Customer name (optional)
             <input formControlName="name" autocomplete="off" class="field" />
@@ -106,6 +120,7 @@ export class StartDialog {
     phone: ['', [phone]],
     lookupPhone: [''],
     passId: [''],
+    timer: [''],
   });
 
   protected readonly passes = signal<FoundPass[]>([]);
@@ -144,7 +159,7 @@ export class StartDialog {
     const v = this.form.getRawValue();
     this.busy.set(true);
     this.error.set(null);
-    const { error } = v.passId
+    const { data, error } = v.passId
       ? await this.sb.rpc('start_pass_session', { p_station: this.station().id, p_pass: Number(v.passId) })
       : await this.sb.rpc('start_session', {
           p_station: this.station().id,
@@ -157,6 +172,16 @@ export class StartDialog {
       this.error.set(friendlyError(error));
       this.started.emit(); // refresh the board: the station may already be taken
       return;
+    }
+    // an hourly or pass session may have a "time is up" timer; packages already have their own end time
+    const minutes = Number(v.timer);
+    if (minutes > 0 && (v.passId || v.plan === 'hour') && data) {
+      const alarm = await this.sb.rpc('set_session_alarm', { p_session: Number(data), p_minutes: minutes });
+      if (alarm.error) {
+        this.error.set(`The session started, but the timer was not set: ${friendlyError(alarm.error)}`);
+        this.started.emit();
+        return;
+      }
     }
     this.started.emit();
     this.closed.emit();

@@ -4,12 +4,13 @@ import { ToastService } from '../../shared/toast.service';
 import { cartCount, cartTotal } from '../cart';
 import { CartService } from '../cart.service';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
+import { FoodPic } from '../../shared/food-image';
 import { CounterStore, Product } from '../counter.store';
 import { availableQty } from '../stock-utils';
 
 @Component({
   selector: 'app-canteen',
-  imports: [CheckoutDialog],
+  imports: [CheckoutDialog, FoodPic],
   providers: [CounterStore],
   template: `
     <section class="p-4">
@@ -106,6 +107,7 @@ import { availableQty } from '../stock-utils';
             <li>
               <button type="button" class="card h-full w-full text-left disabled:opacity-40"
                       [disabled]="!v.canAdd" (click)="add(v.product)" [attr.data-product]="v.product.name">
+                <app-food-pic class="mb-2 aspect-[4/3] rounded-lg" [path]="v.product.image_path" [name]="v.product.name" />
                 <p class="truncate font-medium">{{ v.product.name }}</p>
                 <p class="text-sm text-slate-300">₹{{ v.product.price }}</p>
                 <p class="text-xs" [class]="v.left === null ? 'text-slate-500' : v.left <= 0 ? 'text-red-400' : 'text-slate-400'">

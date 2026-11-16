@@ -1,0 +1,116 @@
+import { typeLabel } from './portal';
+
+/** Public rate card and opening hours for the home page. Pure functions: no data is invented, no data means no card. */
+
+export interface PublicPackage {
+  name: string;
+  minutes: number;
+  price: number;
+  station_type: string;
+}
+
+export interface OpeningDay {
+  /** 0 = Sunday ... 6 = Saturday */
+  weekday: number;
+  /** "HH:MM", 24 hour */
+  open: string;
+  close: string;
+  closed: boolean;
+}
+
+export interface RateRow {
+  /** e.g. "PC" or "PS5 2 Players" */
+  label: string;
+  station_type: string;
+  /** price by package minutes */
+  prices: Record<number, number>;
+}
+
+export interface RateCard {
+  /** the package lengths, shortest first (e.g. 30 and 60) */
+  minutes: number[];
+  rows: RateRow[];
+}
+
+const DURATION_SUFFIX = /\s+\d+\s*(?:min(?:ute)?s?|h(?:ou)?rs?)\s*$/i;
+
+/** "PS5 2 Players 30 Min" -> "PS5 2 Players". A name without a length stays as it is. */
+export function packageBase(name: string): string {
+  const base = name.replace(DURATION_SUFFIX, '').trim();
+  return base || name.trim();
+}
+
+/**
+ * The row a package belongs to. "PC 30 Minutes" and "PC 1 Hour" share the row "PC". A name that does not end in a
+ * length (for example "PC 1" or "Night pack") cannot be grouped by its name, so it joins its game's row ("PC").
+ */
+export function rowLabel(p: { name: string; station_type: string }): string {
+  const name = p.name.trim();
+  const base = packageBase(name);
+  return base !== name && base ? base : typeLabel(p.station_type);
+}
+
+/** "30 Minutes", "1 Hour", "1 h 30 min", "2 Hours" */
+export function minutesLabel(m: number): string {
+  if (m < 60) return `${m} Minutes`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (r === 0) return h === 1 ? '1 Hour' : `${h} Hours`;
+  return `${h} h ${r} min`;
+}
+
+/**
+ * Groups the fixed-price packages into rows (one per game and player count) and columns (one per length).
+ * Rows keep the order of the packages, which the server sorts by game type, length and price.
+ */
+export function buildRateCard(packages: PublicPackage[] | null | undefined): RateCard | null {
+  const list = (packages ?? []).filter((p) => Number(p.minutes) > 0 && Number(p.price) >= 0);
+  if (list.length === 0) return null;
+  const rows = new Map<string, RateRow>();
+  const lengths = new Set<number>();
+  for (const p of list) {
+    const label = rowLabel(p);
+    const key = `${p.station_type}|${label}`;
+    const row = rows.get(key) ?? { label, station_type: p.station_type, prices: {} };
+    row.prices[Number(p.minutes)] = Number(p.price);
+    rows.set(key, row);
+    lengths.add(Number(p.minutes));
+  }
+  return { minutes: [...lengths].sort((a, b) => a - b), rows: [...rows.values()] };
+}
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** Monday first, the way a shop talks about its week. */
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+/** "12:00" -> "12:00 pm", "22:00" -> "10:00 pm", "00:00" -> "12:00 am" */
+export function timeLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map((x) => Number(x));
+  const suffix = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m ?? 0).padStart(2, '0')} ${suffix}`;
+}
+
+/** Opening hours grouped by identical days: [{ days: "Mon – Fri", time: "12:00 pm – 10:00 pm" }, ...] */
+export function hoursSummary(days: OpeningDay[] | null | undefined): { days: string; time: string }[] {
+  const byDay = new Map((days ?? []).map((d) => [d.weekday, d]));
+  const groups: { first: number; last: number; time: string }[] = [];
+  for (const wd of WEEK_ORDER) {
+    const d = byDay.get(wd);
+    if (!d) continue;
+    const time = d.closed ? 'Closed' : `${timeLabel(d.open)} – ${timeLabel(d.close)}`;
+    const prev = groups[groups.length - 1];
+    if (prev && prev.time === time) prev.last = wd;
+    else groups.push({ first: wd, last: wd, time });
+  }
+  return groups.map((g) => ({
+    days: g.first === g.last ? DAY_NAMES[g.first] : `${DAY_NAMES[g.first]} – ${DAY_NAMES[g.last]}`,
+    time: g.time,
+  }));
+}
+
+/** Whole-number percentage saved against the "was" price, or null when there is no discount. */
+export function savePercent(price: number, was: number | null | undefined): number | null {
+  if (was === null || was === undefined || !(was > price) || price < 0) return null;
+  return Math.round((1 - price / was) * 100);
+}

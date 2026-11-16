@@ -60,3 +60,11 @@ The staff note on a customer (`customers.notes`) is excluded from the columns th
    no reading of other people's data, admin-only functions refuse everyone else.
 3. Earlier phases have their own refusal tests (02, 03, 06, 09, 10, 11, 12, 13, 14).
 4. The built web app is scanned for any key other than the public anon key (`npm run check:keys`).
+
+
+## Phase 18 additions (checked by `supabase/tests/18_shop_updates.test.sql`)
+
+- Storage bucket `food-images`: public read by link, 2 MB limit, JPG/PNG/WebP only. Policies on `storage.objects`: only an admin can insert, update or delete files in this bucket (staff and visitors are refused).
+- `delete_product(bigint)`: admin only (staff and visitors get `42501`); a product with sales history is switched off, never removed.
+- `set_session_alarm` / `extend_session_alarm`: staff and admin only; visitors get `42501`. They change only the reminder columns, never billing.
+- `booking_info()` is public by design and now also returns the opening hours, the active packages and a pass's usual price. It exposes nothing about customers, sessions or sold passes.

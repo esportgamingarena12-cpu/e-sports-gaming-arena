@@ -6,6 +6,7 @@ import { ServerClock } from '../../core/server-clock';
 import { ToastService } from '../../shared/toast.service';
 import { CounterStore, OpenSession, Station, TabLine } from '../counter.store';
 import { formatIstTime } from '../../shared/format';
+import { alarmRemainingMs } from '../../core/time-up';
 import { relativeStart, upcomingBooking } from '../booking-utils';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
 import { StartDialog } from './start-dialog';
@@ -18,6 +19,8 @@ interface Card {
   played: string;
   charge: number;
   packageLeft: { text: string; over: boolean } | null;
+  /** the timer chosen for an hourly session (time left, or how far past it) */
+  timer: { text: string; over: boolean } | null;
   items: TabLine[];
   canteen: number;
 }
@@ -76,6 +79,12 @@ interface Card {
                         {{ p.over ? 'overtime ' : '' }}{{ p.text }}{{ p.over ? '' : ' left' }}
                       </span>
                     }
+                  </p>
+                }
+                @if (c.timer; as t) {
+                  <p class="text-sm" data-timer-note>
+                    ⏰ Timer:
+                    <span [class]="t.over ? 'font-semibold text-fuchsia-300' : 'text-slate-300'">{{ t.over ? 'over by ' : '' }}{{ t.text }}{{ t.over ? '' : ' left' }}</span>
                   </p>
                 }
                 @if (s.customer_name || s.customer_phone) {
@@ -158,11 +167,12 @@ export class CounterStations implements OnInit, OnDestroy {
         ? { text: `Booked ${formatIstTime(next.start_at)} · ${next.customer_name} (${relativeStart(next.start_at, now)})` }
         : null;
       if (!session) {
-        return { station, booking, session: null, played: '', charge: 0, packageLeft: null, items: [], canteen: 0 };
+        return { station, booking, session: null, played: '', charge: 0, packageLeft: null, timer: null, items: [], canteen: 0 };
       }
       const end = chargeEndMs(session, now);
       const left = packageRemainingMs(session, end);
       const items = bySession.get(session.id) ?? [];
+      const timerLeft = session.package_minutes === null && session.status !== 'ended' ? alarmRemainingMs(session, now) : null;
       return {
         station,
         booking,
@@ -170,6 +180,7 @@ export class CounterStations implements OnInit, OnDestroy {
         played: formatDuration(playedMs(session, end)),
         charge: sessionCharge(session, end),
         packageLeft: left === null ? null : { text: formatDuration(left), over: left < 0 },
+        timer: timerLeft === null ? null : { text: formatDuration(timerLeft), over: timerLeft <= 0 },
         items,
         canteen: items.reduce((sum, i) => sum + i.price * i.qty, 0),
       };
