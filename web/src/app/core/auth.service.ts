@@ -3,6 +3,7 @@ import { Session } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
 import { googleRedirectUrl, PendingGoogle, rememberPending, takePending } from './google-login';
 import { homeFor, Profile, Role } from './models';
+import { ALIVE_KEY, REMEMBER_KEY, shouldEndSession, signInError, signUpError } from './password-login';
 
 export interface CustomerRecord {
   id: number;
@@ -43,6 +44,12 @@ export class AuthService {
   }
 
   private async init(): Promise<void> {
+    try {
+      if (shouldEndSession(localStorage.getItem(REMEMBER_KEY), sessionStorage.getItem(ALIVE_KEY))) await this.sb.auth.signOut();
+      sessionStorage.setItem(ALIVE_KEY, '1');
+    } catch {
+      /* storage not available: the stored login is simply kept */
+    }
     const { data } = await this.sb.auth.getSession();
     await this.apply(data.session);
     this.ready.set(true);
@@ -106,6 +113,45 @@ export class AuthService {
     return p;
   }
 
+  /** Saves the "Remember me" choice: unticked means the login ends when the browser is closed. */
+  private setRemember(remember: boolean): void {
+    try {
+      localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
+    } catch {
+      /* storage not available: nothing to remember */
+    }
+  }
+
+  /** Customer sign in with email and password. Staff and admins who use this form are signed in too. */
+  async signInCustomer(email: string, password: string, remember: boolean): Promise<Profile> {
+    this.notice.set(null);
+    const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(signInError(error.message));
+    this.setRemember(remember);
+    await this.apply(data.session);
+    const p = this.profile();
+    if (!p) throw new Error(this.notice() ?? ACCOUNT_DISABLED);
+    return p;
+  }
+
+  /**
+   * Customer sign up. Returns the new profile when the customer is signed in straight away, or null when Supabase
+   * is set to confirm the email first (then no session exists yet and the customer must open the email).
+   */
+  async signUpCustomer(fullName: string, email: string, password: string, remember: boolean): Promise<Profile | null> {
+    this.notice.set(null);
+    const { data, error } = await this.sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    if (error) throw new Error(signUpError(error.message));
+    // with email confirmation on, an address that already has an account comes back without any identity
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error(signUpError('User already registered'));
+    if (!data.session) return null;
+    this.setRemember(remember);
+    await this.apply(data.session);
+    const p = this.profile();
+    if (!p) throw new Error(this.notice() ?? ACCOUNT_DISABLED);
+    return p;
+  }
+
   /**
    * Customer login with a Google account. Sends the browser to Google; Google sends the customer back to
    * /book/login signed in. `next` is the page they wanted, kept for when they return.
@@ -126,6 +172,7 @@ export class AuthService {
       /* the check itself could not run (offline, blocked): carry on and let Google answer */
     }
     if (off) throw new Error('Google sign-in is not switched on yet. Please use an email code instead.');
+    this.setRemember(true);
     rememberPending(sessionStorage, next, Date.now());
     window.location.assign(data.url);
   }
@@ -146,6 +193,7 @@ export class AuthService {
   async verifyOtp(email: string, token: string): Promise<Profile> {
     const { data, error } = await this.sb.auth.verifyOtp({ email, token, type: 'email' });
     if (error) throw new Error('That code is wrong or has expired');
+    this.setRemember(true);
     await this.apply(data.session);
     const p = this.profile();
     if (!p) throw new Error(this.notice() ?? ACCOUNT_DISABLED);

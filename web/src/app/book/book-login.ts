@@ -1,13 +1,35 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { afterLoginPath, oauthErrorFrom } from '../core/google-login';
+import { passwordProblem, passwordsMatch } from '../core/password-login';
 import { Icon } from '../shared/icon';
 import { LoginStage } from '../shared/login-stage';
+import { notBlank } from '../shared/validators';
 import { BookingInfo, BookingService } from './booking.service';
 import { loginChips } from './plans';
 import { safeNext } from './portal';
+
+/** Group rule for the sign-up form: the two passwords must be the same. */
+function passwordsAgree(group: AbstractControl): ValidationErrors | null {
+  const password = group.get('password')?.value as string;
+  const confirm = group.get('confirm')?.value as string;
+  return !confirm || passwordsMatch(password, confirm) ? null : { mismatch: true };
+}
+
+/** Rule for the new password: the same one the unit tests cover (core/password-login.ts). */
+function strongPassword(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as string;
+  if (!value) return null;
+  const problem = passwordProblem(value);
+  return problem ? { weak: problem } : null;
+}
+
+type Mode = 'signin' | 'signup';
+
+const FIELD =
+  'w-full rounded-lg border border-slate-700 bg-slate-950/70 py-2.5 pl-10 pr-3 text-slate-100 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30';
 
 @Component({
   selector: 'app-book-login',
@@ -21,16 +43,17 @@ import { safeNext } from './portal';
 
       <div class="flex flex-col justify-center p-5 sm:p-9">
         <span class="eyebrow">{{ sent() ? 'Check your inbox' : 'Welcome' }}</span>
-        <h1 class="mt-1 font-display text-3xl font-bold tracking-wide text-slate-50">Login to book</h1>
+        <h1 class="mt-1 font-display text-3xl font-bold tracking-wide text-slate-50">{{ mode() === 'signup' && !showCode() && !sent() ? 'Create your account' : 'Login to book' }}</h1>
 
         @if (finishing()) {
           <p class="mt-6 text-sm text-slate-300" role="status" data-finishing>Signing you in…</p>
         } @else if (!showCode() && !sent()) {
-          <!-- Google sign-in: no code to type -->
-          <p class="mt-1 text-sm text-slate-400">Sign in with your Google account. No password and no code to type.</p>
           @if (error()) { <p class="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300" role="alert" data-error>{{ error() }}</p> }
+          @if (info2()) { <p class="mt-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200" role="status" data-info>{{ info2() }}</p> }
+
+          <!-- Google: the quickest way in -->
           <button type="button" (click)="google()" [disabled]="busy()" data-google
-                  class="mt-6 flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-base font-semibold text-slate-900 shadow-[0_0_28px_-6px_rgb(255_255_255_/_0.55)] transition hover:bg-slate-100 hover:shadow-[0_0_34px_-4px_rgb(255_255_255_/_0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:opacity-60">
+                  class="mt-5 flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-base font-semibold text-slate-900 shadow-[0_0_28px_-6px_rgb(255_255_255_/_0.55)] transition hover:bg-slate-100 hover:shadow-[0_0_34px_-4px_rgb(255_255_255_/_0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:opacity-60">
             <svg viewBox="0 0 48 48" class="size-5 shrink-0" aria-hidden="true">
               <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
               <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z" />
@@ -39,8 +62,98 @@ import { safeNext } from './portal';
             </svg>
             {{ busy() ? 'Opening Google…' : 'Continue with Google' }}
           </button>
-          <p class="mt-3 text-center text-xs text-slate-500">We only get your name and email from Google.</p>
-          <p class="mt-6 text-center text-sm">
+
+          <div class="my-5 flex items-center gap-3 text-xs uppercase tracking-widest text-slate-500" aria-hidden="true">
+            <span class="h-px flex-1 bg-slate-700"></span>or with your email<span class="h-px flex-1 bg-slate-700"></span>
+          </div>
+
+          <!-- Sign in / Create account -->
+          <div class="grid grid-cols-2 rounded-xl bg-slate-950/60 p-1 text-sm font-semibold" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" role="tab" [attr.aria-selected]="mode() === 'signin'" (click)="setMode('signin')" data-tab-signin
+                    class="rounded-lg py-2 transition" [class]="mode() === 'signin' ? 'bg-linear-to-r from-violet-600 to-fuchsia-500 text-white shadow' : 'text-slate-400 hover:text-slate-200'">Sign in</button>
+            <button type="button" role="tab" [attr.aria-selected]="mode() === 'signup'" (click)="setMode('signup')" data-tab-signup
+                    class="rounded-lg py-2 transition" [class]="mode() === 'signup' ? 'bg-linear-to-r from-violet-600 to-fuchsia-500 text-white shadow' : 'text-slate-400 hover:text-slate-200'">Create account</button>
+          </div>
+
+          @if (mode() === 'signin') {
+            <form [formGroup]="signinForm" (ngSubmit)="signIn()" class="mt-4 space-y-3.5" data-signin-form>
+              <label class="block text-sm font-medium text-slate-300">Email
+                <span class="relative mt-1.5 block">
+                  <app-icon name="mail" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
+                  <input formControlName="email" type="email" autocomplete="email" placeholder="you@example.com" class="${FIELD}" data-si-email />
+                </span>
+              </label>
+              <div class="block text-sm font-medium text-slate-300">
+                <label for="si-password">Password</label>
+                <span class="relative mt-1.5 block">
+                  <app-icon name="lock" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
+                  <input id="si-password" formControlName="password" [type]="show() ? 'text' : 'password'" autocomplete="current-password" placeholder="Your password" class="${FIELD} !pr-11" data-si-password />
+                  <button type="button" (click)="show.set(!show())" data-toggle-password aria-label="Show typed characters"
+                          class="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 hover:text-cyan-300">
+                    <app-icon [name]="show() ? 'eyeoff' : 'eye'" />
+                  </button>
+                </span>
+              </div>
+              <label class="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" formControlName="remember" class="size-4 accent-violet-500" data-remember /> Remember me
+              </label>
+              <button type="submit" [disabled]="signinForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signin-submit>
+                {{ busy() ? 'Signing in…' : 'Sign in' }}
+                @if (!busy()) { <app-icon name="arrow" /> }
+              </button>
+              <p class="text-center text-xs text-slate-500">Forgot your password? Sign in with Google or use an email code instead.</p>
+            </form>
+          } @else {
+            <form [formGroup]="signupForm" (ngSubmit)="signUp()" class="mt-4 space-y-3.5" data-signup-form>
+              <label class="block text-sm font-medium text-slate-300">Full name
+                <span class="relative mt-1.5 block">
+                  <app-icon name="user" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
+                  <input formControlName="name" autocomplete="name" placeholder="Your full name" class="${FIELD}" data-su-name />
+                </span>
+              </label>
+              <label class="block text-sm font-medium text-slate-300">Email
+                <span class="relative mt-1.5 block">
+                  <app-icon name="mail" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
+                  <input formControlName="email" type="email" autocomplete="email" placeholder="you@example.com" class="${FIELD}" data-su-email />
+                </span>
+              </label>
+              <div class="block text-sm font-medium text-slate-300">
+                <label for="su-password">Password</label>
+                <span class="relative mt-1.5 block">
+                  <app-icon name="lock" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
+                  <input id="su-password" formControlName="password" [type]="show() ? 'text' : 'password'" autocomplete="new-password" placeholder="At least 8 characters" class="${FIELD} !pr-11" data-su-password />
+                  <button type="button" (click)="show.set(!show())" data-toggle-password-su aria-label="Show typed characters"
+                          class="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 hover:text-cyan-300">
+                    <app-icon [name]="show() ? 'eyeoff' : 'eye'" />
+                  </button>
+                </span>
+                @if (signupForm.controls.password.touched && signupForm.controls.password.errors?.['weak']; as weak) {
+                  <span class="mt-1 block text-xs font-normal text-red-400" role="alert" data-su-weak>{{ weak }}</span>
+                } @else {
+                  <span class="mt-1 block text-xs font-normal text-slate-500">Letters and at least one number.</span>
+                }
+              </div>
+              <div class="block text-sm font-medium text-slate-300">
+                <label for="su-confirm">Confirm password</label>
+                <span class="relative mt-1.5 block">
+                  <app-icon name="lock" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
+                  <input id="su-confirm" formControlName="confirm" [type]="show() ? 'text' : 'password'" autocomplete="new-password" placeholder="Type it again" class="${FIELD}" data-su-confirm />
+                </span>
+                @if (signupForm.hasError('mismatch') && signupForm.controls.confirm.dirty) {
+                  <span class="mt-1 block text-xs font-normal text-red-400" role="alert" data-su-mismatch>The two passwords are not the same</span>
+                }
+              </div>
+              <label class="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" formControlName="remember" class="size-4 accent-violet-500" data-su-remember /> Remember me
+              </label>
+              <button type="submit" [disabled]="signupForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signup-submit>
+                {{ busy() ? 'Creating your account…' : 'Create account' }}
+                @if (!busy()) { <app-icon name="arrow" /> }
+              </button>
+            </form>
+          }
+
+          <p class="mt-5 text-center text-sm">
             <button type="button" class="text-slate-400 underline hover:text-cyan-300" (click)="showCode.set(true)" data-use-code>Use an email code instead</button>
           </p>
         } @else if (!sent()) {
@@ -49,8 +162,7 @@ import { safeNext } from './portal';
             <label class="block text-sm font-medium text-slate-300">Email
               <span class="relative mt-1.5 block">
                 <app-icon name="mail" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
-                <input formControlName="email" type="email" autocomplete="email" placeholder="you@example.com"
-                       class="w-full rounded-lg border border-slate-700 bg-slate-950/70 py-2.5 pl-10 pr-3 text-slate-100 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30" />
+                <input formControlName="email" type="email" autocomplete="email" placeholder="you@example.com" class="${FIELD}" />
               </span>
             </label>
             @if (error()) { <p class="text-sm text-red-400" role="alert">{{ error() }}</p> }
@@ -59,7 +171,7 @@ import { safeNext } from './portal';
               @if (!busy()) { <app-icon name="arrow" /> }
             </button>
             <button type="button" class="w-full text-sm text-slate-400 underline hover:text-cyan-300" (click)="showCode.set(false)" data-use-google>
-              Sign in with Google instead
+              Back to Google and email sign in
             </button>
           </form>
         } @else {
@@ -68,8 +180,7 @@ import { safeNext } from './portal';
             <label class="block text-sm font-medium text-slate-300">Code
               <span class="relative mt-1.5 block">
                 <app-icon name="lock" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cyan-300" />
-                <input formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456"
-                       class="w-full rounded-lg border border-slate-700 bg-slate-950/70 py-2.5 pl-10 pr-3 text-slate-100 tracking-widest outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30" />
+                <input formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" class="${FIELD} tracking-widest" />
               </span>
             </label>
             @if (error()) { <p class="text-sm text-red-400" role="alert">{{ error() }}</p> }
@@ -97,14 +208,33 @@ export class BookLogin implements OnInit {
   /** Small facts under the banner headline: real station types and the lowest hourly rate. */
   protected readonly chips = computed(() => loginChips(this.info()));
 
-  /** Google is the main way in; the email code is the backup. */
+  /** Google is the quickest way in; then email and password; the email code is the backup. */
+  protected readonly mode = signal<Mode>('signin');
+  protected readonly show = signal(false);
   protected readonly showCode = signal(false);
   protected readonly sent = signal(false);
   protected readonly busy = signal(false);
   /** true while a customer who just came back from Google is being signed in and sent on */
   protected readonly finishing = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** a friendly note, e.g. "check your email to confirm" */
+  protected readonly info2 = signal<string | null>(null);
 
+  protected readonly signinForm = this.fb.nonNullable.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required]],
+    remember: [true],
+  });
+  protected readonly signupForm = this.fb.nonNullable.group(
+    {
+      name: ['', [Validators.required, notBlank]],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, strongPassword]],
+      confirm: ['', [Validators.required]],
+      remember: [true],
+    },
+    { validators: passwordsAgree },
+  );
   protected readonly emailForm = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
   });
@@ -119,6 +249,12 @@ export class BookLogin implements OnInit {
 
   private next(): string | null {
     return safeNext(this.route.snapshot.queryParamMap.get('next'));
+  }
+
+  protected setMode(m: Mode): void {
+    this.mode.set(m);
+    this.error.set(null);
+    this.info2.set(null);
   }
 
   async ngOnInit(): Promise<void> {
@@ -141,6 +277,7 @@ export class BookLogin implements OnInit {
   }
 
   private async go(role: 'admin' | 'staff' | 'customer', next: string | null): Promise<void> {
+    await this.auth.refreshCustomer();
     const to = afterLoginPath({ role, hasCustomer: !!this.auth.customer() }, next, this.auth.homeFor);
     if (to.kind === 'profile') await this.router.navigate(['/book/profile'], { queryParams: { next: to.next } });
     else await this.router.navigateByUrl(to.url);
@@ -153,6 +290,56 @@ export class BookLogin implements OnInit {
       await this.auth.signInWithGoogle(this.next());
     } catch (e) {
       this.error.set((e as Error).message);
+      this.busy.set(false);
+    }
+  }
+
+  protected async signIn(): Promise<void> {
+    if (this.signinForm.invalid) {
+      this.signinForm.markAllAsTouched();
+      return;
+    }
+    const v = this.signinForm.getRawValue();
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const p = await this.auth.signInCustomer(v.email.trim(), v.password, v.remember);
+      await this.go(p.role, this.next());
+    } catch (e) {
+      this.error.set((e as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async signUp(): Promise<void> {
+    if (this.signupForm.invalid) {
+      this.signupForm.markAllAsTouched();
+      return;
+    }
+    const v = this.signupForm.getRawValue();
+    const email = v.email.trim();
+    const problem = passwordProblem(v.password, email);
+    if (problem) {
+      this.error.set(problem);
+      return;
+    }
+    this.busy.set(true);
+    this.error.set(null);
+    this.info2.set(null);
+    try {
+      const p = await this.auth.signUpCustomer(v.name.trim(), email, v.password, v.remember);
+      if (p) {
+        await this.go(p.role, this.next());
+      } else {
+        // the project asks for the email to be confirmed first: no session yet
+        this.info2.set(`We sent a message to ${email}. Open it to confirm your email, then sign in here.`);
+        this.signinForm.patchValue({ email });
+        this.mode.set('signin');
+      }
+    } catch (e) {
+      this.error.set((e as Error).message);
+    } finally {
       this.busy.set(false);
     }
   }

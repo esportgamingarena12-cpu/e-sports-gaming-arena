@@ -18,7 +18,8 @@ test.describe('Google sign-in', () => {
   test('Google is the main button and the email code is the backup', async ({ page }) => {
     await open(page);
     await expect(page.locator('[data-google]')).toContainText('Continue with Google');
-    await expect(page.locator('input[type="email"]')).toHaveCount(0); // no code form until asked for
+    await expect(page.locator('[data-signin-form]')).toBeVisible(); // email and password sign in sits under Google
+    await expect(page.getByRole('button', { name: 'Email me a code' })).toHaveCount(0); // the code form is only on request
 
     await page.locator('[data-use-code]').click();
     await expect(page.getByPlaceholder('you@example.com')).toBeVisible();
@@ -26,7 +27,7 @@ test.describe('Google sign-in', () => {
 
     await page.locator('[data-use-google]').click();
     await expect(page.locator('[data-google]')).toBeVisible();
-    await expect(page.locator('input[type="email"]')).toHaveCount(0);
+    await expect(page.locator('[data-signin-form]')).toBeVisible();
   });
 
   test('when Google is not switched on, the customer gets a clear message and the code option', async ({ page }) => {
