@@ -122,7 +122,7 @@ interface Product {
 
       <ul class="mt-4 space-y-2" data-list>
         @for (p of products(); track p.id) {
-          <li class="card flex items-center gap-3" [class.opacity-60]="!p.active" [attr.data-product]="p.name">
+          <li class="card flex flex-wrap items-center gap-3" [class.opacity-60]="!p.active" [attr.data-product]="p.name">
             <app-food-pic class="size-14 shrink-0 rounded-lg" [path]="p.image_path" [name]="p.name" />
             <div class="min-w-0 flex-1">
               <p class="truncate font-medium">{{ p.name }}</p>
@@ -137,6 +137,15 @@ interface Product {
               </p>
             </div>
             <button type="button" class="btn" (click)="edit(p)" data-edit>Edit</button>
+            <div class="flex w-full flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
+              @if (rowDelete() === p.id) {
+                <span class="text-sm text-red-300">Delete {{ p.name }}? Items already sold are hidden instead.</span>
+                <button type="button" class="btn-danger !px-3 !py-1 !text-sm" (click)="removeRow(p)" data-row-delete-yes>Yes, delete</button>
+                <button type="button" class="btn !px-3 !py-1 !text-sm" (click)="rowDelete.set(null)">Keep</button>
+              } @else {
+                <button type="button" class="btn ml-auto !px-3 !py-1 !text-sm text-red-300" (click)="rowDelete.set(p.id)" data-row-delete>Delete</button>
+              }
+            </div>
           </li>
         } @empty {
           <li class="text-slate-400">No products yet.</li>
@@ -156,6 +165,8 @@ export class Products implements OnInit, OnDestroy {
   protected readonly editingId = signal<number | null>(null);
   protected readonly busy = signal(false);
   protected readonly confirmDelete = signal(false);
+  /** the product whose delete is waiting for a yes, in the list */
+  protected readonly rowDelete = signal<number | null>(null);
 
   /** the photo already saved for the product being edited */
   protected readonly currentPath = signal<string | null>(null);
@@ -352,6 +363,19 @@ export class Products implements OnInit, OnDestroy {
       this.toast.success('Product saved');
     }
     this.cancel();
+    await this.load();
+  }
+
+  protected async removeRow(p: Product): Promise<void> {
+    const { data, error } = await this.sb.rpc('delete_product', { p_product: p.id });
+    this.rowDelete.set(null);
+    if (error) return this.toast.error(friendlyError(error));
+    if (data === 'deleted') {
+      await this.deleteFile(p.image_path);
+      this.toast.success('Product deleted');
+    } else {
+      this.toast.success('This item has sales history, so it was hidden instead of deleted');
+    }
     await this.load();
   }
 
