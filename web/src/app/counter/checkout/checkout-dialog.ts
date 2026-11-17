@@ -31,7 +31,7 @@ export type BillSource =
 type Mode = 'cash' | 'upi' | 'card';
 
 /**
- * One bill for gaming time + canteen items, paid by any mix of Cash / UPI / Card.
+ * One bill for gaming time + canteen items, paid by any mix of Cash and UPI (card is switched off for now; the database still understands it).
  * The server recalculates every amount; this dialog only collects the discount and the payment split.
  */
 @Component({
@@ -100,10 +100,9 @@ type Mode = 'cash' | 'upi' | 'card';
                 <span class="text-slate-400">Pay all by</span>
                 <button type="button" class="btn !py-0.5" (click)="payAll('cash')" data-pay-all-cash>Cash</button>
                 <button type="button" class="btn !py-0.5" (click)="payAll('upi')" data-pay-all-upi>UPI</button>
-                <button type="button" class="btn !py-0.5" (click)="payAll('card')" data-pay-all-card>Card</button>
               </div>
 
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 gap-2">
                 <label class="label">Cash
                   <input formControlName="cash" type="number" inputmode="decimal" step="0.01" class="field" data-cash />
                   <app-field-error [control]="form.controls.cash" />
@@ -111,10 +110,6 @@ type Mode = 'cash' | 'upi' | 'card';
                 <label class="label">UPI
                   <input formControlName="upi" type="number" inputmode="decimal" step="0.01" class="field" data-upi />
                   <app-field-error [control]="form.controls.upi" />
-                </label>
-                <label class="label">Card
-                  <input formControlName="card" type="number" inputmode="decimal" step="0.01" class="field" data-card />
-                  <app-field-error [control]="form.controls.card" />
                 </label>
               </div>
 
@@ -160,11 +155,6 @@ type Mode = 'cash' | 'upi' | 'card';
                 </div>
               }
 
-              @if (cardDue() > 0) {
-                <label class="label">Card reference, e.g. last 4 digits (optional)
-                  <input formControlName="cardRef" autocomplete="off" class="field" />
-                </label>
-              }
             </fieldset>
 
             @if (error()) { <p class="text-sm text-red-400" role="alert" data-error>{{ error() }}</p> }
