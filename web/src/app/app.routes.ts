@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { BookHome } from './book/book-home';
 import { BookLogin } from './book/book-login';
-import { adminGuard, customerGuard, signedInGuard, staffGuard } from './core/guards';
+import { adminGuard, customerGuard, signedInGuard, staffGuard, staffHomeGuard } from './core/guards';
 import { Login } from './shared/login';
 import { NotFound } from './shared/not-found';
 
@@ -50,7 +50,7 @@ export const routes: Routes = [
   {
     path: 'book',
     children: [
-      { path: '', pathMatch: 'full', component: BookHome },
+      { path: '', pathMatch: 'full', component: BookHome, canActivate: [staffHomeGuard], runGuardsAndResolvers: 'always' },
       { path: 'login', component: BookLogin },
       { path: 'profile', canActivate: [customerGuard], loadComponent: () => import('./book/book-profile').then((m) => m.BookProfile) },
       { path: 'my-bookings', canActivate: [customerGuard], loadComponent: () => import('./book/my-bookings').then((m) => m.MyBookings) },

@@ -305,6 +305,10 @@
 2. The words: **Pending** = yet to be billed (a stopped session nobody has paid for, or a session still running), **Paid** = billed and paid (green PAID chip on each bill), **Void** = a cancelled bill. Pending sessions are shown whatever date is picked, at the top, with the gaming charge, canteen items and a **Bill now** button; the date picker applies to the paid and void bills.
 3. The bell says "N stopped sessions pending payment" and opens Bills; the admin dashboard card is "Pending bills".
 
+## Phase 32: staff land on their dashboard; no more blank screens after a deploy
+1. A signed-in admin or staff member who opens the site (`/` or `/book`) is sent to their own dashboard instead of seeing the public page mixed with their menus. **View public site** (bottom of the side menu, opens `/book?preview=1`) shows the public page on purpose in the normal top-bar layout, with a **Back to dashboard** button. Customers and visitors are not affected.
+2. Blank screen on a screen such as `/counter/stock` after a new version was deployed: an old copy of the app (open tab or cached by the service worker) asked for a screen file whose name had changed. Now (`core/app-update.ts`): the app checks for a new version when the tab comes to the front and every 15 minutes; when one is ready, the next screen the person opens is loaded fresh; and if a screen file still cannot be loaded the page reloads once (never in a loop). Needs one hard refresh to pick up this fix on a browser that is already stuck.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

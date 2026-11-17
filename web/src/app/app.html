@@ -25,6 +25,9 @@
         </div>
       }
     </nav>
+    <a routerLink="/book" [queryParams]="{ preview: 1 }" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white" data-view-public>
+      <app-icon name="home" /> View public site
+    </a>
     <div class="mt-auto hidden px-1 pt-2 lg:block" aria-hidden="true"><app-side-art /></div>
     @if (auth.profile(); as p) {
       <div class="border-t border-slate-800 pt-3 lg:hidden">
@@ -65,6 +68,9 @@
       <div class="ml-auto flex items-center gap-2 md:ml-0">
         @if (auth.profile(); as p) {
           <span class="hidden max-w-40 truncate text-sm text-slate-300 lg:inline">{{ p.full_name || p.email }}</span>
+          @if (auth.isStaff()) {
+            <a [routerLink]="dashboardPath()" class="btn-primary !py-2 text-sm" data-back-to-dashboard>Back to dashboard</a>
+          }
           <a routerLink="/account/password" class="btn-outline hidden items-center gap-1.5 md:inline-flex" data-change-password><app-icon name="lock" [size]="16" /> Change password</a>
           <button type="button" (click)="logout()" class="btn">Logout</button>
         } @else if (auth.ready()) {

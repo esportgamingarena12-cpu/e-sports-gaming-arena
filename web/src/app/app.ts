@@ -1,7 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
+import { AppUpdate } from './core/app-update';
 import { AuthService } from './core/auth.service';
+import { homeFor } from './core/models';
 import { ReceiptView } from './counter/receipt/receipt';
 import { SideArt } from './shared/art';
 import { Icon } from './shared/icon';
@@ -31,6 +33,8 @@ interface NavGroup {
 export class App {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  /** starts watching for new versions of the app (see core/app-update.ts) */
+  private readonly appUpdate = inject(AppUpdate);
   protected readonly appName = 'E-Sports Gaming Arena';
 
   /** False while the device has no connection (the installed app still opens its saved shell). */
@@ -48,8 +52,11 @@ export class App {
     });
   }
 
-  /** Staff and admins get the sidebar layout; visitors and customers get the top-bar layout. */
-  protected readonly sidebar = computed(() => this.auth.isStaff());
+  /** Staff and admins get the sidebar layout on their own screens; visitors, customers and the public pages get the top-bar layout. */
+  protected readonly sidebar = computed(() => this.auth.isStaff() && !this.url().startsWith('/book'));
+
+  /** Where a signed-in admin or staff member goes back to from the public pages. */
+  protected readonly dashboardPath = computed(() => homeFor(this.auth.role()));
 
   /** Role-based navigation. Signed-out visitors only see Book. */
   protected readonly groups = computed<NavGroup[]>(() => {
