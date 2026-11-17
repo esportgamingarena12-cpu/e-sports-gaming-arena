@@ -339,7 +339,9 @@ export class CounterBookings implements OnInit, OnDestroy {
       const used = sessionAt(this.daySessions(), stationId, start, slot, now);
       return used ? { kind: 'used', title: `${used.customer_name?.trim() || 'Walk-in'} · ${formatIstTime(used.started_at)}–${used.ended_at ? formatIstTime(used.ended_at) : 'now'}` } : { kind: 'past' };
     }
-    if (this.isToday() && start <= now && this.store.sessionByStation().has(stationId)) return { kind: 'inuse' };
+    // a stopped session (waiting to be billed) no longer holds the station: only a running or paused one is "in use"
+    const open = this.store.sessionByStation().get(stationId);
+    if (this.isToday() && start <= now && open && open.status !== 'ended') return { kind: 'inuse' };
     return { kind: 'free' };
   }
 
