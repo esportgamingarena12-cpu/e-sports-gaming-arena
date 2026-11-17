@@ -269,6 +269,11 @@
 2. Titles were typed exactly as written on the owner's list. \"Call of Duty: Modern Warfare IV\" and \"FIFA 27\" are not titles the author could verify; check the spelling and edit them in Admin > Games if needed.
 3. Posters: Admin > Games now has an **Add poster / Change poster** button on every game's row (a \"no poster yet\" hint shows where one is missing) as well as in the edit form. Choosing a file uploads it at once: it is made smaller in the browser, stored in the `game-images` bucket, attached to the game, and an old poster file is removed. On a phone use Edit > Add poster.
 
+## Phase 25: deleted products leave the Stock screen
+1. Migration `0020_product_deleted.sql` adds `products.deleted_at`. `delete_product` still removes a never-sold item for good; an item with sales history is now marked deleted (and switched off and taken off the home page) instead of staying listed as "inactive".
+2. Admin > Products, Counter > Stock and the low-stock alert leave deleted items out. Bills and reports still show their names. An item that is only switched off (not deleted) still shows as inactive so it can be switched back on.
+3. Test: `supabase/tests/21_product_deleted.test.sql`.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

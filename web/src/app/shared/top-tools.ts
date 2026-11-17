@@ -201,7 +201,7 @@ export class TopTools implements OnInit, OnDestroy {
     const [soon, noShows, stock] = await Promise.all([
       this.sb.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed').gte('start_at', now.toISOString()).lte('start_at', hour.toISOString()),
       this.sb.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'no_show').gte('start_at', dayStart.toISOString()),
-      this.sb.from('products').select('name, stock_qty, low_stock_level, track_stock, active'),
+      this.sb.from('products').select('name, stock_qty, low_stock_level, track_stock, active').is('deleted_at', null),
     ]);
     const low = ((stock.data ?? []) as { name: string; stock_qty: number; low_stock_level: number; track_stock: boolean; active: boolean }[])
       .filter((p) => p.active && p.track_stock && p.stock_qty <= p.low_stock_level)

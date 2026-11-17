@@ -199,6 +199,7 @@ export class Products implements OnInit, OnDestroy {
     const { data, error } = await this.sb
       .from('products')
       .select('id, name, category, price, stock_qty, low_stock_level, track_stock, active, featured, image_path')
+      .is('deleted_at', null)
       .order('category')
       .order('name');
     if (error) return this.toast.error(friendlyError(error));
