@@ -173,3 +173,34 @@ button:disabled,
 select:disabled {
   cursor: not-allowed;
 }
+
+/* Scroll bars in the theme: slim, a dark track and a violet-to-cyan thumb that brightens on hover */
+* {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgb(139 92 246 / 0.6) transparent;
+}
+@supports selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto; /* Chrome, Edge, Safari: drawn by the rules below */
+    scrollbar-color: auto;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: rgb(11 11 20 / 0.6);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgb(139 92 246 / 0.75), rgb(0 217 255 / 0.55));
+    border-radius: 999px;
+    border: 2px solid rgb(11 11 20);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #a78bfa, #00d9ff);
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
