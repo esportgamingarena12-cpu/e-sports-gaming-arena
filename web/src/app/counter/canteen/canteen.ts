@@ -86,10 +86,10 @@ import { availableQty } from '../stock-utils';
       </div>
 
       <!-- Filters -->
-      <div class="mt-4 space-y-2">
-        <input type="search" placeholder="Search products" class="field !mt-0" [value]="search()"
+      <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input type="search" placeholder="Search products" class="field !mt-0 sm:w-64 sm:shrink-0" [value]="search()"
                (input)="search.set($any($event.target).value)" aria-label="Search products" />
-        <div class="flex gap-2 overflow-x-auto pb-1">
+        <div class="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 sm:pb-0" data-categories>
           @for (c of categories(); track c) {
             <button type="button" class="whitespace-nowrap rounded-full border px-3 py-1 text-sm"
                     [class]="category() === c ? 'border-violet-400 bg-linear-to-r from-violet-600 to-fuchsia-500 text-white' : 'border-slate-700 text-slate-300'"
