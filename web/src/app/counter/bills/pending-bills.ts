@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { chargeEndMs, formatDuration, playedMs, sessionCharge } from '../../core/pricing';
 import { ServerClock } from '../../core/server-clock';
@@ -7,7 +7,7 @@ import { inr } from '../../shared/format';
 import { CounterStore, OpenSession, TabLine } from '../counter.store';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
 
-export interface UnbilledRow {
+export interface PendingRow {
   session: OpenSession;
   station: string;
   stopped: boolean;
@@ -20,36 +20,28 @@ export interface UnbilledRow {
 }
 
 /**
- * Everything not billed yet: sessions that were stopped but never paid, and sessions still running (for a customer
+ * Pending bills (yet to be billed): sessions that were stopped but never paid, and sessions still running (for a customer
  * who left without staff pressing Stop), each with its gaming charge and the canteen items on its tab.
  * Staff and admin can bill any of them from here, at any time.
  */
 @Component({
-  selector: 'app-unbilled',
+  selector: 'app-pending-bills',
   imports: [CheckoutDialog, RouterLink],
   template: `
-    <section class="space-y-4 p-4">
-      <div class="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 class="page-title">Unbilled</h1>
-          <p class="text-sm text-slate-400">Sessions and canteen items nobody has paid for yet. Bill them here at any time.</p>
-        </div>
-        <span class="text-xs" [class]="store.live() ? 'text-emerald-400' : 'text-amber-400'">{{ store.live() ? '● Live' : '● Connecting…' }}</span>
-      </div>
-
+    <section class="space-y-3" data-pending-list>
       @if (store.error(); as e) { <p class="rounded bg-red-500/15 p-2 text-sm text-red-300" role="alert">{{ e }}</p> }
 
       @if (!store.loaded()) {
         <p class="text-slate-400">Loading…</p>
       } @else if (rows().length === 0) {
         <div class="card text-center" data-none>
-          <p class="font-semibold text-emerald-300">Everything is billed.</p>
-          <p class="text-sm text-slate-400">Nothing is waiting for payment.</p>
+          <p class="font-semibold text-emerald-300">Nothing is pending.</p>
+          <p class="text-sm text-slate-400">Every session has been billed.</p>
         </div>
       } @else {
         <div class="card flex flex-wrap items-center justify-between gap-2" data-summary>
           <p class="text-sm">
-            <span class="font-semibold">{{ rows().length }}</span> unbilled
+            <span class="font-semibold">{{ rows().length }}</span> pending (yet to be billed)
             <span class="text-slate-400">· {{ stoppedCount() }} stopped, {{ rows().length - stoppedCount() }} still running</span>
           </p>
           <p class="font-display text-xl font-bold text-orange-300" data-total>{{ inr(grandTotal()) }}</p>
@@ -57,11 +49,11 @@ export interface UnbilledRow {
 
         <ul class="space-y-2" data-list>
           @for (r of rows(); track r.session.id) {
-            <li class="card space-y-2" [class]="r.stopped ? '!border-orange-500/50' : ''" [attr.data-unbilled]="r.station">
+            <li class="card space-y-2" [class]="r.stopped ? '!border-orange-500/50' : ''" [attr.data-pending]="r.station">
               <div class="flex flex-wrap items-start justify-between gap-2">
                 <div class="min-w-0">
                   <p class="truncate text-lg font-semibold">{{ r.station }}
-                    <span class="ml-1 rounded px-2 py-0.5 text-xs font-medium" [class]="r.stopped ? 'bg-orange-500/20 text-orange-300' : 'bg-emerald-500/20 text-emerald-300'">{{ r.stopped ? 'Stopped – not billed' : 'Still running' }}</span>
+                    <span class="ml-1 rounded px-2 py-0.5 text-xs font-medium" [class]="r.stopped ? 'bg-orange-500/20 text-orange-300' : 'bg-emerald-500/20 text-emerald-300'">{{ r.stopped ? 'Pending · stopped' : 'Pending · still running' }}</span>
                   </p>
                   <p class="truncate text-sm text-slate-400">{{ r.session.customer_name || 'Walk-in' }}{{ r.session.customer_phone ? ' · ' + r.session.customer_phone : '' }} · {{ r.label }} · played {{ r.played }}</p>
                 </div>
@@ -85,22 +77,24 @@ export interface UnbilledRow {
       }
 
       @if (billFor(); as src) {
-        <app-checkout-dialog [source]="src" (billed)="store.load()" (done)="closeBill()" (closed)="closeBill()" />
+        <app-checkout-dialog [source]="src" (billed)="store.load(); billed.emit()" (done)="closeBill()" (closed)="closeBill()" />
       }
     </section>
   `,
 })
-export class Unbilled implements OnInit, OnDestroy {
+export class PendingBills {
   protected readonly store = inject(CounterStore);
   private readonly clock = inject(ServerClock);
   private readonly toast = inject(ToastService);
 
+  /** the Bills screen reloads its paid list when one of these has been paid */
+  readonly billed = output<void>();
   protected readonly billFor = signal<BillSource | null>(null);
   protected readonly busy = signal<number | null>(null);
   protected inr = inr;
 
   /** Stopped sessions first (they were left), then the ones still running; each group oldest first. */
-  protected readonly rows = computed<UnbilledRow[]>(() => {
+  protected readonly rows = computed<PendingRow[]>(() => {
     const now = this.clock.now();
     const names = new Map(this.store.stations().map((s) => [s.id, s.name]));
     const tabs = new Map<number, TabLine[]>();
@@ -129,20 +123,12 @@ export class Unbilled implements OnInit, OnDestroy {
   protected readonly stoppedCount = computed(() => this.rows().filter((r) => r.stopped).length);
   protected readonly grandTotal = computed(() => this.rows().reduce((sum, r) => sum + r.total, 0));
 
-  ngOnInit(): void {
-    this.store.start();
-  }
-
-  ngOnDestroy(): void {
-    this.store.stop();
-  }
-
   protected itemsText(items: TabLine[]): string {
     return items.map((i) => `${i.qty}× ${i.name}`).join(', ');
   }
 
   /** Same as Bill on the station card: stop the timer if it is still running, then open the checkout with the server's charge. */
-  protected async bill(r: UnbilledRow): Promise<void> {
+  protected async bill(r: PendingRow): Promise<void> {
     const s = r.session;
     this.busy.set(s.id);
     const { data, error } = await this.store.callData('end_session', { p_session: s.id });

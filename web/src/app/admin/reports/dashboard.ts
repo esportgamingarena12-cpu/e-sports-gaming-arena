@@ -214,13 +214,13 @@ const PAD_RIGHT = 12;
             </div>
           </div>
 
-          <!-- Unbilled: stopped sessions nobody has paid for, billable at any time -->
-          <a routerLink="/counter/unbilled" class="card block transition hover:-translate-y-0.5" [class]="unbilled() > 0 ? '!border-orange-500/60 !bg-orange-500/10' : ''" data-unbilled-card>
-            <h2 class="text-lg font-bold">Unbilled</h2>
+          <!-- Pending bills: stopped sessions nobody has paid for, billable at any time from Bills -->
+          <a routerLink="/counter/bills" class="card block transition hover:-translate-y-0.5" [class]="unbilled() > 0 ? '!border-orange-500/60 !bg-orange-500/10' : ''" data-unbilled-card>
+            <h2 class="text-lg font-bold">Pending bills</h2>
             @if (unbilled() > 0) {
-              <p class="mt-1 text-sm text-orange-200"><span class="font-display text-2xl font-bold">{{ unbilled() }}</span> stopped session{{ unbilled() === 1 ? '' : 's' }} waiting to be billed. Open to bill them, with their canteen items.</p>
+              <p class="mt-1 text-sm text-orange-200"><span class="font-display text-2xl font-bold">{{ unbilled() }}</span> stopped session{{ unbilled() === 1 ? '' : 's' }} pending payment. Open Bills to bill them, with their canteen items.</p>
             } @else {
-              <p class="mt-1 text-sm text-slate-300">Nothing stopped is waiting. Open to see running sessions with their tabs.</p>
+              <p class="mt-1 text-sm text-slate-300">Nothing is pending. Open Bills to see paid bills and anything still running.</p>
             }
           </a>
 

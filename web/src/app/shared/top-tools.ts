@@ -21,7 +21,7 @@ export interface Alert {
 export function buildAlerts(a: { startingSoon: number; noShowsToday: number; lowStock: string[]; unbilled?: number }): Alert[] {
   const out: Alert[] = [];
   if ((a.unbilled ?? 0) > 0) {
-    out.push({ key: 'unbilled', text: `${a.unbilled} stopped session${a.unbilled === 1 ? '' : 's'} not billed yet`, path: '/counter/unbilled' });
+    out.push({ key: 'unbilled', text: `${a.unbilled} stopped session${a.unbilled === 1 ? '' : 's'} pending payment`, path: '/counter/bills' });
   }
   if (a.startingSoon > 0) {
     out.push({

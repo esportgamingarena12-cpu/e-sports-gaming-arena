@@ -300,6 +300,11 @@
 2. No database change: Supabase's own `updateUser` changes the password. Not tested against a real account (so no real password is touched); the rules are unit tested and the guard (a visitor is sent to the login page) has a browser test.
 3. Note for testing: port 4200 on the author's PC was taken by a different project, so browser tests were run on port 4300.
 
+## Phase 31: pending bills live on the Bills screen
+1. The separate Unbilled menu item and screen are gone (the old address `/counter/unbilled` now opens Bills). **Counter > Bills** has a status filter: **All, Pending, Paid, Void**, with counts.
+2. The words: **Pending** = yet to be billed (a stopped session nobody has paid for, or a session still running), **Paid** = billed and paid (green PAID chip on each bill), **Void** = a cancelled bill. Pending sessions are shown whatever date is picked, at the top, with the gaming charge, canteen items and a **Bill now** button; the date picker applies to the paid and void bills.
+3. The bell says "N stopped sessions pending payment" and opens Bills; the admin dashboard card is "Pending bills".
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

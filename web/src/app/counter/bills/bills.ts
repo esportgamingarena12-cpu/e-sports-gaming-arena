@@ -4,7 +4,9 @@ import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
 import { formatIst, formatIstTime, inr, istDayRange, todayIst } from '../../shared/format';
 import { ToastService } from '../../shared/toast.service';
+import { CounterStore } from '../counter.store';
 import { ReceiptService } from '../receipt/receipt.service';
+import { PendingBills } from './pending-bills';
 
 interface BillRow {
   bill_no: number;
@@ -25,6 +27,7 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
 
 @Component({
   selector: 'app-bills',
+  imports: [PendingBills],
   template: `
     <section class="p-4">
       <div class="flex flex-wrap items-end justify-between gap-2">
@@ -39,11 +42,35 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
 
       @if (error()) { <p class="mt-3 rounded bg-red-500/15 p-2 text-sm text-red-300" role="alert">{{ error() }}</p> }
 
+      <!-- Status filter: Pending = yet to be billed, Paid = billed and paid, Void = cancelled bills -->
+      <div class="mt-3 flex flex-wrap gap-2" role="group" aria-label="Bill status" data-status-filter>
+        @for (f of filters; track f.key) {
+          <button type="button" class="whitespace-nowrap rounded-full border px-3 py-1 text-sm"
+                  [class]="status() === f.key ? 'border-violet-400 bg-linear-to-r from-violet-600 to-fuchsia-500 text-white' : 'border-slate-700 text-slate-300'"
+                  (click)="status.set(f.key)" [attr.data-filter]="f.key">
+            {{ f.label }}@if (count(f.key) !== null) { <span class="ml-1 opacity-80">({{ count(f.key) }})</span> }
+          </button>
+        }
+      </div>
+
+      @if (status() === 'all' || status() === 'pending') {
+        <div class="mt-4">
+          <h2 class="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-orange-300">
+            <span class="size-2 rounded-full bg-orange-400"></span> Pending · yet to be billed
+          </h2>
+          <app-pending-bills (billed)="load()" />
+        </div>
+      }
+
+      @if (status() !== 'pending') {
       @if (!loaded()) {
         <p class="mt-4 text-slate-400">Loading…</p>
       } @else {
-        <ul class="mt-4 space-y-2" data-bills>
-          @for (b of bills(); track b.bill_no) {
+        <h2 class="mb-2 mt-5 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-emerald-300">
+          <span class="size-2 rounded-full bg-emerald-400"></span> {{ status() === 'void' ? 'Void bills' : status() === 'paid' ? 'Paid bills' : 'Paid and void bills' }}
+        </h2>
+        <ul class="space-y-2" data-bills>
+          @for (b of shown(); track b.bill_no) {
             <li class="card" [attr.data-bill]="b.bill_no" [class.opacity-70]="b.status === 'void'">
               <button type="button" class="flex w-full items-center justify-between gap-2 text-left" (click)="toggle(b.bill_no)"
                       [attr.aria-expanded]="open() === b.bill_no">
@@ -53,6 +80,7 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
                     <span class="rounded-full bg-violet-500/20 px-2.5 py-0.5 text-sm font-semibold text-violet-100" data-customer-name>{{ b.customer_name || 'Walk-in' }}</span>
                     @if (b.sessions?.stations?.name; as st) { <span class="rounded bg-cyan-400/15 px-2 py-0.5 text-xs font-medium text-cyan-200" data-station-name>{{ st }}</span> }
                     @if (b.status === 'void') { <span class="rounded bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-300" data-void-badge>VOID</span> }
+                    @else { <span class="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300" data-paid-badge>PAID</span> }
                   </span>
                   <span class="mt-0.5 block truncate text-xs text-slate-300" data-bill-time>
                     {{ timeText(b) }} · {{ modes(b) }}
@@ -107,9 +135,10 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
               }
             </li>
           } @empty {
-            <li class="text-slate-400">No bills on this date.</li>
+            <li class="text-slate-400">{{ status() === 'all' ? 'No bills on this date.' : 'None on this date.' }}</li>
           }
         </ul>
+      }
       }
     </section>
   `,
@@ -119,6 +148,7 @@ export class Bills implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly receipts = inject(ReceiptService);
   private readonly auth = inject(AuthService);
+  private readonly store = inject(CounterStore);
 
   protected readonly today = todayIst();
   protected readonly day = signal(todayIst());
@@ -134,18 +164,39 @@ export class Bills implements OnInit, OnDestroy {
   protected readonly isAdmin = computed(() => this.auth.role() === 'admin');
 
   protected readonly money = inr;
+
+  /** Pending = yet to be billed (still on a station or stopped); Paid = billed and paid; Void = a bill that was cancelled. */
+  protected readonly filters = [
+    { key: 'all', label: 'All' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'paid', label: 'Paid' },
+    { key: 'void', label: 'Void' },
+  ] as const;
+  protected readonly status = signal<'all' | 'pending' | 'paid' | 'void'>('all');
+  protected readonly shown = computed(() => {
+    const s = this.status();
+    return this.bills().filter((b) => s === 'all' || b.status === s);
+  });
+  protected count(key: string): number | null {
+    if (key === 'pending') return this.store.sessions().length;
+    if (key === 'paid') return this.bills().filter((b) => b.status === 'paid').length;
+    if (key === 'void') return this.bills().filter((b) => b.status === 'void').length;
+    return null;
+  }
   private timer?: ReturnType<typeof setInterval>;
   private readonly onVisible = () => {
     if (document.visibilityState === 'visible') void this.load();
   };
 
   ngOnInit(): void {
+    this.store.start();
     void this.load();
     this.timer = setInterval(() => void this.load(), 60_000);
     document.addEventListener('visibilitychange', this.onVisible);
   }
 
   ngOnDestroy(): void {
+    this.store.stop();
     clearInterval(this.timer);
     document.removeEventListener('visibilitychange', this.onVisible);
   }
