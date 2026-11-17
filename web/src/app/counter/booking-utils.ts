@@ -119,3 +119,29 @@ export function relativeStart(startIso: string, nowMs: number): string {
   if (m === 0) return 'now';
   return `started ${-m} min ago`;
 }
+
+export interface SessionSpan {
+  station_id: number;
+  customer_name: string | null;
+  started_at: string;
+  ended_at: string | null;
+}
+
+/** The session (if any) that was running on a station at some point during the slot [startMs, startMs + slot). */
+export function sessionAt<T extends SessionSpan>(
+  sessions: T[],
+  stationId: number,
+  startMs: number,
+  slotMin: number,
+  nowMs: number,
+): T | null {
+  const endMs = startMs + slotMin * MIN;
+  return (
+    sessions.find(
+      (s) =>
+        s.station_id === stationId &&
+        Date.parse(s.started_at) < endMs &&
+        (s.ended_at ? Date.parse(s.ended_at) : nowMs) > startMs,
+    ) ?? null
+  );
+}

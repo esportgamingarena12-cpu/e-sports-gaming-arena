@@ -1,6 +1,7 @@
 import {
   BookingLike,
   bookingAt,
+  sessionAt,
   canCancel,
   canCheckIn,
   canMarkNoShow,
@@ -128,5 +129,28 @@ describe('what staff can do with a booking', () => {
     expect(relativeStart(at(25), NOW)).toBe('in 25 min');
     expect(relativeStart(at(0), NOW)).toBe('now');
     expect(relativeStart(at(-5), NOW)).toBe('started 5 min ago');
+  });
+});
+
+describe('sessionAt', () => {
+  const MIN = 60_000;
+  const t0 = Date.parse('2026-11-17T06:30:00Z');
+  const s = (station: number, a: number, b: number | null) => ({
+    station_id: station,
+    customer_name: 'X',
+    started_at: new Date(t0 + a * MIN).toISOString(),
+    ended_at: b === null ? null : new Date(t0 + b * MIN).toISOString(),
+  });
+  it('finds a session that overlaps the slot', () => {
+    expect(sessionAt([s(1, 10, 50)], 1, t0, 30, t0 + 90 * MIN)).not.toBeNull();
+  });
+  it('ignores other stations and sessions outside the slot', () => {
+    expect(sessionAt([s(2, 10, 50)], 1, t0, 30, t0 + 90 * MIN)).toBeNull();
+    expect(sessionAt([s(1, 30, 50)], 1, t0, 30, t0 + 90 * MIN)).toBeNull(); // starts exactly when the slot ends
+    expect(sessionAt([s(1, -20, 0)], 1, t0, 30, t0 + 90 * MIN)).toBeNull(); // ends exactly when the slot starts
+  });
+  it('counts a still-open session up to now', () => {
+    expect(sessionAt([s(1, -5, null)], 1, t0, 30, t0 + 10 * MIN)).not.toBeNull();
+    expect(sessionAt([s(1, 40, null)], 1, t0, 30, t0 + 20 * MIN)).toBeNull(); // not started yet at "now"
   });
 });

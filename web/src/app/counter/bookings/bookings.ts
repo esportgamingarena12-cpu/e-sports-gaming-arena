@@ -14,6 +14,8 @@ import {
   canMarkNoShow,
   istDateOf,
   relativeStart,
+  SessionSpan,
+  sessionAt,
   slotStartMs,
   slotStarts,
   weekdayOf,
@@ -175,8 +177,11 @@ const BADGE: Record<BookingStatus, string> = {
                         @case ('inuse') {
                           <div class="flex h-8 items-center justify-center rounded bg-rose-500/30 px-1 text-rose-200" title="Session running" data-cell-inuse>In use</div>
                         }
+                        @case ('used') {
+                          <div class="flex h-8 items-center justify-center rounded bg-violet-500/25 px-1 text-violet-200" [title]="c.title" data-cell-used>Used</div>
+                        }
                         @default {
-                          <div class="h-8 rounded bg-slate-900/40"></div>
+                          <div class="flex h-8 items-center justify-center rounded bg-slate-900/40 px-1 text-[10px] text-slate-500" title="Nobody used this station then" data-cell-vacant>Vacant</div>
                         }
                       }
                     </td>
@@ -205,6 +210,8 @@ export class CounterBookings implements OnInit, OnDestroy {
   protected readonly day = signal(todayIst());
   protected readonly search = signal('');
   protected readonly dayRows = signal<BookingRow[]>([]);
+  /** sessions that ran on the selected day, so past slots can say Used or Vacant */
+  protected readonly daySessions = signal<SessionSpan[]>([]);
   protected readonly searchRows = signal<BookingRow[]>([]);
   protected readonly loaded = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -255,6 +262,7 @@ export class CounterBookings implements OnInit, OnDestroy {
       this.store.changes();
       this.day();
       void this.loadDay();
+      void this.loadDaySessions();
     });
     effect(() => {
       if (this.searching()) {
@@ -306,7 +314,7 @@ export class CounterBookings implements OnInit, OnDestroy {
   }
 
   /** What to draw in one grid cell. */
-  protected cell(stationId: number, minutes: number): { kind: 'free' | 'booked' | 'inuse' | 'past'; text?: string; cls?: string; title?: string } {
+  protected cell(stationId: number, minutes: number): { kind: 'free' | 'booked' | 'inuse' | 'past' | 'used'; text?: string; cls?: string; title?: string } {
     const slot = this.rules().slot_minutes;
     const start = slotStartMs(this.day(), minutes);
     const now = this.clock.now();
@@ -320,7 +328,10 @@ export class CounterBookings implements OnInit, OnDestroy {
         cls: b.status === 'checked_in' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-sky-500/30 text-sky-200',
       };
     }
-    if (start + slot * 60_000 <= now) return { kind: 'past' };
+    if (start + slot * 60_000 <= now) {
+      const used = sessionAt(this.daySessions(), stationId, start, slot, now);
+      return used ? { kind: 'used', title: `${used.customer_name?.trim() || 'Walk-in'} · ${formatIstTime(used.started_at)}–${used.ended_at ? formatIstTime(used.ended_at) : 'now'}` } : { kind: 'past' };
+    }
     if (this.isToday() && start <= now && this.store.sessionByStation().has(stationId)) return { kind: 'inuse' };
     return { kind: 'free' };
   }
@@ -391,6 +402,17 @@ export class CounterBookings implements OnInit, OnDestroy {
       customer_name: customers?.name ?? 'Customer',
       customer_phone: customers?.phone ?? null,
     }));
+  }
+
+  private async loadDaySessions(): Promise<void> {
+    const { from, to } = istDayRange(this.day());
+    const { data, error } = await this.sb
+      .from('sessions')
+      .select('station_id, customer_name, started_at, ended_at')
+      .neq('status', 'cancelled')
+      .lt('started_at', to)
+      .or(`ended_at.is.null,ended_at.gt.${from}`);
+    if (!error) this.daySessions.set((data ?? []) as SessionSpan[]);
   }
 
   private async loadDay(): Promise<void> {

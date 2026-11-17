@@ -274,6 +274,10 @@
 2. Admin > Products, Counter > Stock and the low-stock alert leave deleted items out. Bills and reports still show their names. An item that is only switched off (not deleted) still shows as inactive so it can be switched back on.
 3. Test: `supabase/tests/21_product_deleted.test.sql`.
 
+## Phase 26: counter fixes
+1. Counter > Bookings day grid: past time slots now say **Used** (a session ran on that station then; hover for the name and times) or **Vacant** (nobody used it), instead of an empty dark box. Based on the sessions table, so walk-ins count.
+2. Admin screens (Stations, Packages, Passes, Products, Games): Edit and + New scroll up to the form; every list row has Delete (hides instead when the item has history) and, where it applies, Make inactive / Make active.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).
