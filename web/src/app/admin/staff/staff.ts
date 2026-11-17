@@ -42,22 +42,43 @@ import { SupabaseService } from '../../core/supabase.service';
 
       <ul class="mt-4 divide-y divide-slate-800">
         @for (p of people(); track p.id) {
-          <li class="flex flex-wrap items-center gap-3 py-3">
-            <div class="min-w-0 flex-1">
-              <p class="truncate font-medium">{{ p.full_name || '(no name)' }}
-                @if (p.id === auth.profile()?.id) { <span class="text-xs text-slate-400">(you)</span> }
-              </p>
-              <p class="truncate text-sm text-slate-400">{{ p.email }}</p>
+          <li class="py-3" [attr.data-person]="p.email">
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium">{{ p.full_name || '(no name)' }}
+                  @if (p.id === auth.profile()?.id) { <span class="text-xs text-slate-400">(you)</span> }
+                  @if (!p.active) { <span class="ml-1 rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300" data-suspended>Suspended</span> }
+                </p>
+                <p class="truncate text-sm text-slate-400">{{ p.email }}@if (p.phone) { · {{ p.phone }} }</p>
+              </div>
+              <select [value]="p.role" (change)="setRole(p, $event)"
+                      class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm" aria-label="Role">
+                <option value="staff">staff</option>
+                <option value="admin">admin</option>
+              </select>
+              <button type="button" class="btn-outline !px-3 !py-1 !text-sm" (click)="startEdit(p)" data-edit>Edit</button>
+              @if (p.id !== auth.profile()?.id) {
+                <button type="button" class="btn-outline !px-3 !py-1 !text-sm" (click)="toggleActive(p)" data-suspend>
+                  {{ p.active ? 'Suspend' : 'Reactivate' }}
+                </button>
+              }
             </div>
-            <select [value]="p.role" (change)="setRole(p, $event)"
-                    class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm" aria-label="Role">
-              <option value="staff">staff</option>
-              <option value="admin">admin</option>
-            </select>
-            <label class="flex items-center gap-1 text-sm">
-              <input type="checkbox" [checked]="p.active" (change)="setActive(p, $event)" />
-              Active
-            </label>
+            @if (editingId() === p.id) {
+              <form class="mt-3 space-y-3 rounded border border-slate-800 p-3" (submit)="$event.preventDefault(); saveEdit(p)">
+                <label class="block text-sm">Name
+                  <input [value]="editName()" (input)="editName.set($any($event.target).value)" data-edit-name
+                         class="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2" />
+                </label>
+                <label class="block text-sm">Phone (optional)
+                  <input [value]="editPhone()" (input)="editPhone.set($any($event.target).value)" data-edit-phone inputmode="tel"
+                         class="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2" />
+                </label>
+                <div class="flex gap-2">
+                  <button type="submit" class="btn-primary !px-4 !py-1.5 !text-sm" [disabled]="!editName().trim()" data-edit-save>Save</button>
+                  <button type="button" class="btn-outline !px-4 !py-1.5 !text-sm" (click)="editingId.set(null)">Cancel</button>
+                </div>
+              </form>
+            }
           </li>
         } @empty {
           <li class="py-3 text-slate-400">No staff yet.</li>
@@ -74,6 +95,9 @@ export class StaffAdmin implements OnInit {
   protected readonly people = signal<Profile[]>([]);
   protected readonly showForm = signal(false);
   protected readonly busy = signal(false);
+  protected readonly editingId = signal<string | null>(null);
+  protected readonly editName = signal('');
+  protected readonly editPhone = signal('');
   protected readonly message = signal<{ ok: boolean; text: string } | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
@@ -121,14 +145,32 @@ export class StaffAdmin implements OnInit {
     await this.load();
   }
 
-  protected async setActive(p: Profile, event: Event): Promise<void> {
-    const box = event.target as HTMLInputElement;
+  protected startEdit(p: Profile): void {
+    this.editingId.set(p.id);
+    this.editName.set(p.full_name ?? '');
+    this.editPhone.set(p.phone ?? '');
+  }
+
+  protected async saveEdit(p: Profile): Promise<void> {
+    const name = this.editName().trim();
+    if (!name) return;
     this.message.set(null);
-    const { error } = await this.sb.from('profiles').update({ active: box.checked }).eq('id', p.id);
-    if (error) {
-      box.checked = p.active; // refused: snap the checkbox back
-      this.fail(error.message);
-    }
+    const { data, error } = await this.sb
+      .from('profiles')
+      .update({ full_name: name, phone: this.editPhone().trim() || null })
+      .eq('id', p.id)
+      .select('id');
+    if (error || !data?.length) return this.fail(error ? error.message : 'Not allowed');
+    this.editingId.set(null);
+    this.message.set({ ok: true, text: `Saved ${name}` });
+    await this.load();
+  }
+
+  protected async toggleActive(p: Profile): Promise<void> {
+    this.message.set(null);
+    const { data, error } = await this.sb.from('profiles').update({ active: !p.active }).eq('id', p.id).select('id');
+    if (error || !data?.length) this.fail(error ? error.message : 'Not allowed');
+    else this.message.set({ ok: true, text: `${p.full_name || p.email} ${p.active ? 'suspended' : 'reactivated'}` });
     await this.load();
   }
 
