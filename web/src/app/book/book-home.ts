@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { formatIstTime, todayIst } from '../shared/format';
 import { RouterLink } from '@angular/router';
-import { ClockArt, ControllerArt, HeroArt, RoomArt } from '../shared/art';
+import { ClockArt, ControllerArt, RoomArt } from '../shared/art';
 import { GamePoster } from '../shared/game-poster';
 import { HeroSlide, HeroSlider } from '../shared/hero-slider';
 import { Icon } from '../shared/icon';
@@ -21,7 +21,7 @@ const addDays = (day: string, n: number): string =>
 /** Public booking page: anyone can see free times; signing in is asked only when they pick one. */
 @Component({
   selector: 'app-book-home',
-  imports: [Icon, HeroArt, RoomArt, ControllerArt, ClockArt, RouterLink, FoodPic, GamePoster, HeroSlider, HeroSlide],
+  imports: [Icon, RoomArt, ControllerArt, ClockArt, RouterLink, FoodPic, GamePoster, HeroSlider, HeroSlide],
   template: `
     <!-- Coming-soon ticker: upcoming games and the new ones, set by the owner in Admin > Games -->
     @if (ticker().length > 0) {
@@ -70,7 +70,9 @@ const addDays = (day: string, n: number): string =>
             <a href="#rates" class="btn-outline inline-flex items-center" data-view-rates>View Rates</a>
           </div>
         </div>
-        <div class="mx-auto w-full max-w-md animate-float md:max-w-none"><app-hero-art /></div>
+        <div class="mx-auto w-full max-w-md animate-float md:max-w-none">
+          <img data-hero-image src="images/hero.png" width="755" height="488" fetchpriority="high" alt="A gamer wearing a headset at a desk with three screens showing football, a shooter and a battle royale map, with a game controller floating above" class="h-auto w-full rounded-3xl border border-fuchsia-400/30 shadow-[0_0_60px_-10px_rgba(168,85,247,0.6)]" />
+        </div>
         </div>
 
         <!-- Slide 2: games available -->

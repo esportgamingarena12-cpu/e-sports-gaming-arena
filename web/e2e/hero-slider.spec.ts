@@ -26,6 +26,18 @@ test.describe('home page slider', () => {
     await expect(page.locator('[data-dot]')).toHaveCount(4);
   });
 
+  test('slide 1 shows the hero picture and it fits the screen', async ({ page }) => {
+    for (const w of [360, 1280]) {
+      await open(page, w);
+      const img = page.locator('[data-hero-image]');
+      await expect(img).toBeVisible();
+      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+      const box = (await img.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(-1);
+      expect(box.x + box.width).toBeLessThanOrEqual(w + 1);
+    }
+  });
+
   test('arrows, dots and the keyboard move between slides, and it wraps around', async ({ page }) => {
     await open(page);
     await expect.poll(() => activeIndex(page)).toBe(0);
