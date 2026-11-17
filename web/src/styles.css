@@ -136,3 +136,6 @@ app-receipt { display: none; }
   .ticker-track { width: auto !important; flex-wrap: wrap; white-space: normal !important; row-gap: 0.25rem; }
   .ticker-copy { display: none !important; }
 }
+
+/* the edit forms scroll into view under the top bar (see shared/scroll-to-form.ts) */
+main form { scroll-margin-top: 4.5rem; }

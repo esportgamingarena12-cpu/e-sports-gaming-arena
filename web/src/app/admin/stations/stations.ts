@@ -5,6 +5,7 @@ import { friendlyError } from '../../shared/errors';
 import { FieldError } from '../../shared/field-error';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
+import { scrollToForm } from '../../shared/scroll-to-form';
 
 interface Station {
   id: number;
@@ -159,6 +160,7 @@ export class Stations implements OnInit {
     const nextOrder = Math.max(0, ...this.stations().map((s) => s.sort_order)) + 1;
     this.form.reset({ name: '', type: 'pc', rate_per_hour: 60, sort_order: nextOrder, active: true, online_bookable: true });
     this.editingId.set(0);
+    scrollToForm();
   }
 
   protected edit(s: Station): void {
@@ -171,6 +173,7 @@ export class Stations implements OnInit {
       online_bookable: s.online_bookable,
     });
     this.editingId.set(s.id);
+    scrollToForm();
   }
 
   protected cancel(): void {

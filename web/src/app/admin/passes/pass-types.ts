@@ -5,6 +5,7 @@ import { friendlyError } from '../../shared/errors';
 import { FieldError } from '../../shared/field-error';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
+import { scrollToForm } from '../../shared/scroll-to-form';
 
 export interface PassType {
   id: number;
@@ -195,6 +196,7 @@ export class PassTypes implements OnInit {
     this.form.reset({ name: '', price: 0, original_price: null, validity_days: 30, station_type: '', kind: 'unlimited', hours: 10, active: true, popular: false });
     this.error.set(null);
     this.editingId.set(0);
+    scrollToForm();
   }
 
   protected edit(p: PassType): void {
@@ -211,6 +213,7 @@ export class PassTypes implements OnInit {
     });
     this.error.set(null);
     this.editingId.set(p.id);
+    scrollToForm();
   }
 
   protected cancel(): void {

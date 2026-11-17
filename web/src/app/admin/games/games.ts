@@ -16,6 +16,7 @@ import {
 import { GamePoster } from '../../shared/game-poster';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
+import { scrollToForm } from '../../shared/scroll-to-form';
 
 interface Game {
   id: number;
@@ -275,6 +276,7 @@ export class GamesAdmin implements OnInit, OnDestroy {
     this.form.reset({ title: '', station_type: '', status: 'available', hot: false, is_new: false, release_date: '', note: '', sort_order: this.games().length + 1, active: true });
     this.resetPhoto(null);
     this.editingId.set(0);
+    scrollToForm();
   }
 
   protected edit(g: Game): void {
@@ -291,6 +293,7 @@ export class GamesAdmin implements OnInit, OnDestroy {
     });
     this.resetPhoto(g.image_path);
     this.editingId.set(g.id);
+    scrollToForm();
   }
 
   protected cancel(): void {

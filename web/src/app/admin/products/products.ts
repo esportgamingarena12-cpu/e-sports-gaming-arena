@@ -14,6 +14,7 @@ import {
 } from '../../shared/food-image';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
+import { scrollToForm } from '../../shared/scroll-to-form';
 
 interface Product {
   id: number;
@@ -225,6 +226,7 @@ export class Products implements OnInit, OnDestroy {
     this.form.reset({ name: '', category: 'General', price: 0, low_stock_level: 0, opening_stock: 0, track_stock: true, active: true, featured: false });
     this.resetPhoto(null);
     this.editingId.set(0);
+    scrollToForm();
   }
 
   protected edit(p: Product): void {
@@ -240,6 +242,7 @@ export class Products implements OnInit, OnDestroy {
     });
     this.resetPhoto(p.image_path);
     this.editingId.set(p.id);
+    scrollToForm();
   }
 
   protected cancel(): void {

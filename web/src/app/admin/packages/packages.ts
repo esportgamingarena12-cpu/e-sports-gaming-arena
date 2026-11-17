@@ -5,6 +5,7 @@ import { friendlyError } from '../../shared/errors';
 import { FieldError } from '../../shared/field-error';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
+import { scrollToForm } from '../../shared/scroll-to-form';
 
 interface Pack {
   id: number;
@@ -170,6 +171,7 @@ export class Packages implements OnInit {
   protected startNew(): void {
     this.form.reset({ name: '', station_type: 'pc', minutes: 60, price: 0, active: true });
     this.editingId.set(0);
+    scrollToForm();
   }
 
   protected edit(p: Pack): void {
@@ -181,6 +183,7 @@ export class Packages implements OnInit {
       active: p.active,
     });
     this.editingId.set(p.id);
+    scrollToForm();
   }
 
   protected cancel(): void {
