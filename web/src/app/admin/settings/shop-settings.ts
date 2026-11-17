@@ -67,6 +67,11 @@ import { integer, notBlank, upiId } from '../../shared/validators';
               <input formControlName="min_bill_min" type="number" inputmode="numeric" class="field" />
               <app-field-error [control]="form.controls.min_bill_min" />
             </label>
+            <label class="label">Overtime grace (minutes) – time past a package that is not charged
+              <input formControlName="overtime_grace_min" type="number" inputmode="numeric" class="field" data-grace />
+              <app-field-error [control]="form.controls.overtime_grace_min" />
+            </label>
+            <p class="text-xs text-slate-400">After the package time ends, overtime up to the grace is free unless staff choose to charge it. Beyond the grace it is charged in billing blocks (for example 11 to 15 minutes over is one 15 minute block, 16 to 30 minutes over is two). Staff can charge or waive overtime on each session. Use 0 for no grace.</p>
             <p class="text-xs text-slate-400">Running sessions keep the values they started with.</p>
           </div>
 
@@ -95,6 +100,7 @@ export class ShopSettings implements OnInit {
     receipt_footer: [''],
     billing_block_min: [15, [Validators.required, Validators.min(1), integer]],
     min_bill_min: [30, [Validators.required, Validators.min(0), integer]],
+    overtime_grace_min: [10, [Validators.required, Validators.min(0), Validators.max(120), integer]],
   });
 
   async ngOnInit(): Promise<void> {
@@ -115,6 +121,7 @@ export class ShopSettings implements OnInit {
         receipt_footer: data.receipt_footer ?? '',
         billing_block_min: data.billing_block_min,
         min_bill_min: data.min_bill_min,
+        overtime_grace_min: data.overtime_grace_min ?? 10,
       });
     }
     this.loaded.set(true);
@@ -141,6 +148,7 @@ export class ShopSettings implements OnInit {
         receipt_footer: v.receipt_footer.trim(),
         billing_block_min: Number(v.billing_block_min),
         min_bill_min: Number(v.min_bill_min),
+        overtime_grace_min: Number(v.overtime_grace_min),
         updated_at: new Date().toISOString(),
       })
       .eq('id', true)

@@ -312,6 +312,12 @@
 ## Phase 33: Bills loads 10 at a time
 Counter > Bills asks for the first 10 bills of the picked date and adds 10 more when the end of the list scrolls into view (or when "Load more bills" is pressed). The status filter (All / Paid / Void) is applied by the database, and the Paid and Void counts on the filter buttons come from counts for the whole day. The one-minute refresh keeps as many bills as are already on screen, so a list you scrolled down does not jump back to 10. Pending sessions are not paged (there are few).
 
+## Phase 34: overtime grace on package sessions
+1. Migration `0023_overtime_grace.sql`: `settings.overtime_grace_min` (10), copied to each session at start; `sessions.overtime_mode` (null automatic, 'charge', 'waive'); `session_charge()` and its mirror in `pricing.ts` changed together. On a package session, time past the package is free while it is within the grace (up to and including 10 minutes) unless staff choose to charge it; beyond the grace it is charged in billing blocks (11 to 15 min over = one 15 min block, 16 to 30 = two) unless staff choose not to. Per-hour and pass sessions are unchanged. A session with no grace value (the old golden rows) behaves exactly as before, so the golden test still passes.
+2. Counter: the station card and the Pending list show "Overtime N min, charged / not charged" with **Charge overtime (+Rs x)** and **Don't charge** buttons (and **Automatic** to undo). Admin > Settings has "Overtime grace (minutes)".
+3. Tests: `pricing.spec.ts` (grace cases, overtimeState), `supabase/tests/dashboard/24_overtime_grace.sql` (run in the dashboard SQL editor; rolls itself back).
+4. Open sessions at the time of the migration got the grace of 10 minutes (the column default).
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

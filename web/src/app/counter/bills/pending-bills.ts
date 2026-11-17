@@ -6,6 +6,7 @@ import { ToastService } from '../../shared/toast.service';
 import { inr } from '../../shared/format';
 import { CounterStore, OpenSession, TabLine } from '../counter.store';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
+import { OvertimeControl } from '../stations/overtime-control';
 
 export interface PendingRow {
   session: OpenSession;
@@ -26,7 +27,7 @@ export interface PendingRow {
  */
 @Component({
   selector: 'app-pending-bills',
-  imports: [CheckoutDialog, RouterLink],
+  imports: [CheckoutDialog, OvertimeControl, RouterLink],
   template: `
     <section class="space-y-3" data-pending-list>
       @if (store.error(); as e) { <p class="rounded bg-red-500/15 p-2 text-sm text-red-300" role="alert">{{ e }}</p> }
@@ -63,6 +64,7 @@ export interface PendingRow {
                 <p class="rounded bg-slate-800/60 px-2 py-1">Gaming <span class="float-right font-medium">{{ inr(r.gaming) }}</span></p>
                 <p class="rounded bg-slate-800/60 px-2 py-1">Canteen <span class="float-right font-medium">{{ inr(r.canteen) }}</span></p>
               </div>
+              <app-overtime-control [session]="r.session" (changed)="store.load()" />
               @if (r.items.length) {
                 <p class="text-sm text-slate-300" data-items>Items: {{ itemsText(r.items) }}</p>
               }

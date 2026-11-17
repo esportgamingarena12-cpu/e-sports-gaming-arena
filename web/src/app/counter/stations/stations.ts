@@ -10,6 +10,7 @@ import { alarmRemainingMs } from '../../core/time-up';
 import { relativeStart, upcomingBooking } from '../booking-utils';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
 import { ExtendDialog } from './extend-dialog';
+import { OvertimeControl } from './overtime-control';
 import { StartDialog } from './start-dialog';
 
 interface Card {
@@ -28,7 +29,7 @@ interface Card {
 
 @Component({
   selector: 'app-counter-stations',
-  imports: [StartDialog, ExtendDialog, CheckoutDialog, RouterLink],
+  imports: [StartDialog, ExtendDialog, CheckoutDialog, OvertimeControl, RouterLink],
   providers: [CounterStore],
   template: `
     <section class="p-4">
@@ -82,6 +83,7 @@ interface Card {
                     }
                   </p>
                 }
+                <app-overtime-control [session]="s" (changed)="store.load()" />
                 @if (c.timer; as t) {
                   <p class="text-sm" data-timer-note>
                     ⏰ Timer:

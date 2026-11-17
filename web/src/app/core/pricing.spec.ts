@@ -1,4 +1,4 @@
-import { chargePaise, formatDuration, packageRemainingMs, playedMs, SessionSnapshot, sessionCharge } from './pricing';
+import { chargePaise, formatDuration, overtimeState, packageRemainingMs, playedMs, SessionSnapshot, sessionCharge } from './pricing';
 
 const START = '2026-01-01T10:00:00+00:00';
 const at = (minutes: number): number => Date.parse(START) + minutes * 60_000;
@@ -135,5 +135,66 @@ describe('pricing: an extended package session (minutes and prices added)', () =
   });
   it('bills overtime beyond the combined time in blocks at the hourly rate', () => {
     expect(sessionCharge(extended, at(91))).toBe(155); // 140 + one 15 minute block at 60/hr
+  });
+});
+
+describe('pricing: overtime grace on a package (30 min, Rs 50, PC at Rs 90/hr, 15 minute blocks, grace 10)', () => {
+  const pc30 = (over: Partial<SessionSnapshot> = {}) => pkg(30, 50, 90, { overtime_grace_min: 10, ...over });
+  it('is the package price inside the package and inside the grace', () => {
+    expect(sessionCharge(pc30(), at(25))).toBe(50);
+    expect(sessionCharge(pc30(), at(30))).toBe(50);
+    expect(sessionCharge(pc30(), at(35))).toBe(50); // 5 over
+    expect(sessionCharge(pc30(), at(40))).toBe(50); // exactly 10 over
+  });
+  it('charges a 15 minute block once the grace is passed (11 to 15 minutes over)', () => {
+    expect(sessionCharge(pc30(), at(41))).toBe(72.5); // 50 + 22.50
+    expect(sessionCharge(pc30(), at(45))).toBe(72.5);
+  });
+  it('charges 30 minutes from 16 minutes over', () => {
+    expect(sessionCharge(pc30(), at(46))).toBe(95); // 50 + 45
+    expect(sessionCharge(pc30(), at(60))).toBe(95);
+    expect(sessionCharge(pc30(), at(61))).toBe(117.5); // 31 over: 3 blocks
+  });
+  it('the example from the counter: 31 min 43 s played is free with the grace', () => {
+    expect(chargePaise(pc30(), Date.parse(START) + (31 * 60 + 43) * 1000)).toBe(5000);
+  });
+  it("staff can charge overtime inside the grace ('charge')", () => {
+    expect(sessionCharge(pc30({ overtime_mode: 'charge' }), at(35))).toBe(72.5);
+  });
+  it("staff can waive overtime beyond the grace ('waive')", () => {
+    expect(sessionCharge(pc30({ overtime_mode: 'waive' }), at(120))).toBe(50);
+  });
+  it('a session with no grace value behaves as before (every overtime is charged)', () => {
+    expect(sessionCharge(pkg(30, 50, 90), at(31))).toBe(72.5);
+    expect(sessionCharge(pkg(30, 50, 90, { overtime_grace_min: 0 }), at(31))).toBe(72.5);
+  });
+  it('per-hour and pass sessions are not affected by the grace', () => {
+    expect(sessionCharge(perHour(60, { overtime_grace_min: 10 }), at(91))).toBe(105);
+    expect(sessionCharge(perHour(60, { pass_id: 1, pass_minutes_left: 30, overtime_grace_min: 10 }), at(50))).toBe(30); // 60 min rounded up, 30 beyond the balance
+  });
+  it('an extended package (90 min, Rs 140) uses the grace after the new total', () => {
+    const extended = pkg(90, 140, 90, { overtime_grace_min: 10 });
+    expect(sessionCharge(extended, at(100))).toBe(140);
+    expect(sessionCharge(extended, at(101))).toBe(162.5);
+  });
+});
+
+describe('overtimeState (what the counter shows)', () => {
+  const pc30 = (over: Partial<SessionSnapshot> = {}) => pkg(30, 50, 90, { overtime_grace_min: 10, ...over });
+  it('is null inside the package, for per-hour and for pass sessions', () => {
+    expect(overtimeState(pc30(), at(20))).toBeNull();
+    expect(overtimeState(perHour(60), at(200))).toBeNull();
+    expect(overtimeState(pc30({ pass_id: 3 }), at(60))).toBeNull();
+  });
+  it('inside the grace: free, with the amount it would cost', () => {
+    const o = overtimeState(pc30(), at(34) + 30_000)!;
+    expect(o).toMatchObject({ overMinutes: 5, charged: false, withinGrace: true, ifChargedRupees: 22.5, mode: null });
+  });
+  it('beyond the grace: charged', () => {
+    expect(overtimeState(pc30(), at(46))).toMatchObject({ overMinutes: 16, charged: true, withinGrace: false, ifChargedRupees: 45 });
+  });
+  it("shows staff's choice", () => {
+    expect(overtimeState(pc30({ overtime_mode: 'charge' }), at(35))).toMatchObject({ charged: true, mode: 'charge' });
+    expect(overtimeState(pc30({ overtime_mode: 'waive' }), at(90))).toMatchObject({ charged: false, mode: 'waive' });
   });
 });
