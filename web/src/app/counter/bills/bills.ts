@@ -28,6 +28,8 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
 @Component({
   selector: 'app-bills',
   imports: [PendingBills],
+  // its own store, shared with the Pending list inside it (the same way Stations, Canteen and Stock each have theirs)
+  providers: [CounterStore],
   template: `
     <section class="p-4">
       <div class="flex flex-wrap items-end justify-between gap-2">
