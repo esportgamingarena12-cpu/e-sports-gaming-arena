@@ -148,6 +148,13 @@ const BADGE: Record<BookingStatus, string> = {
         <p class="mt-2 text-slate-400">Closed on this day.</p>
       } @else {
         <p class="mt-1 text-xs text-slate-400">Tap a free slot to book it. Scroll sideways for later times.</p>
+        <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-300" data-legend>
+          <span><span class="mr-1 inline-block size-2.5 rounded-sm border border-emerald-500/60 bg-emerald-500/30"></span>Free</span>
+          <span><span class="mr-1 inline-block size-2.5 rounded-sm border border-sky-400/60 bg-sky-500/50"></span>Booked</span>
+          <span><span class="mr-1 inline-block size-2.5 rounded-sm border border-rose-400/60 bg-rose-500/50"></span>In use now</span>
+          <span><span class="mr-1 inline-block size-2.5 rounded-sm border border-violet-400/60 bg-violet-500/50"></span>Used earlier</span>
+          <span><span class="mr-1 inline-block size-2.5 rounded-sm border border-slate-600 bg-slate-700"></span>Vacant earlier</span>
+        </p>
         <div class="mt-2 overflow-x-auto rounded border border-slate-800" data-grid>
           <table class="border-separate border-spacing-0 text-xs">
             <thead>
@@ -167,7 +174,7 @@ const BADGE: Record<BookingStatus, string> = {
                     <td class="border-b border-slate-800 p-0.5">
                       @switch (c.kind) {
                         @case ('free') {
-                          <button type="button" class="h-8 w-full rounded bg-slate-800/60 hover:bg-emerald-500/30"
+                          <button type="button" class="h-8 w-full rounded border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/35"
                                   (click)="openNew({ stationId: st.id, day: day(), startMinutes: m })"
                                   [attr.aria-label]="'Book ' + st.name + ' at ' + shortTime(m)" data-cell-free></button>
                         }
@@ -175,13 +182,13 @@ const BADGE: Record<BookingStatus, string> = {
                           <div class="flex h-8 items-center justify-center truncate rounded px-1" [class]="c.cls" [title]="c.title" data-cell-booked>{{ c.text }}</div>
                         }
                         @case ('inuse') {
-                          <div class="flex h-8 items-center justify-center rounded bg-rose-500/30 px-1 text-rose-200" title="Session running" data-cell-inuse>In use</div>
+                          <div class="flex h-8 items-center justify-center rounded border border-rose-400/50 bg-rose-500/40 px-1 font-medium text-rose-100" title="Session running" data-cell-inuse>In use</div>
                         }
                         @case ('used') {
-                          <div class="flex h-8 items-center justify-center rounded bg-violet-500/25 px-1 text-violet-200" [title]="c.title" data-cell-used>Used</div>
+                          <div class="flex h-8 items-center justify-center rounded border border-violet-400/50 bg-violet-500/35 px-1 font-medium text-violet-100" [title]="c.title" data-cell-used>Used</div>
                         }
                         @default {
-                          <div class="flex h-8 items-center justify-center rounded bg-slate-900/40 px-1 text-[10px] text-slate-500" title="Nobody used this station then" data-cell-vacant>Vacant</div>
+                          <div class="flex h-8 items-center justify-center rounded border border-slate-700 bg-slate-800/70 px-1 text-[11px] text-slate-300" title="Nobody used this station then" data-cell-vacant>Vacant</div>
                         }
                       }
                     </td>
@@ -325,7 +332,7 @@ export class CounterBookings implements OnInit, OnDestroy {
         kind: 'booked',
         text: first,
         title: `${b.customer_name} · ${formatIstTime(b.start_at)}–${formatIstTime(b.end_at)}`,
-        cls: b.status === 'checked_in' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-sky-500/30 text-sky-200',
+        cls: b.status === 'checked_in' ? 'border border-emerald-400/60 bg-emerald-500/40 font-medium text-emerald-50' : 'border border-sky-400/60 bg-sky-500/40 font-medium text-sky-50',
       };
     }
     if (start + slot * 60_000 <= now) {

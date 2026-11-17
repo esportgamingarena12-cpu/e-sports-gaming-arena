@@ -139,3 +139,19 @@ app-receipt { display: none; }
 
 /* the edit forms scroll into view under the top bar (see shared/scroll-to-form.ts) */
 main form { scroll-margin-top: 4.5rem; }
+
+/* date and time pickers: the calendar / clock icon must show on the dark inputs */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'],
+input[type='month'] {
+  color-scheme: dark;
+}
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator,
+input[type='month']::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.4);
+  opacity: 0.9;
+  cursor: pointer;
+}
