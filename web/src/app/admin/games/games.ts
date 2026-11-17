@@ -17,6 +17,7 @@ import { GamePoster } from '../../shared/game-poster';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
 import { scrollToForm } from '../../shared/scroll-to-form';
+import { Icon } from '../../shared/icon';
 
 interface Game {
   id: number;
@@ -34,7 +35,7 @@ interface Game {
 
 @Component({
   selector: 'app-games-admin',
-  imports: [ReactiveFormsModule, FieldError, GamePoster],
+  imports: [Icon, ReactiveFormsModule, FieldError, GamePoster],
   template: `
     <section class="p-4">
       <div class="flex items-center justify-between gap-2">
@@ -159,18 +160,17 @@ interface Game {
                 <input type="file" class="sr-only" [accept]="accept" [disabled]="posterBusy() !== null" (change)="quickPoster(g, $event)" data-quick-file />
               </label>
               <button type="button" class="btn" (click)="edit(g)" data-edit>Edit</button>
-              <div class="flex w-full flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
-                <button type="button" class="btn-outline !px-3 !py-1 !text-sm" (click)="toggleActive(g)" data-toggle-active>
+              <button type="button" class="btn-outline !px-3 !py-1 !text-sm" (click)="toggleActive(g)" data-toggle-active>
                   {{ g.active ? 'Make inactive' : 'Make active' }}
                 </button>
-                @if (rowDelete() === g.id) {
+              <button type="button" class="inline-flex size-9 items-center justify-center rounded-lg border border-red-500/40 text-red-400 hover:bg-red-500/15" (click)="rowDelete.set(g.id)" [attr.aria-label]="'Delete ' + g.title" title="Delete" data-row-delete><app-icon name="trash" [size]="18" /></button>
+              @if (rowDelete() === g.id) {
+                <div class="flex w-full flex-wrap items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-2">
                   <span class="text-sm text-red-300">Delete {{ g.title }}?</span>
                   <button type="button" class="btn-danger !px-3 !py-1 !text-sm" (click)="removeRow(g)" data-row-delete-yes>Yes, delete</button>
                   <button type="button" class="btn !px-3 !py-1 !text-sm" (click)="rowDelete.set(null)">Keep</button>
-                } @else {
-                  <button type="button" class="btn ml-auto !px-3 !py-1 !text-sm text-red-300" (click)="rowDelete.set(g.id)" data-row-delete>Delete</button>
-                }
-              </div>
+                </div>
+              }
             </li>
           }
         </ul>

@@ -6,6 +6,7 @@ import { FieldError } from '../../shared/field-error';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
 import { scrollToForm } from '../../shared/scroll-to-form';
+import { Icon } from '../../shared/icon';
 
 export interface PassType {
   id: number;
@@ -29,7 +30,7 @@ export function bundleText(minutes: number): string {
 
 @Component({
   selector: 'app-pass-types',
-  imports: [ReactiveFormsModule, FieldError],
+  imports: [Icon, ReactiveFormsModule, FieldError],
   template: `
     <section class="p-4">
       <div class="flex items-center justify-between gap-2">
@@ -112,15 +113,14 @@ export function bundleText(minutes: number): string {
               </p>
             </div>
             <button type="button" class="btn" (click)="edit(p)" data-edit>Edit</button>
-            <div class="flex w-full flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
-              @if (rowDelete() === p.id) {
+            <button type="button" class="inline-flex size-9 items-center justify-center rounded-lg border border-red-500/40 text-red-400 hover:bg-red-500/15" (click)="rowDelete.set(p.id)" [attr.aria-label]="'Delete ' + p.name" title="Delete" data-row-delete><app-icon name="trash" [size]="18" /></button>
+            @if (rowDelete() === p.id) {
+              <div class="flex w-full flex-wrap items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-2">
                 <span class="text-sm text-red-300">Delete {{ p.name }}? A pass already sold is hidden instead.</span>
                 <button type="button" class="btn-danger !px-3 !py-1 !text-sm" (click)="removeRow(p)" data-row-delete-yes>Yes, delete</button>
                 <button type="button" class="btn !px-3 !py-1 !text-sm" (click)="rowDelete.set(null)">Keep</button>
-              } @else {
-                <button type="button" class="btn ml-auto !px-3 !py-1 !text-sm text-red-300" (click)="rowDelete.set(p.id)" data-row-delete>Delete</button>
-              }
-            </div>
+              </div>
+            }
           </li>
         } @empty {
           <li class="text-slate-400">No passes yet. Add one to start selling.</li>

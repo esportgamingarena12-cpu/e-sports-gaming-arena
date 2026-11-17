@@ -16,6 +16,7 @@ const PATHS: Record<string, string> = {
   user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
   play: 'M6 4l14 8-14 8z',
   menu: 'M4 6h16M4 12h16M4 18h16',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   close: 'M6 6l12 12M18 6L6 18',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
