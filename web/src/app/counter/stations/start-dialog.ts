@@ -55,12 +55,22 @@ interface FoundPass {
           <legend class="label">Billing</legend>
           <label class="flex items-center gap-2 rounded border border-slate-700 p-2 text-sm">
             <input type="radio" formControlName="plan" value="hour" />
-            <span>Per hour <span class="text-slate-400">· ₹{{ station().rate_per_hour }}/hr</span></span>
+            <span>Per hour <span class="text-slate-400">· ₹{{ station().rate_per_hour }}/hr · pay for the time played</span></span>
           </label>
           @for (p of options(); track p.id) {
             <label class="flex items-center gap-2 rounded border border-slate-700 p-2 text-sm">
               <input type="radio" formControlName="plan" [value]="'' + p.id" />
               <span>{{ p.name }} <span class="text-slate-400">· {{ p.minutes }} min · ₹{{ p.price }}</span></span>
+            </label>
+          }
+          @if (form.controls.plan.value !== 'hour') {
+            <label class="label">How many (for more time)
+              <select formControlName="count" class="field" data-count>
+                @for (n of counts; track n) {
+                  <option [value]="'' + n">{{ n === 1 ? '1 (just this)' : n + ' times' }}</option>
+                }
+              </select>
+              <span class="mt-1 block text-xs text-slate-400" data-count-note>{{ countNote() }}</span>
             </label>
           }
         </fieldset>
@@ -121,7 +131,16 @@ export class StartDialog {
     lookupPhone: [''],
     passId: [''],
     timer: [''],
+    count: ['1'],
   });
+
+  protected readonly counts = [1, 2, 3, 4, 5, 6];
+
+  protected countNote(): string {
+    const p = this.options().find((x) => '' + x.id === this.form.controls.plan.value);
+    const n = Number(this.form.controls.count.value);
+    return p ? `${n * p.minutes} min in all · ₹${Math.round(n * Number(p.price) * 100) / 100}` : '';
+  }
 
   protected readonly passes = signal<FoundPass[]>([]);
   protected readonly looking = signal(false);
@@ -172,6 +191,18 @@ export class StartDialog {
       this.error.set(friendlyError(error));
       this.started.emit(); // refresh the board: the station may already be taken
       return;
+    }
+    // more than one package: add the same package again for each extra one (the price and minutes add up)
+    const count = v.plan === 'hour' || v.passId ? 1 : Number(v.count) || 1;
+    if (count > 1 && data) {
+      for (let i = 1; i < count; i++) {
+        const more = await this.sb.rpc('extend_session', { p_session: Number(data), p_package: Number(v.plan) });
+        if (more.error) {
+          this.error.set(`The session started, but adding more time stopped at ${i} × : ${friendlyError(more.error)}`);
+          this.started.emit();
+          return;
+        }
+      }
     }
     // an hourly or pass session may have a "time is up" timer; packages already have their own end time
     const minutes = Number(v.timer);

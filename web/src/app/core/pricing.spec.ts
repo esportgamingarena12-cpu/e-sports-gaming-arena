@@ -125,3 +125,15 @@ describe('pricing: pass sessions (same numbers as the database tests)', () => {
     expect(sessionCharge(perHour(60, { pass_id: null }), at(91))).toBe(105);
   });
 });
+
+describe('pricing: an extended package session (minutes and prices added)', () => {
+  // started as PC 30 min Rs 50, then a 60 min Rs 90 package was added: one session of 90 minutes for Rs 140
+  const extended = pkg(90, 140, 60, { block_min: 15 });
+  it('is the combined price anywhere inside the combined time', () => {
+    expect(sessionCharge(extended, at(20))).toBe(140);
+    expect(sessionCharge(extended, at(90))).toBe(140);
+  });
+  it('bills overtime beyond the combined time in blocks at the hourly rate', () => {
+    expect(sessionCharge(extended, at(91))).toBe(155); // 140 + one 15 minute block at 60/hr
+  });
+});

@@ -9,6 +9,7 @@ import { formatIstTime } from '../../shared/format';
 import { alarmRemainingMs } from '../../core/time-up';
 import { relativeStart, upcomingBooking } from '../booking-utils';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
+import { ExtendDialog } from './extend-dialog';
 import { StartDialog } from './start-dialog';
 
 interface Card {
@@ -27,7 +28,7 @@ interface Card {
 
 @Component({
   selector: 'app-counter-stations',
-  imports: [StartDialog, CheckoutDialog, RouterLink],
+  imports: [StartDialog, ExtendDialog, CheckoutDialog, RouterLink],
   providers: [CounterStore],
   template: `
     <section class="p-4">
@@ -106,14 +107,9 @@ interface Card {
                   </div>
                 } @else {
                   <div class="flex flex-wrap gap-2 pt-1">
-                    @if (s.status === 'running') {
-                      <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'pause_session')">Pause</button>
+                    <button type="button" class="btn-outline" [disabled]="busy() === s.id" (click)="extendFor.set({ station: c.station, session: s })" data-extend>Extend</button>
+                    @if (s.status !== 'ended') {
                       <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'end_session')">Stop</button>
-                    } @else if (s.status === 'paused') {
-                      <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="act(s, 'resume_session')">Resume</button>
-                      <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'end_session')">Stop</button>
-                    } @else {
-                      <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="act(s, 'reopen_session')">Resume</button>
                     }
                     <a class="btn" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
                     <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="bill(c)">Bill</button>
@@ -135,6 +131,11 @@ interface Card {
                           (started)="store.load()" (closed)="startFor.set(null)" />
       }
 
+      @if (extendFor(); as ex) {
+        <app-extend-dialog [station]="ex.station" [session]="ex.session" [packages]="store.packages()"
+                           (done)="store.load()" (closed)="extendFor.set(null)" />
+      }
+
       @if (billFor(); as src) {
         <app-checkout-dialog [source]="src" (billed)="store.load()" (done)="closeBill()" (closed)="closeBill()" />
       }
@@ -149,6 +150,7 @@ export class CounterStations implements OnInit, OnDestroy {
   protected readonly isAdmin = computed(() => this.auth.role() === 'admin');
 
   protected readonly startFor = signal<Station | null>(null);
+  protected readonly extendFor = signal<{ station: Station; session: OpenSession } | null>(null);
   protected readonly billFor = signal<BillSource | null>(null);
   protected readonly busy = signal<number | null>(null);
   protected readonly confirmCancel = signal<number | null>(null);

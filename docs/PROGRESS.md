@@ -278,6 +278,12 @@
 1. Counter > Bookings day grid: past time slots now say **Used** (a session ran on that station then; hover for the name and times) or **Vacant** (nobody used it), instead of an empty dark box. Based on the sessions table, so walk-ins count.
 2. Admin screens (Stations, Packages, Passes, Products, Games): Edit and + New scroll up to the form; every list row has Delete (hides instead when the item has history) and, where it applies, Make inactive / Make active.
 
+## Phase 27: no Pause/Resume, Extend, and more time at Start
+1. Counter > Stations: the Pause and Resume buttons are gone (the database functions stay for old data). A running card has **Extend**, Stop, + Items, Bill (and Cancel for the admin).
+2. **Extend** (migration `0021_extend_session.sql`, function `extend_session`): for a package session the chosen package is added, so its minutes and its price are added to the session (30 min Rs 50 + 60 min Rs 90 = 90 min, Rs 140). The formula in `session_charge` and `pricing.ts` is unchanged: fixed price inside the minutes, overtime beyond. For a per-hour session the bill still follows the time actually played; Extend (+30/60/90/120 min) sets or moves the "time is up" reminder to that many minutes from now. A stopped-but-not-billed session is brought back to running first (the gap is not charged). Pass sessions cannot be extended.
+3. **Start**: Per hour or a package, and "How many (for more time)": 2 x 60 min = 2 hours at twice the price, done by starting the package and extending with the same package.
+4. Tests: `pricing.spec.ts` (extended package), `extend-dialog.spec.ts`, `supabase/tests/22_extend_session.test.sql`, `e2e/extend-session.spec.ts` (skips without the staff/admin test logins).
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).
