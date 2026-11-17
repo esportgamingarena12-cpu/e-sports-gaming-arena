@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
+import { todayIst } from '../../shared/format';
 import { DashboardData, DashStation, HourRow, LiveSession, SalesReport, TrendRow } from './report-utils';
 
 /** Wrapper over the reporting functions. Every method throws an Error with a plain message. */
@@ -35,6 +36,15 @@ export class ReportsService {
     const { data, error } = await this.sb.from('stations').select('id, name, type, active').order('sort_order').order('name');
     if (error) throw new Error(friendlyError(error));
     return (data ?? []) as DashStation[];
+  }
+
+  /** Sessions started today (India time), cancelled ones left out, and how many of them came from a booking. */
+  async sessionsToday(): Promise<{ total: number; booked: number }> {
+    const from = new Date(`${todayIst()}T00:00:00+05:30`).toISOString();
+    const base = () => this.sb.from('sessions').select('id', { count: 'exact', head: true }).gte('started_at', from).neq('status', 'cancelled');
+    const [all, booked] = await Promise.all([base(), base().not('booking_id', 'is', null)]);
+    if (all.error) throw new Error(friendlyError(all.error));
+    return { total: all.count ?? 0, booked: booked.count ?? 0 };
   }
 
   /** Sessions that are running or paused right now. */

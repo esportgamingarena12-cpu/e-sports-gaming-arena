@@ -218,7 +218,8 @@ const PAD_RIGHT = 12;
           <div class="card relative overflow-hidden" data-highlights>
             <h2 class="flex items-center gap-2 text-lg font-bold"><span class="text-orange-400"><app-icon name="bolt" [size]="18" /></span> Today's Highlights</h2>
             <ul class="mt-2 space-y-1.5 text-sm">
-              <li class="flex items-center gap-2"><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ bookingsToday() }} booking{{ bookingsToday() === 1 ? '' : 's' }} today</li>
+              <li class="flex items-center gap-2" data-sessions-today><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ today().total }} session{{ today().total === 1 ? '' : 's' }} today ({{ today().total - today().booked }} walk-in, {{ today().booked }} booked)</li>
+              <li class="flex items-center gap-2"><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ bookingsToday() }} booking{{ bookingsToday() === 1 ? '' : 's' }} for today</li>
               <li class="flex items-center gap-2"><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ live().length }} session{{ live().length === 1 ? '' : 's' }} running now</li>
               <li class="flex items-center gap-2"><span class="text-emerald-400"><app-icon name="check" [size]="16" /></span>{{ inr(data()?.sales?.passes ?? 0) }} in passes sold</li>
               <li class="flex items-center gap-2"><span [class]="offCount() ? 'text-orange-400' : 'text-emerald-400'"><app-icon name="check" [size]="16" /></span>{{ offCount() }} station{{ offCount() === 1 ? '' : 's' }} switched off</li>
@@ -295,6 +296,8 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
   protected readonly hours = signal<HourRow[]>([]);
   protected readonly stations = signal<DashStation[]>([]);
   protected readonly live = signal<LiveSession[]>([]);
+  /** sessions started today: all, and the ones that came from a booking */
+  protected readonly today = signal<{ total: number; booked: number }>({ total: 0, booked: 0 });
   protected readonly error = signal<string | null>(null);
   protected readonly updated = signal<string | null>(null);
   private readonly now = signal(Date.now());
@@ -401,13 +404,15 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
 
   private async load(): Promise<void> {
     try {
-      const [d, t, h, st, lv] = await Promise.all([
+      const [d, t, h, st, lv, sd] = await Promise.all([
         this.svc.dashboard(),
         this.svc.trend(60),
         this.svc.busyHours(30),
         this.svc.stations(),
         this.svc.liveSessions(),
+        this.svc.sessionsToday(),
       ]);
+      this.today.set(sd);
       this.data.set(d);
       this.trend.set(t);
       this.hours.set(h);
