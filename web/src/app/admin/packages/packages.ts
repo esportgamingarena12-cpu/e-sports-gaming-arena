@@ -53,7 +53,19 @@ interface Pack {
           <div class="flex gap-2">
             <button type="submit" class="btn-primary" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save' }}</button>
             <button type="button" class="btn" (click)="cancel()">Cancel</button>
+            @if (editingId() !== 0 && !formDelete()) {
+              <button type="button" class="btn ml-auto text-red-300" (click)="formDelete.set(true)" data-delete>Delete</button>
+            }
           </div>
+          @if (editingId() !== 0 && formDelete()) {
+            <div class="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm" data-delete-confirm>
+              <p>Delete this package? One already used is hidden instead.</p>
+              <div class="mt-2 flex gap-2">
+                <button type="button" class="btn-danger" (click)="removeFromForm()" data-delete-yes>Yes, delete</button>
+                <button type="button" class="btn" (click)="formDelete.set(false)">Keep</button>
+              </div>
+            </div>
+          }
         </form>
       }
 
@@ -99,6 +111,7 @@ export class Packages implements OnInit {
   protected readonly busy = signal(false);
   /** the package waiting for a yes to its delete */
   protected readonly rowDelete = signal<number | null>(null);
+  protected readonly formDelete = signal(false);
 
   protected readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, notBlank]],
@@ -146,6 +159,14 @@ export class Packages implements OnInit {
     await this.load();
   }
 
+  protected async removeFromForm(): Promise<void> {
+    const p = this.packages().find((x) => x.id === this.editingId());
+    this.formDelete.set(false);
+    if (!p) return;
+    await this.removeRow(p);
+    this.cancel();
+  }
+
   protected startNew(): void {
     this.form.reset({ name: '', station_type: 'pc', minutes: 60, price: 0, active: true });
     this.editingId.set(0);
@@ -163,6 +184,7 @@ export class Packages implements OnInit {
   }
 
   protected cancel(): void {
+    this.formDelete.set(false);
     this.editingId.set(null);
   }
 
