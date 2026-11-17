@@ -66,7 +66,7 @@ interface Station {
 
       <ul class="mt-4 space-y-2">
         @for (s of stations(); track s.id) {
-          <li class="card flex items-center gap-3" [class.opacity-60]="!s.active">
+          <li class="card flex flex-wrap items-center gap-3" [class.opacity-60]="!s.active" [attr.data-station]="s.name">
             <div class="min-w-0 flex-1">
               <p class="truncate font-medium">{{ s.name }}</p>
               <p class="text-sm text-slate-400">
@@ -75,7 +75,19 @@ interface Station {
                 @if (s.online_bookable) { · online } @else { · walk-in only }
               </p>
             </div>
-            <button type="button" class="btn" (click)="edit(s)">Edit</button>
+            <button type="button" class="btn" (click)="edit(s)" data-edit>Edit</button>
+            <div class="flex w-full flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
+              <button type="button" class="btn-outline !px-3 !py-1 !text-sm" (click)="toggleActive(s)" data-toggle-active>
+                {{ s.active ? 'Make inactive' : 'Make active' }}
+              </button>
+              @if (rowDelete() === s.id) {
+                <span class="text-sm text-red-300">Delete {{ s.name }}? A station that has been used is hidden instead.</span>
+                <button type="button" class="btn-danger !px-3 !py-1 !text-sm" (click)="removeRow(s)" data-row-delete-yes>Yes, delete</button>
+                <button type="button" class="btn !px-3 !py-1 !text-sm" (click)="rowDelete.set(null)">Keep</button>
+              } @else {
+                <button type="button" class="btn ml-auto !px-3 !py-1 !text-sm text-red-300" (click)="rowDelete.set(s.id)" data-row-delete>Delete</button>
+              }
+            </div>
           </li>
         } @empty {
           <li class="text-slate-400">No stations yet.</li>
@@ -94,6 +106,8 @@ export class Stations implements OnInit {
   /** null = form closed, 0 = new, otherwise the station id being edited */
   protected readonly editingId = signal<number | null>(null);
   protected readonly busy = signal(false);
+  /** the station waiting for a yes to its delete */
+  protected readonly rowDelete = signal<number | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, notBlank]],
@@ -116,6 +130,29 @@ export class Stations implements OnInit {
       .order('name');
     if (error) return this.toast.error(friendlyError(error));
     this.stations.set((data ?? []) as Station[]);
+  }
+
+  protected async toggleActive(s: Station): Promise<void> {
+    const { data, error } = await this.sb.from('stations').update({ active: !s.active }).eq('id', s.id).select('id');
+    if (error || !data?.length) return this.toast.error(error ? friendlyError(error) : 'Not allowed');
+    this.toast.success(`${s.name} is now ${s.active ? 'inactive' : 'active'}`);
+    await this.load();
+  }
+
+  /** A station never used is removed for good; one with sessions or bookings is only hidden, so history stays correct. */
+  protected async removeRow(s: Station): Promise<void> {
+    const del = await this.sb.from('stations').delete().eq('id', s.id).select('id');
+    this.rowDelete.set(null);
+    if (!del.error && del.data?.length) {
+      this.toast.success('Station deleted');
+    } else if (del.error?.code === '23503') {
+      const hide = await this.sb.from('stations').update({ active: false }).eq('id', s.id).select('id');
+      if (hide.error || !hide.data?.length) return this.toast.error(hide.error ? friendlyError(hide.error) : 'Not allowed');
+      this.toast.success('This station has history, so it was hidden instead of deleted');
+    } else {
+      return this.toast.error(del.error ? friendlyError(del.error) : 'Not allowed');
+    }
+    await this.load();
   }
 
   protected startNew(): void {
