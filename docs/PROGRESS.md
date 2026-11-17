@@ -309,6 +309,9 @@
 1. A signed-in admin or staff member who opens the site (`/` or `/book`) is sent to their own dashboard instead of seeing the public page mixed with their menus. **View public site** (bottom of the side menu, opens `/book?preview=1`) shows the public page on purpose in the normal top-bar layout, with a **Back to dashboard** button. Customers and visitors are not affected.
 2. Blank screen on a screen such as `/counter/stock` after a new version was deployed: an old copy of the app (open tab or cached by the service worker) asked for a screen file whose name had changed. Now (`core/app-update.ts`): the app checks for a new version when the tab comes to the front and every 15 minutes; when one is ready, the next screen the person opens is loaded fresh; and if a screen file still cannot be loaded the page reloads once (never in a loop). Needs one hard refresh to pick up this fix on a browser that is already stuck.
 
+## Phase 33: Bills loads 10 at a time
+Counter > Bills asks for the first 10 bills of the picked date and adds 10 more when the end of the list scrolls into view (or when "Load more bills" is pressed). The status filter (All / Paid / Void) is applied by the database, and the Paid and Void counts on the filter buttons come from counts for the whole day. The one-minute refresh keeps as many bills as are already on screen, so a list you scrolled down does not jump back to 10. Pending sessions are not paged (there are few).
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

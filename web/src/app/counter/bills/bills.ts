@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
@@ -6,6 +6,7 @@ import { formatIst, formatIstTime, inr, istDayRange, todayIst } from '../../shar
 import { ToastService } from '../../shared/toast.service';
 import { CounterStore } from '../counter.store';
 import { ReceiptService } from '../receipt/receipt.service';
+import { BILLS_PAGE_SIZE, hasMoreBills, rowsToFetch } from './bills-utils';
 import { PendingBills } from './pending-bills';
 
 interface BillRow {
@@ -49,7 +50,7 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
         @for (f of filters; track f.key) {
           <button type="button" class="whitespace-nowrap rounded-full border px-3 py-1 text-sm"
                   [class]="status() === f.key ? 'border-violet-400 bg-linear-to-r from-violet-600 to-fuchsia-500 text-white' : 'border-slate-700 text-slate-300'"
-                  (click)="status.set(f.key)" [attr.data-filter]="f.key">
+                  (click)="setStatus(f.key)" [attr.data-filter]="f.key">
             {{ f.label }}@if (count(f.key) !== null) { <span class="ml-1 opacity-80">({{ count(f.key) }})</span> }
           </button>
         }
@@ -72,7 +73,7 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
           <span class="size-2 rounded-full bg-emerald-400"></span> {{ status() === 'void' ? 'Void bills' : status() === 'paid' ? 'Paid bills' : 'Paid and void bills' }}
         </h2>
         <ul class="space-y-2" data-bills>
-          @for (b of shown(); track b.bill_no) {
+          @for (b of bills(); track b.bill_no) {
             <li class="card" [attr.data-bill]="b.bill_no" [class.opacity-70]="b.status === 'void'">
               <button type="button" class="flex w-full items-center justify-between gap-2 text-left" (click)="toggle(b.bill_no)"
                       [attr.aria-expanded]="open() === b.bill_no">
@@ -140,6 +141,15 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
             <li class="text-slate-400">{{ status() === 'all' ? 'No bills on this date.' : 'None on this date.' }}</li>
           }
         </ul>
+        @if (bills().length > 0 && !done()) {
+          <div #moreSentinel class="py-3 text-center text-xs text-slate-400" data-more>
+            @if (loadingMore()) { Loading more… } @else {
+              <button type="button" class="btn-outline !px-3 !py-1 !text-xs" (click)="loadMore()" data-load-more>Load more bills</button>
+            }
+          </div>
+        } @else if (bills().length > 0) {
+          <p class="py-3 text-center text-xs text-slate-500" data-all-loaded>All {{ bills().length }} shown</p>
+        }
       }
       }
     </section>
@@ -175,15 +185,42 @@ export class Bills implements OnInit, OnDestroy {
     { key: 'void', label: 'Void' },
   ] as const;
   protected readonly status = signal<'all' | 'pending' | 'paid' | 'void'>('all');
-  protected readonly shown = computed(() => {
-    const s = this.status();
-    return this.bills().filter((b) => s === 'all' || b.status === s);
-  });
+  /** true once every bill of the day (for the chosen status) is on screen */
+  protected readonly done = signal(true);
+  protected readonly loadingMore = signal(false);
+  /** how many paid and void bills the picked date has in all, for the filter buttons */
+  private readonly totals = signal({ paid: 0, void: 0 });
+  private seq = 0;
+  private readonly sentinel = viewChild<ElementRef<HTMLElement>>('moreSentinel');
+  private io?: IntersectionObserver;
+
   protected count(key: string): number | null {
     if (key === 'pending') return this.store.sessions().length;
-    if (key === 'paid') return this.bills().filter((b) => b.status === 'paid').length;
-    if (key === 'void') return this.bills().filter((b) => b.status === 'void').length;
+    if (key === 'paid') return this.totals().paid;
+    if (key === 'void') return this.totals().void;
     return null;
+  }
+
+  protected setStatus(key: 'all' | 'pending' | 'paid' | 'void'): void {
+    if (this.status() === key) return;
+    this.status.set(key);
+    this.open.set(null);
+    this.bills.set([]);
+    this.loaded.set(false);
+    void this.load();
+  }
+
+  constructor() {
+    // load the next 10 when the end of the list scrolls into view
+    effect(() => {
+      const el = this.sentinel()?.nativeElement;
+      this.io?.disconnect();
+      if (!el || typeof IntersectionObserver === 'undefined') return;
+      this.io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) void this.loadMore();
+      }, { rootMargin: '300px' });
+      this.io.observe(el);
+    });
   }
   private timer?: ReturnType<typeof setInterval>;
   private readonly onVisible = () => {
@@ -201,6 +238,7 @@ export class Bills implements OnInit, OnDestroy {
     this.store.stop();
     clearInterval(this.timer);
     document.removeEventListener('visibilitychange', this.onVisible);
+    this.io?.disconnect();
   }
 
   protected when(iso: string): string {
@@ -232,6 +270,8 @@ export class Bills implements OnInit, OnDestroy {
     if (!value) return;
     this.day.set(value);
     this.open.set(null);
+    this.bills.set([]);
+    this.loaded.set(false);
     void this.load();
   }
 
@@ -240,36 +280,86 @@ export class Bills implements OnInit, OnDestroy {
     this.voiding.set(null);
   }
 
+  private static readonly COLUMNS =
+    'bill_no, created_at, customer_name, subtotal, discount, total, status, void_reason, ' +
+    'bill_items(id, kind, name, qty, unit_price, amount), payments(id, mode, amount, reference), ' +
+    'sessions(started_at, ended_at, paused_seconds, stations(name))';
+
+  private toRows(data: unknown): BillRow[] {
+    return ((data ?? []) as BillRow[]).map((b) => ({
+      ...b,
+      subtotal: Number(b.subtotal),
+      discount: Number(b.discount),
+      total: Number(b.total),
+      bill_items: b.bill_items.map((i) => ({ ...i, unit_price: Number(i.unit_price), amount: Number(i.amount) })),
+      payments: b.payments.map((p) => ({ ...p, amount: Number(p.amount) })),
+    }));
+  }
+
+  private query(from: string, to: string) {
+    let q = this.sb.from('bills').select(Bills.COLUMNS).gte('created_at', from).lt('created_at', to).order('bill_no', { ascending: false });
+    const s = this.status();
+    if (s === 'paid' || s === 'void') q = q.eq('status', s);
+    return q;
+  }
+
+  /** The first 10 bills of the day, or as many as are already on screen (so the 1-minute refresh keeps your place). */
   async load(): Promise<void> {
+    const my = ++this.seq;
     this.loading.set(true);
     const { from, to } = istDayRange(this.day());
-    const { data, error } = await this.sb
-      .from('bills')
-      .select(
-        'bill_no, created_at, customer_name, subtotal, discount, total, status, void_reason, ' +
-          'bill_items(id, kind, name, qty, unit_price, amount), payments(id, mode, amount, reference), ' +
-          'sessions(started_at, ended_at, paused_seconds, stations(name))',
-      )
-      .gte('created_at', from)
-      .lt('created_at', to)
-      .order('bill_no', { ascending: false });
+    const want = rowsToFetch(this.bills().length, BILLS_PAGE_SIZE);
+    const count = (st: 'paid' | 'void') =>
+      this.sb.from('bills').select('bill_no', { count: 'exact', head: true }).gte('created_at', from).lt('created_at', to).eq('status', st);
+    const [list, paid, voided] = await Promise.all([
+      this.status() === 'pending' ? Promise.resolve({ data: [], error: null }) : this.query(from, to).range(0, want - 1),
+      count('paid'),
+      count('void'),
+    ]);
+    if (my !== this.seq) return;
     this.loading.set(false);
+    if (list.error) {
+      this.error.set(friendlyError(list.error));
+      return;
+    }
+    this.error.set(null);
+    this.totals.set({ paid: paid.count ?? 0, void: voided.count ?? 0 });
+    const rows = this.toRows(list.data);
+    this.bills.set(rows);
+    this.done.set(!hasMoreBills(rows.length, want));
+    this.loaded.set(true);
+    this.recheck();
+  }
+
+  /** The next 10 bills, added to the end of the list. */
+  protected async loadMore(): Promise<void> {
+    if (this.loading() || this.loadingMore() || this.done() || this.status() === 'pending') return;
+    const my = this.seq;
+    this.loadingMore.set(true);
+    const { from, to } = istDayRange(this.day());
+    const offset = this.bills().length;
+    const { data, error } = await this.query(from, to).range(offset, offset + BILLS_PAGE_SIZE - 1);
+    if (my !== this.seq) return;
+    this.loadingMore.set(false);
     if (error) {
       this.error.set(friendlyError(error));
       return;
     }
-    this.error.set(null);
-    this.bills.set(
-      ((data ?? []) as unknown as BillRow[]).map((b) => ({
-        ...b,
-        subtotal: Number(b.subtotal),
-        discount: Number(b.discount),
-        total: Number(b.total),
-        bill_items: b.bill_items.map((i) => ({ ...i, unit_price: Number(i.unit_price), amount: Number(i.amount) })),
-        payments: b.payments.map((p) => ({ ...p, amount: Number(p.amount) })),
-      })),
-    );
-    this.loaded.set(true);
+    const page = this.toRows(data);
+    const seen = new Set(this.bills().map((b) => b.bill_no));
+    this.bills.update((r) => [...r, ...page.filter((b) => !seen.has(b.bill_no))]);
+    this.done.set(!hasMoreBills(page.length, BILLS_PAGE_SIZE));
+    this.recheck();
+  }
+
+  /** If the end of the list is still on screen after more bills arrived, ask for the next page too. */
+  private recheck(): void {
+    setTimeout(() => {
+      const el = this.sentinel()?.nativeElement;
+      if (!el || !this.io) return;
+      this.io.unobserve(el);
+      this.io.observe(el);
+    }, 0);
   }
 
   protected async print(no: number): Promise<void> {
