@@ -2,7 +2,7 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
-import { formatIst, inr, istDayRange, todayIst } from '../../shared/format';
+import { formatIst, formatIstTime, inr, istDayRange, todayIst } from '../../shared/format';
 import { ToastService } from '../../shared/toast.service';
 import { ReceiptService } from '../receipt/receipt.service';
 
@@ -17,6 +17,8 @@ interface BillRow {
   void_reason: string | null;
   bill_items: { id: number; kind: string; name: string; qty: number; unit_price: number; amount: number }[];
   payments: { id: number; mode: string; amount: number; reference: string | null }[];
+  /** the gaming session this bill paid for (none for a canteen-only sale) */
+  sessions: { started_at: string; ended_at: string | null; paused_seconds: number; stations: { name: string } | null } | null;
 }
 
 const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Card' };
@@ -46,10 +48,14 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
               <button type="button" class="flex w-full items-center justify-between gap-2 text-left" (click)="toggle(b.bill_no)"
                       [attr.aria-expanded]="open() === b.bill_no">
                 <span class="min-w-0">
-                  <span class="font-semibold">Bill #{{ b.bill_no }}</span>
-                  @if (b.status === 'void') { <span class="ml-2 rounded bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-300" data-void-badge>VOID</span> }
-                  <span class="block truncate text-xs text-slate-400">
-                    {{ when(b.created_at) }}{{ b.customer_name ? ' · ' + b.customer_name : '' }} · {{ modes(b) }}
+                  <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="font-semibold">Bill #{{ b.bill_no }}</span>
+                    <span class="rounded-full bg-violet-500/20 px-2.5 py-0.5 text-sm font-semibold text-violet-100" data-customer-name>{{ b.customer_name || 'Walk-in' }}</span>
+                    @if (b.sessions?.stations?.name; as st) { <span class="rounded bg-cyan-400/15 px-2 py-0.5 text-xs font-medium text-cyan-200" data-station-name>{{ st }}</span> }
+                    @if (b.status === 'void') { <span class="rounded bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-300" data-void-badge>VOID</span> }
+                  </span>
+                  <span class="mt-0.5 block truncate text-xs text-slate-300" data-bill-time>
+                    {{ timeText(b) }} · {{ modes(b) }}
                   </span>
                 </span>
                 <span class="shrink-0 text-lg font-semibold" [class.line-through]="b.status === 'void'">{{ money(b.total) }}</span>
@@ -148,6 +154,15 @@ export class Bills implements OnInit, OnDestroy {
     return formatIst(iso);
   }
 
+  /** "17 Nov, 11:57 am" for a canteen sale; "17 Nov · 11:47 am – 12:56 pm (1 h 9 min)" for a gaming session. */
+  protected timeText(b: BillRow): string {
+    const s = b.sessions;
+    if (!s || !s.ended_at) return this.when(b.created_at);
+    const mins = Math.max(0, Math.round((Date.parse(s.ended_at) - Date.parse(s.started_at)) / 60_000 - s.paused_seconds / 60));
+    const len = mins >= 60 ? `${Math.floor(mins / 60)} h${mins % 60 ? ' ' + (mins % 60) + ' min' : ''}` : `${mins} min`;
+    return `${this.when(b.created_at).split(',')[0]} · ${formatIstTime(s.started_at)} – ${formatIstTime(s.ended_at)} (${len})`;
+  }
+
   protected label(mode: string): string {
     return MODE_LABEL[mode] ?? mode;
   }
@@ -179,7 +194,8 @@ export class Bills implements OnInit, OnDestroy {
       .from('bills')
       .select(
         'bill_no, created_at, customer_name, subtotal, discount, total, status, void_reason, ' +
-          'bill_items(id, kind, name, qty, unit_price, amount), payments(id, mode, amount, reference)',
+          'bill_items(id, kind, name, qty, unit_price, amount), payments(id, mode, amount, reference), ' +
+          'sessions(started_at, ended_at, paused_seconds, stations(name))',
       )
       .gte('created_at', from)
       .lt('created_at', to)
