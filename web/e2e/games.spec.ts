@@ -150,13 +150,20 @@ test.describe('admin games', () => {
     await expect(row.locator('[data-no-poster]')).toHaveCount(0);
     await expect(row.locator('[data-poster-button]')).toContainText('Change poster');
 
-    // delete both again
+    // make a game inactive and active again straight from the list
     await page.goto('/admin/games');
+    const hot = page.locator('[data-game="E2E Hot Game"]');
+    await hot.locator('[data-toggle-active]').click();
+    await expect(hot.locator('[data-toggle-active]')).toHaveText('Make active');
+    await hot.locator('[data-toggle-active]').click();
+    await expect(hot.locator('[data-toggle-active]')).toHaveText('Make inactive');
+
+    // delete both from the list, after a yes
     for (const title of ['E2E Hot Game', 'E2E Soon Game']) {
-      await page.locator(`[data-game="${title}"] [data-edit]`).click();
-      await page.locator('[data-delete]').click();
-      await page.locator('[data-delete-yes]').click();
-      await expect(page.locator(`[data-game="${title}"]`)).toHaveCount(0);
+      const row = page.locator(`[data-game="${title}"]`);
+      await row.locator('[data-row-delete]').click();
+      await row.locator('[data-row-delete-yes]').click();
+      await expect(row).toHaveCount(0);
     }
   });
 });

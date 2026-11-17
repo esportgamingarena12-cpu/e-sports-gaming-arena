@@ -138,8 +138,8 @@ interface Game {
         <h2 class="mt-6 font-display text-lg font-bold tracking-wide text-slate-200">{{ group.title }}</h2>
         <ul class="mt-2 space-y-2" [attr.data-list]="group.key">
           @for (g of group.games; track g.id) {
-            <li class="card flex items-center gap-3" [class.opacity-60]="!g.active" [attr.data-game]="g.title">
-              <app-game-poster class="h-16 w-12 shrink-0 rounded-lg" [path]="g.image_path" [title]="g.title" />
+            <li class="card flex flex-wrap items-center gap-3" [attr.data-game]="g.title">
+              <app-game-poster class="h-16 w-12 shrink-0 rounded-lg" [class.opacity-50]="!g.active" [path]="g.image_path" [title]="g.title" />
               <div class="min-w-0 flex-1">
                 <p class="truncate font-medium">{{ g.title }}</p>
                 <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400">
@@ -158,6 +158,18 @@ interface Game {
                 <input type="file" class="sr-only" [accept]="accept" [disabled]="posterBusy() !== null" (change)="quickPoster(g, $event)" data-quick-file />
               </label>
               <button type="button" class="btn" (click)="edit(g)" data-edit>Edit</button>
+              <div class="flex w-full flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
+                <button type="button" class="btn-outline !px-3 !py-1 !text-sm" (click)="toggleActive(g)" data-toggle-active>
+                  {{ g.active ? 'Make inactive' : 'Make active' }}
+                </button>
+                @if (rowDelete() === g.id) {
+                  <span class="text-sm text-red-300">Delete {{ g.title }}?</span>
+                  <button type="button" class="btn-danger !px-3 !py-1 !text-sm" (click)="removeRow(g)" data-row-delete-yes>Yes, delete</button>
+                  <button type="button" class="btn !px-3 !py-1 !text-sm" (click)="rowDelete.set(null)">Keep</button>
+                } @else {
+                  <button type="button" class="btn ml-auto !px-3 !py-1 !text-sm text-red-300" (click)="rowDelete.set(g.id)" data-row-delete>Delete</button>
+                }
+              </div>
             </li>
           }
         </ul>
@@ -180,6 +192,8 @@ export class GamesAdmin implements OnInit, OnDestroy {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly confirmDelete = signal(false);
+  /** the game whose delete is waiting for a yes, in the list */
+  protected readonly rowDelete = signal<number | null>(null);
   /** the game whose poster is being uploaded straight from the list */
   protected readonly posterBusy = signal<number | null>(null);
 
@@ -410,6 +424,22 @@ export class GamesAdmin implements OnInit, OnDestroy {
     if (oldPath && oldPath !== imagePath) await this.deleteFile(oldPath);
     this.toast.success(id === 0 ? 'Game added' : 'Game saved');
     this.cancel();
+    await this.load();
+  }
+
+  protected async toggleActive(g: Game): Promise<void> {
+    const { data, error } = await this.sb.from('games').update({ active: !g.active }).eq('id', g.id).select('id');
+    if (error || !data?.length) return this.toast.error(error ? friendlyError(error) : 'Not allowed');
+    this.toast.success(`${g.title} is now ${g.active ? 'inactive (hidden from the home page)' : 'active'}`);
+    await this.load();
+  }
+
+  protected async removeRow(g: Game): Promise<void> {
+    const { data, error } = await this.sb.from('games').delete().eq('id', g.id).select('id');
+    this.rowDelete.set(null);
+    if (error || !data?.length) return this.toast.error(error ? friendlyError(error) : 'Not allowed');
+    await this.deleteFile(g.image_path);
+    this.toast.success('Game deleted');
     await this.load();
   }
 
