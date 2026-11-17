@@ -284,6 +284,11 @@
 3. **Start**: Per hour or a package, and "How many (for more time)": 2 x 60 min = 2 hours at twice the price, done by starting the package and extending with the same package.
 4. Tests: `pricing.spec.ts` (extended package), `extend-dialog.spec.ts`, `supabase/tests/22_extend_session.test.sql`, `e2e/extend-session.spec.ts` (skips without the staff/admin test logins).
 
+## Phase 28: customers list loads as you scroll
+1. Migration `0022_customer_list_paging.sql`: `customer_list(p_search, p_limit, p_offset)`; the defaults (200 and 0) keep the top-bar search and old tests working; the order is now fixed (last booking, name, id) so pages never overlap; the limit is capped at 500.
+2. Counter > Customers asks for 50 at a time and adds the next 50 when the list is within about 240 px of its bottom (or when "Load more" is pressed). A new search throws away a page that was still loading. The count shows "50+ customers" until the last page, then "All customers shown".
+3. Tests: `customer-utils.spec.ts` (paging helpers), `supabase/tests/23_customer_paging.test.sql` (run it in the dashboard SQL editor: it needs the pgTAP extension lines).
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

@@ -14,8 +14,11 @@ import {
   bookParams,
   CustomerDetail,
   CustomerRow,
+  hasMorePages,
   isRepeatNoShow,
   lastBookedText,
+  nearBottom,
+  PAGE_SIZE,
   noShowRate,
   passParams,
 } from './customer-utils';
@@ -38,8 +41,8 @@ import {
             <input class="field" placeholder="e.g. Asha or 98765" [value]="search()" (input)="onSearch($any($event.target).value)" data-search />
           </label>
           @if (error()) { <p class="text-sm text-red-400" role="alert" data-error>{{ error() }}</p> }
-          <p class="shrink-0 text-xs text-slate-400" data-count>{{ loading() ? 'Loading…' : rows().length + (rows().length === 1 ? ' customer' : ' customers') }}</p>
-          <ul class="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1" data-customers>
+          <p class="shrink-0 text-xs text-slate-400" data-count>{{ loading() ? 'Loading…' : rows().length + (done() ? '' : '+') + (rows().length === 1 ? ' customer' : ' customers') }}</p>
+          <ul class="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1" data-customers (scroll)="onListScroll($event)">
             @for (c of rows(); track c.id) {
               <li>
                 <button type="button" class="w-full rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-left hover:border-violet-400/60" [class]="selectedId() === c.id ? '!border-violet-400 !bg-violet-500/10' : ''"
@@ -60,8 +63,16 @@ import {
             } @empty {
               <li class="text-sm text-slate-400" data-none>{{ loading() ? 'Loading…' : 'No customers match.' }}</li>
             }
+            @if (rows().length > 0 && !done()) {
+              <li class="py-2 text-center text-xs text-slate-400" data-more>
+                @if (loadingMore()) { Loading more… } @else {
+                  <button type="button" class="btn-outline !px-3 !py-1 !text-xs" (click)="loadMore()" data-load-more>Load more</button>
+                }
+              </li>
+            } @else if (rows().length > 0) {
+              <li class="py-2 text-center text-xs text-slate-500" data-all-loaded>All customers shown</li>
+            }
           </ul>
-          @if (rows().length === 200) { <p class="text-xs text-slate-500">Showing the first 200. Search to narrow it down.</p> }
         </div>
 
         <!-- detail -->
@@ -172,6 +183,9 @@ export class Customers implements OnInit, OnDestroy {
   protected readonly rows = signal<CustomerRow[]>([]);
   protected readonly search = signal('');
   protected readonly loading = signal(false);
+  protected readonly loadingMore = signal(false);
+  /** true once the last page has come back, so there is nothing more to load */
+  protected readonly done = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly selectedId = signal<number | null>(null);
   protected readonly detail = signal<CustomerDetail | null>(null);
@@ -224,7 +238,8 @@ export class Customers implements OnInit, OnDestroy {
   private async load(): Promise<void> {
     const my = ++this.seq;
     this.loading.set(true);
-    const { data, error } = await this.sb.rpc('customer_list', { p_search: this.search().trim() || null });
+    this.loadingMore.set(false);
+    const { data, error } = await this.sb.rpc('customer_list', { p_search: this.search().trim() || null, p_limit: PAGE_SIZE, p_offset: 0 });
     if (my !== this.seq) return;
     this.loading.set(false);
     if (error) {
@@ -232,7 +247,32 @@ export class Customers implements OnInit, OnDestroy {
       return;
     }
     this.error.set(null);
-    this.rows.set((data ?? []) as CustomerRow[]);
+    const page = (data ?? []) as CustomerRow[];
+    this.rows.set(page);
+    this.done.set(!hasMorePages(page.length, PAGE_SIZE));
+  }
+
+  /** The next page, added to the end of the list. A new search while it loads throws the old page away. */
+  protected async loadMore(): Promise<void> {
+    if (this.loading() || this.loadingMore() || this.done()) return;
+    const my = this.seq;
+    this.loadingMore.set(true);
+    const { data, error } = await this.sb.rpc('customer_list', { p_search: this.search().trim() || null, p_limit: PAGE_SIZE, p_offset: this.rows().length });
+    if (my !== this.seq) return;
+    this.loadingMore.set(false);
+    if (error) {
+      this.error.set(friendlyError(error));
+      return;
+    }
+    const page = (data ?? []) as CustomerRow[];
+    const seen = new Set(this.rows().map((r) => r.id));
+    this.rows.update((r) => [...r, ...page.filter((c) => !seen.has(c.id))]);
+    this.done.set(!hasMorePages(page.length, PAGE_SIZE));
+  }
+
+  protected onListScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    if (nearBottom(el.scrollTop, el.clientHeight, el.scrollHeight)) void this.loadMore();
   }
 
   protected async open(id: number): Promise<void> {

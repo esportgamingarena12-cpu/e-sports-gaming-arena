@@ -64,3 +64,13 @@ export function passParams(c: { name: string; phone: string | null; email: strin
 export function lastBookedText(iso: string | null, format: (iso: string) => string): string {
   return iso ? `Last booking ${format(iso)}` : 'No bookings yet';
 }
+
+/** How many customers each page of the list holds. */
+export const PAGE_SIZE = 50;
+
+/** A full page means there may be more; a short one is the end of the list. */
+export const hasMorePages = (returned: number, pageSize: number): boolean => returned >= pageSize;
+
+/** True when a scroll box is within `margin` pixels of its bottom. */
+export const nearBottom = (scrollTop: number, clientHeight: number, scrollHeight: number, margin = 240): boolean =>
+  scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - margin;

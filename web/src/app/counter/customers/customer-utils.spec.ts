@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bookingStatusLabel, bookParams, isRepeatNoShow, lastBookedText, noShowRate, passParams } from './customer-utils';
+import { bookingStatusLabel, bookParams, hasMorePages, isRepeatNoShow, lastBookedText, nearBottom, noShowRate, PAGE_SIZE, passParams } from './customer-utils';
 
 describe('no-show warning', () => {
   it('starts at two', () => {
@@ -36,4 +36,19 @@ describe('hand-over to other screens', () => {
     expect(passParams({ name: 'A', phone: '9', email: 'a@x.in', has_login: false })).toEqual({ name: 'A', phone: '9' });
     expect(passParams({ name: 'A', phone: null, email: null, has_login: true })).toEqual({ name: 'A' });
   });
+});
+
+describe('loading the list a page at a time', () => {
+  it('uses pages of 50', () => expect(PAGE_SIZE).toBe(50));
+  it('a full page may have more after it, a short one is the end', () => {
+    expect(hasMorePages(50, 50)).toBe(true);
+    expect(hasMorePages(49, 50)).toBe(false);
+    expect(hasMorePages(0, 50)).toBe(false);
+  });
+  it('asks for more when the scroll box is near its bottom', () => {
+    expect(nearBottom(0, 500, 3000)).toBe(false);
+    expect(nearBottom(2300, 500, 3000)).toBe(true); // 200 px from the bottom
+    expect(nearBottom(2500, 500, 3000)).toBe(true);
+  });
+  it('does not ask while the box is empty', () => expect(nearBottom(0, 0, 0)).toBe(false));
 });
