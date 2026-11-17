@@ -33,21 +33,21 @@ import {
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <!-- list -->
-        <div class="space-y-3" [class]="detail() ? 'hidden lg:block' : ''" data-list-pane>
-          <label class="label">Search
+        <div class="flex min-h-0 max-h-[calc(100dvh-8rem)] flex-col gap-3 lg:sticky lg:top-4" [class]="detail() ? 'hidden lg:flex' : ''" data-list-pane>
+          <label class="label shrink-0">Search
             <input class="field" placeholder="e.g. Asha or 98765" [value]="search()" (input)="onSearch($any($event.target).value)" data-search />
           </label>
           @if (error()) { <p class="text-sm text-red-400" role="alert" data-error>{{ error() }}</p> }
-          <ul class="space-y-2" data-customers>
+          <p class="shrink-0 text-xs text-slate-400" data-count>{{ loading() ? 'Loading…' : rows().length + (rows().length === 1 ? ' customer' : ' customers') }}</p>
+          <ul class="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1" data-customers>
             @for (c of rows(); track c.id) {
               <li>
-                <button type="button" class="card w-full text-left hover:border-violet-400/60" [class]="selectedId() === c.id ? '!border-orange-500/70' : ''"
+                <button type="button" class="w-full rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-left hover:border-violet-400/60" [class]="selectedId() === c.id ? '!border-violet-400 !bg-violet-500/10' : ''"
                         (click)="open(c.id)" [attr.data-customer]="c.name">
                   <span class="flex items-start justify-between gap-2">
                     <span class="min-w-0">
                       <span class="block truncate font-medium">{{ c.name }}</span>
-                      <span class="block truncate text-sm text-slate-400">{{ c.phone || 'No phone' }}{{ c.email ? ' · ' + c.email : '' }}</span>
-                      <span class="block text-xs text-slate-500">{{ lastBooked(c) }}</span>
+                      <span class="block truncate text-xs text-slate-400">{{ c.phone || 'No phone' }}{{ c.email ? ' · ' + c.email : '' }} · {{ lastBooked(c) }}</span>
                     </span>
                     <span class="flex shrink-0 flex-wrap justify-end gap-1">
                       @if (c.has_login) { <span class="badge bg-cyan-400/15 text-cyan-300" data-badge-login>Online login</span> }
@@ -65,7 +65,7 @@ import {
         </div>
 
         <!-- detail -->
-        <div [class]="detail() ? '' : 'hidden lg:block'" data-detail-pane>
+        <div class="lg:sticky lg:top-4 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:pr-1" [class]="detail() ? '' : 'hidden lg:block'" data-detail-pane>
           @if (detail(); as d) {
             <div class="space-y-4">
               <button type="button" class="btn lg:hidden" (click)="close()" data-back>← All customers</button>
