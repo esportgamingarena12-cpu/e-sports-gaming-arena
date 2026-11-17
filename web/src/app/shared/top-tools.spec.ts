@@ -30,3 +30,17 @@ describe('initials', () => {
     expect(initials(null)).toBe('?');
   });
 });
+
+describe('buildAlerts: unbilled sessions', () => {
+  it('shows nothing when everything is billed (or the count is left out)', () => {
+    expect(buildAlerts({ startingSoon: 0, noShowsToday: 0, lowStock: [], unbilled: 0 })).toEqual([]);
+  });
+  it('shows a first alert that opens the Unbilled screen', () => {
+    const out = buildAlerts({ startingSoon: 1, noShowsToday: 0, lowStock: [], unbilled: 2 });
+    expect(out[0]).toEqual({ key: 'unbilled', text: '2 stopped sessions not billed yet', path: '/counter/unbilled' });
+    expect(out).toHaveLength(2);
+  });
+  it('says session in the singular for one', () => {
+    expect(buildAlerts({ startingSoon: 0, noShowsToday: 0, lowStock: [], unbilled: 1 })[0].text).toBe('1 stopped session not billed yet');
+  });
+});

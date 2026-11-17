@@ -38,6 +38,13 @@ export class ReportsService {
     return (data ?? []) as DashStation[];
   }
 
+  /** Stopped sessions that nobody has paid for yet. */
+  async unbilledCount(): Promise<number> {
+    const { count, error } = await this.sb.from('sessions').select('id', { count: 'exact', head: true }).eq('status', 'ended');
+    if (error) throw new Error(friendlyError(error));
+    return count ?? 0;
+  }
+
   /** Sessions started today (India time), cancelled ones left out, and how many of them came from a booking. */
   async sessionsToday(): Promise<{ total: number; booked: number }> {
     const from = new Date(`${todayIst()}T00:00:00+05:30`).toISOString();

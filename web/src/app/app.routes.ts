@@ -40,6 +40,7 @@ export const routes: Routes = [
       { path: 'bookings', loadComponent: () => import('./counter/bookings/bookings').then((m) => m.CounterBookings) },
       { path: 'canteen', loadComponent: () => import('./counter/canteen/canteen').then((m) => m.Canteen) },
       { path: 'bills', loadComponent: () => import('./counter/bills/bills').then((m) => m.Bills) },
+      { path: 'unbilled', loadComponent: () => import('./counter/unbilled/unbilled').then((m) => m.Unbilled) },
       { path: 'stock', loadComponent: () => import('./counter/stock/stock').then((m) => m.StockScreen) },
       { path: 'customers', loadComponent: () => import('./counter/customers/customers').then((m) => m.Customers) },
       { path: 'passes', loadComponent: () => import('./counter/passes/passes').then((m) => m.CounterPasses) },

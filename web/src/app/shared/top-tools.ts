@@ -18,8 +18,11 @@ export interface Alert {
 }
 
 /** What the bell shows: only things that need attention. Pure, so it can be tested. */
-export function buildAlerts(a: { startingSoon: number; noShowsToday: number; lowStock: string[] }): Alert[] {
+export function buildAlerts(a: { startingSoon: number; noShowsToday: number; lowStock: string[]; unbilled?: number }): Alert[] {
   const out: Alert[] = [];
+  if ((a.unbilled ?? 0) > 0) {
+    out.push({ key: 'unbilled', text: `${a.unbilled} stopped session${a.unbilled === 1 ? '' : 's'} not billed yet`, path: '/counter/unbilled' });
+  }
   if (a.startingSoon > 0) {
     out.push({
       key: 'soon',
@@ -198,14 +201,15 @@ export class TopTools implements OnInit, OnDestroy {
     const now = new Date();
     const hour = new Date(now.getTime() + 3_600_000);
     const dayStart = new Date(`${todayIst()}T00:00:00+05:30`);
-    const [soon, noShows, stock] = await Promise.all([
+    const [soon, noShows, stock, unbilled] = await Promise.all([
       this.sb.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed').gte('start_at', now.toISOString()).lte('start_at', hour.toISOString()),
       this.sb.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'no_show').gte('start_at', dayStart.toISOString()),
       this.sb.from('products').select('name, stock_qty, low_stock_level, track_stock, active').is('deleted_at', null),
+      this.sb.from('sessions').select('id', { count: 'exact', head: true }).eq('status', 'ended'),
     ]);
     const low = ((stock.data ?? []) as { name: string; stock_qty: number; low_stock_level: number; track_stock: boolean; active: boolean }[])
       .filter((p) => p.active && p.track_stock && p.stock_qty <= p.low_stock_level)
       .map((p) => p.name);
-    this.alerts.set(buildAlerts({ startingSoon: soon.count ?? 0, noShowsToday: noShows.count ?? 0, lowStock: low }));
+    this.alerts.set(buildAlerts({ startingSoon: soon.count ?? 0, noShowsToday: noShows.count ?? 0, lowStock: low, unbilled: unbilled.count ?? 0 }));
   }
 }

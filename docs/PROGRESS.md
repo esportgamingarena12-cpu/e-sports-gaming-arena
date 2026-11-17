@@ -289,6 +289,12 @@
 2. Counter > Customers asks for 50 at a time and adds the next 50 when the list is within about 240 px of its bottom (or when "Load more" is pressed). A new search throws away a page that was still loading. The count shows "50+ customers" until the last page, then "All customers shown".
 3. Tests: `customer-utils.spec.ts` (paging helpers), `supabase/tests/23_customer_paging.test.sql` (run it in the dashboard SQL editor: it needs the pgTAP extension lines).
 
+## Phase 29: Unbilled screen
+1. New **Counter > Unbilled** (staff and admin, `/counter/unbilled`): every session not yet paid, stopped ones first ("Stopped - not billed") then ones still running (for a customer who left without Stop), each with gaming charge, canteen items on its tab and the total. **Bill now** stops the timer if needed and opens the usual checkout, so a bill can be made at any time.
+2. The bell shows "N stopped sessions not billed yet"; the admin dashboard has an Unbilled card with the count.
+3. Dashboard highlights also count today's sessions (walk-in and booked), see Phase 26 notes.
+4. Not covered by an automated browser test (needs the staff/admin test logins in this project).
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

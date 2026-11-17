@@ -214,6 +214,16 @@ const PAD_RIGHT = 12;
             </div>
           </div>
 
+          <!-- Unbilled: stopped sessions nobody has paid for, billable at any time -->
+          <a routerLink="/counter/unbilled" class="card block transition hover:-translate-y-0.5" [class]="unbilled() > 0 ? '!border-orange-500/60 !bg-orange-500/10' : ''" data-unbilled-card>
+            <h2 class="text-lg font-bold">Unbilled</h2>
+            @if (unbilled() > 0) {
+              <p class="mt-1 text-sm text-orange-200"><span class="font-display text-2xl font-bold">{{ unbilled() }}</span> stopped session{{ unbilled() === 1 ? '' : 's' }} waiting to be billed. Open to bill them, with their canteen items.</p>
+            } @else {
+              <p class="mt-1 text-sm text-slate-300">Nothing stopped is waiting. Open to see running sessions with their tabs.</p>
+            }
+          </a>
+
           <!-- Highlights -->
           <div class="card relative overflow-hidden" data-highlights>
             <h2 class="flex items-center gap-2 text-lg font-bold"><span class="text-orange-400"><app-icon name="bolt" [size]="18" /></span> Today's Highlights</h2>
@@ -298,6 +308,8 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
   protected readonly live = signal<LiveSession[]>([]);
   /** sessions started today: all, and the ones that came from a booking */
   protected readonly today = signal<{ total: number; booked: number }>({ total: 0, booked: 0 });
+  /** stopped sessions still waiting to be billed */
+  protected readonly unbilled = signal(0);
   protected readonly error = signal<string | null>(null);
   protected readonly updated = signal<string | null>(null);
   private readonly now = signal(Date.now());
@@ -404,15 +416,17 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
 
   private async load(): Promise<void> {
     try {
-      const [d, t, h, st, lv, sd] = await Promise.all([
+      const [d, t, h, st, lv, sd, ub] = await Promise.all([
         this.svc.dashboard(),
         this.svc.trend(60),
         this.svc.busyHours(30),
         this.svc.stations(),
         this.svc.liveSessions(),
         this.svc.sessionsToday(),
+        this.svc.unbilledCount(),
       ]);
       this.today.set(sd);
+      this.unbilled.set(ub);
       this.data.set(d);
       this.trend.set(t);
       this.hours.set(h);
