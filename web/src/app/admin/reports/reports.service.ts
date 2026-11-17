@@ -58,7 +58,7 @@ export class ReportsService {
   async liveSessions(): Promise<LiveSession[]> {
     const { data, error } = await this.sb
       .from('sessions')
-      .select('id, station_id, customer_name, status, pass_name, rate_per_hour, block_min, min_bill_min, package_minutes, package_price, pass_id, pass_minutes_left, overtime_grace_min, overtime_mode, started_at, paused_at, paused_seconds, ended_at')
+      .select('id, station_id, customer_name, status, pass_name, rate_per_hour, block_min, min_bill_min, package_minutes, package_price, pass_id, pass_minutes_left, overtime_grace_min, overtime_mode, overtime_amount, started_at, paused_at, paused_seconds, ended_at')
       .in('status', ['running', 'paused'])
       .order('started_at');
     if (error) throw new Error(friendlyError(error));

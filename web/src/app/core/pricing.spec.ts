@@ -1,4 +1,4 @@
-import { chargePaise, formatDuration, overtimeState, packageRemainingMs, playedMs, SessionSnapshot, sessionCharge } from './pricing';
+import { chargePaise, customOvertimePaise, formatDuration, overtimeState, packageRemainingMs, playedMs, SessionSnapshot, sessionCharge } from './pricing';
 
 const START = '2026-01-01T10:00:00+00:00';
 const at = (minutes: number): number => Date.parse(START) + minutes * 60_000;
@@ -196,5 +196,37 @@ describe('overtimeState (what the counter shows)', () => {
   it("shows staff's choice", () => {
     expect(overtimeState(pc30({ overtime_mode: 'charge' }), at(35))).toMatchObject({ charged: true, mode: 'charge' });
     expect(overtimeState(pc30({ overtime_mode: 'waive' }), at(90))).toMatchObject({ charged: false, mode: 'waive' });
+  });
+});
+
+describe('pricing: a custom overtime amount typed by staff (inside the grace only)', () => {
+  const pc30 = (over: Partial<SessionSnapshot> = {}) => pkg(30, 50, 90, { overtime_grace_min: 10, ...over });
+  it('replaces the block charge while the overtime is inside the grace', () => {
+    expect(sessionCharge(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), at(36))).toBe(60); // 6 min over: 50 + 10
+    expect(sessionCharge(pc30({ overtime_mode: 'charge', overtime_amount: '12.50' }), at(40))).toBe(62.5); // exactly 10 over
+  });
+  it('can be zero', () => {
+    expect(sessionCharge(pc30({ overtime_mode: 'charge', overtime_amount: 0 }), at(36))).toBe(50);
+  });
+  it('stops applying beyond the grace: the normal block charge takes over, so a long overtime is not undercharged', () => {
+    expect(sessionCharge(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), at(41))).toBe(72.5); // 11 over
+    expect(sessionCharge(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), at(46))).toBe(95); // 16 over
+  });
+  it('is ignored unless the choice is Charge', () => {
+    expect(sessionCharge(pc30({ overtime_mode: null, overtime_amount: 10 }), at(36))).toBe(50);
+    expect(sessionCharge(pc30({ overtime_mode: 'waive', overtime_amount: 10 }), at(36))).toBe(50);
+  });
+  it('is not used when there is no amount: charging uses the block price', () => {
+    expect(sessionCharge(pc30({ overtime_mode: 'charge' }), at(36))).toBe(72.5);
+  });
+  it('customOvertimePaise gives the amount in paise only when it applies', () => {
+    expect(customOvertimePaise(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), 6 * 60_000)).toBe(1000);
+    expect(customOvertimePaise(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), 11 * 60_000)).toBeNull();
+    expect(customOvertimePaise(pc30(), 6 * 60_000)).toBeNull();
+  });
+  it('overtimeState shows the custom amount', () => {
+    const o = overtimeState(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), at(36))!;
+    expect(o).toMatchObject({ charged: true, customRupees: 10, ifChargedRupees: 22.5, withinGrace: true });
+    expect(overtimeState(pc30(), at(36))!.customRupees).toBeNull();
   });
 });

@@ -318,6 +318,9 @@ Counter > Bills asks for the first 10 bills of the picked date and adds 10 more 
 3. Tests: `pricing.spec.ts` (grace cases, overtimeState), `supabase/tests/dashboard/24_overtime_grace.sql` (run in the dashboard SQL editor; rolls itself back).
 4. Open sessions at the time of the migration got the grace of 10 minutes (the column default).
 
+## Phase 35: staff can type the overtime amount (inside the grace)
+Migration `0024_overtime_amount.sql`: `sessions.overtime_amount` and `set_overtime_mode(session, mode, amount)`. While overtime is within the grace (10 minutes to start with) and staff chose Charge, the amount they type replaces the block price (6 min over with Rs 10 typed = package + Rs 10; Rs 0 is allowed). Beyond the grace the normal block charge takes over, so a long overtime is never undercharged by a small typed amount. Plain **Charge overtime** clears a typed amount, **Don't charge** and **Automatic** clear it too. `pricing.ts` mirrors the SQL (`customOvertimePaise`). The control on the station card and the Pending list has an "or charge ₹ [amount] Set" box, shown only inside the grace. Tests: `pricing.spec.ts` and the extra cases in `supabase/tests/dashboard/24_overtime_grace.sql`.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

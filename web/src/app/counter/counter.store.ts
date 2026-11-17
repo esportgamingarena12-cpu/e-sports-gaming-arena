@@ -69,7 +69,7 @@ export interface Pack {
 
 const SESSION_COLUMNS =
   'id, station_id, customer_name, customer_phone, status, package_name, rate_per_hour, block_min, ' +
-  'min_bill_min, package_minutes, package_price, pass_id, pass_name, pass_minutes_left, started_at, paused_at, paused_seconds, ended_at, alarm_minutes, alarm_extra_minutes, overtime_grace_min, overtime_mode';
+  'min_bill_min, package_minutes, package_price, pass_id, pass_name, pass_minutes_left, started_at, paused_at, paused_seconds, ended_at, alarm_minutes, alarm_extra_minutes, overtime_grace_min, overtime_mode, overtime_amount';
 
 /**
  * Everything the counter screens need: stations, open sessions, tabs and packages.

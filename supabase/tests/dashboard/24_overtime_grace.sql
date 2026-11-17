@@ -67,6 +67,39 @@ begin
   reset role;
   res := pg_temp.chk(res, err like '%Choose charge%', 'a made-up choice is refused');
 
+  -- staff can type an amount for overtime inside the grace (migration 0024)
+  set local role authenticated;
+  perform set_overtime_mode(v_s, 'charge', 10);
+  reset role;
+  res := pg_temp.chk(res, session_charge(v_s, v_t + interval '36 minutes') = 60, 'custom amount: 6 min over, Rs 10 typed (50 + 10 = 60)');
+  res := pg_temp.chk(res, session_charge(v_s, v_t + interval '40 minutes') = 60, 'custom amount: exactly 10 min over still uses it (60)');
+  res := pg_temp.chk(res, session_charge(v_s, v_t + interval '41 minutes') = 72.5, 'custom amount: beyond the grace the block charge takes over (72.50)');
+  set local role authenticated;
+  perform set_overtime_mode(v_s, 'charge', 0);
+  reset role;
+  res := pg_temp.chk(res, session_charge(v_s, v_t + interval '36 minutes') = 50, 'custom amount 0: free (50)');
+  set local role authenticated;
+  perform set_overtime_mode(v_s, 'charge');
+  reset role;
+  res := pg_temp.chk(res, (select overtime_amount from sessions where id = v_s) is null, "plain 'charge' clears the typed amount");
+  res := pg_temp.chk(res, session_charge(v_s, v_t + interval '36 minutes') = 72.5, "plain 'charge': the block price again (72.50)");
+  set local role authenticated;
+  begin perform set_overtime_mode(v_s, 'waive', 10); err := null; exception when others then err := sqlerrm; end;
+  reset role;
+  res := pg_temp.chk(res, err like '%only be given when charging%', 'an amount with Don''t charge is refused');
+  set local role authenticated;
+  begin perform set_overtime_mode(v_s, 'charge', -5); err := null; exception when others then err := sqlerrm; end;
+  reset role;
+  res := pg_temp.chk(res, err like '%between 0 and 100000%', 'a negative amount is refused');
+  set local role authenticated;
+  perform set_overtime_mode(v_s, 'charge', 10);
+  perform set_overtime_mode(v_s, 'waive');
+  reset role;
+  res := pg_temp.chk(res, (select overtime_amount from sessions where id = v_s) is null, 'waiving clears the typed amount');
+  set local role authenticated;
+  perform set_overtime_mode(v_s, null);
+  reset role;
+
   -- a per-hour session has no overtime
   set local role authenticated;
   begin perform set_overtime_mode(start_session((select id from stations where name = 'T24 PC2')), 'charge'); err := null; exception when others then err := sqlerrm; end;

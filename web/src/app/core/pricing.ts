@@ -5,6 +5,7 @@
 // Overtime on a package (migration 0023): time past the package is free while it is within the grace period
 // (overtime_grace_min, copied to the session when it starts), unless staff chose to charge it (overtime_mode 'charge');
 // staff can also waive it ('waive'). Overtime that is charged is rounded up to the billing block at the hourly rate.
+// Staff can also type an amount for overtime that is within the grace (overtime_amount); beyond the grace the block charge applies.
 // A session with no grace value (older golden rows) behaves as grace 0, exactly as before.
 //
 // Rules: played time = elapsed - paused. Per hour: round up to the billing block, at least the
@@ -25,6 +26,8 @@ export interface SessionSnapshot {
   overtime_grace_min?: number | null;
   /** staff's choice on this session: charge the overtime, waive it, or null for automatic */
   overtime_mode?: 'charge' | 'waive' | null;
+  /** rupees staff typed for overtime within the grace (used only with overtime_mode 'charge') */
+  overtime_amount?: number | string | null;
   started_at: string;
   paused_at: string | null;
   paused_seconds: number;
@@ -48,6 +51,13 @@ export function overtimeCharged(s: SessionSnapshot, overMs: number): boolean {
   return overMs > (s.overtime_grace_min ?? 0) * 60_000;
 }
 
+/** The amount staff typed for overtime (in paise) when it applies: charging, with an amount, and still inside the grace. Otherwise null. */
+export function customOvertimePaise(s: SessionSnapshot, overMs: number): number | null {
+  if (s.overtime_mode !== 'charge' || s.overtime_amount == null || s.overtime_amount === '') return null;
+  if (overMs > (s.overtime_grace_min ?? 0) * 60_000) return null;
+  return toPaise(s.overtime_amount);
+}
+
 export interface OvertimeState {
   /** whole minutes past the package, rounded up */
   overMinutes: number;
@@ -55,8 +65,10 @@ export interface OvertimeState {
   charged: boolean;
   /** true when it is inside the grace period (so, with no staff choice, it is free) */
   withinGrace: boolean;
-  /** rupees added to the bill if the overtime is charged (rounded up to the billing block) */
+  /** rupees added to the bill if the overtime is charged the normal way (rounded up to the billing block) */
   ifChargedRupees: number;
+  /** the amount staff typed, when it is the one on the bill; otherwise null */
+  customRupees: number | null;
   mode: 'charge' | 'waive' | null;
 }
 
@@ -72,6 +84,7 @@ export function overtimeState(s: SessionSnapshot, endMs: number): OvertimeState 
     charged: overtimeCharged(s, over),
     withinGrace: over <= (s.overtime_grace_min ?? 0) * 60_000,
     ifChargedRupees: roundHalfUp(blocks * toPaise(s.rate_per_hour), 60) / 100,
+    customRupees: customOvertimePaise(s, over) === null ? null : (customOvertimePaise(s, over) as number) / 100,
     mode: s.overtime_mode ?? null,
   };
 }
@@ -95,6 +108,8 @@ export function chargePaise(s: SessionSnapshot, endMs: number): number {
     const packageMs = s.package_minutes * 60_000;
     const over = played - packageMs;
     if (over <= 0 || !overtimeCharged(s, over)) return price;
+    const custom = customOvertimePaise(s, over);
+    if (custom !== null) return price + custom;
     return price + roundHalfUp(roundedMinutes(over) * rate, 60);
   }
 
