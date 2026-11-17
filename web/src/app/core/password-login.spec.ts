@@ -72,3 +72,32 @@ describe('remember me', () => {
     expect(shouldEndSession(undefined, undefined)).toBe(false);
   });
 });
+
+import { changePasswordError, changePasswordProblem } from './password-login';
+describe('changing the password', () => {
+  const ok = (cur: string, next: string, conf: string, has = true) => changePasswordProblem(cur, next, conf, 'a@b.in', has);
+  it('needs the current password when the account has one', () => {
+    expect(ok('', 'Newpass123', 'Newpass123')).toBe('Enter your current password');
+  });
+  it('does not need it for a Google-only account', () => {
+    expect(ok('', 'Newpass123', 'Newpass123', false)).toBeNull();
+  });
+  it('applies the usual password rules to the new one', () => {
+    expect(ok('Oldpass1', 'short1', 'short1')).toMatch(/at least 8/);
+    expect(ok('Oldpass1', 'onlyletters', 'onlyletters')).toMatch(/letters and at least one number/);
+  });
+  it('refuses the same password again', () => {
+    expect(ok('Samepass1', 'Samepass1', 'Samepass1')).toMatch(/different/);
+  });
+  it('refuses two new passwords that differ', () => {
+    expect(ok('Oldpass1', 'Newpass123', 'Newpass124')).toMatch(/do not match/);
+  });
+  it('accepts a good change', () => {
+    expect(ok('Oldpass1', 'Newpass123', 'Newpass123')).toBeNull();
+  });
+  it('turns server errors into plain language', () => {
+    expect(changePasswordError('New password should be different from the old password.')).toMatch(/different/);
+    expect(changePasswordError('Password should be at least 8 characters')).toMatch(/stronger/);
+    expect(changePasswordError('weird')).toMatch(/could not be changed/);
+  });
+});

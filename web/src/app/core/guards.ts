@@ -21,4 +21,5 @@ function roleGuard(allowed: Role[], loginUrl: string): CanActivateFn {
 
 export const adminGuard = roleGuard(['admin'], '/login');
 export const staffGuard = roleGuard(['admin', 'staff'], '/login');
+export const signedInGuard = roleGuard(['admin', 'staff', 'customer'], '/book/login');
 export const customerGuard = roleGuard(['customer'], '/book/login');

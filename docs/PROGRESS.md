@@ -295,6 +295,11 @@
 3. Dashboard highlights also count today's sessions (walk-in and booked), see Phase 26 notes.
 4. Not covered by an automated browser test (needs the staff/admin test logins in this project).
 
+## Phase 30: change password for admin, staff and customers
+1. New screen `/account/password` (any signed-in person). A **Change password** link sits just above **Logout** in the staff and admin account menu (top bar, and the side menu on phones) and in the customer top bar (and the phone menu). The account must give its current password, which is checked by signing in with it; a Google-only account has no password yet and can just set one. The new password follows the same rules as sign up (8 to 72 bytes, letters and a number, not the email), must differ from the old one and be typed twice.
+2. No database change: Supabase's own `updateUser` changes the password. Not tested against a real account (so no real password is touched); the rules are unit tested and the guard (a visitor is sent to the login page) has a browser test.
+3. Note for testing: port 4200 on the author's PC was taken by a different project, so browser tests were run on port 4300.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

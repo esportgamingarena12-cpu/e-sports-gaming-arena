@@ -55,3 +55,24 @@ export const ALIVE_KEY = 'session-alive';
 export function shouldEndSession(remember: string | null | undefined, alive: string | null | undefined): boolean {
   return remember === '0' && alive !== '1';
 }
+
+// ---------- change password ----------
+/** The first problem with a change-password form, or null when it can be sent. `hasPassword` = the account already has one. */
+export function changePasswordProblem(current: string, next: string, confirm: string, email: string, hasPassword: boolean): string | null {
+  if (hasPassword && !current) return 'Enter your current password';
+  const bad = passwordProblem(next, email);
+  if (bad) return bad;
+  if (hasPassword && current === next) return 'The new password must be different from the current one';
+  if (!passwordsMatch(next, confirm)) return 'The two new passwords do not match';
+  return null;
+}
+
+/** Plain-language message for a Supabase error while changing the password. */
+export function changePasswordError(message: string | null | undefined): string {
+  const m = message ?? '';
+  if (/same.*password|different from the old/i.test(m)) return 'The new password must be different from the current one';
+  if (/rate limit|too many/i.test(m)) return 'Too many attempts. Please wait a few minutes and try again.';
+  if (/reauth|recently|nonce/i.test(m)) return 'For safety, please sign out, sign in again, and then change the password.';
+  if (/password/i.test(m) && /(at least|short|weak|characters|pwned)/i.test(m)) return `Choose a stronger password (at least ${MIN_PASSWORD} characters, with letters and a number).`;
+  return 'The password could not be changed. Please try again.';
+}

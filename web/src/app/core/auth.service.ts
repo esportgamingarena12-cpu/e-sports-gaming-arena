@@ -3,7 +3,7 @@ import { Session } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
 import { googleRedirectUrl, PendingGoogle, rememberPending, takePending } from './google-login';
 import { homeFor, Profile, Role } from './models';
-import { ALIVE_KEY, REMEMBER_KEY, shouldEndSession, signInError, signUpError } from './password-login';
+import { ALIVE_KEY, changePasswordError, REMEMBER_KEY, shouldEndSession, signInError, signUpError } from './password-login';
 
 export interface CustomerRecord {
   id: number;
@@ -180,6 +180,27 @@ export class AuthService {
   /** On the way back from Google: the note left before leaving (and clears it), or null if this is not a Google return. */
   takeGoogleReturn(): PendingGoogle | null {
     return takePending(sessionStorage, Date.now());
+  }
+
+  /** True when this account signs in with an email and password (a Google-only account has none yet). */
+  hasPassword(): boolean {
+    const providers = (this.session()?.user.app_metadata?.['providers'] as string[] | undefined) ?? [];
+    return providers.includes('email');
+  }
+
+  /**
+   * Change the signed-in person's password (admin, staff or customer). An account that already has a password must give
+   * the current one, which is checked first by signing in with it. A Google-only account can simply set one.
+   * Throws an Error with a plain message.
+   */
+  async changePassword(current: string, next: string): Promise<void> {
+    const email = this.session()?.user.email ?? this.profile()?.email ?? '';
+    if (this.hasPassword()) {
+      const check = await this.sb.auth.signInWithPassword({ email, password: current });
+      if (check.error) throw new Error(/rate limit|too many/i.test(check.error.message) ? changePasswordError(check.error.message) : 'The current password is wrong');
+    }
+    const { error } = await this.sb.auth.updateUser({ password: next });
+    if (error) throw new Error(changePasswordError(error.message));
   }
 
   async signOut(): Promise<void> {

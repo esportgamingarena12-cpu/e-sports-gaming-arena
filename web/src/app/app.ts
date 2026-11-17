@@ -136,6 +136,7 @@ export class App {
   /** The name of the current screen, shown in the top bar. */
   protected readonly title = computed(() => {
     const path = this.url().split(/[?#]/)[0];
+    if (path === '/account/password') return 'Change password';
     const hit = [...this.items()].sort((a, b) => b.path.length - a.path.length).find((i) => path === i.path || path.startsWith(i.path + '/'));
     return hit?.label ?? '';
   });
