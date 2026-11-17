@@ -99,7 +99,7 @@ export function bundleText(minutes: number): string {
 
       <ul class="mt-4 space-y-2" data-list>
         @for (p of passes(); track p.id) {
-          <li class="card flex items-center gap-3" [class.opacity-60]="!p.active" [attr.data-pass]="p.name">
+          <li class="card flex flex-wrap items-center gap-3" [class.opacity-60]="!p.active" [attr.data-pass]="p.name">
             <div class="min-w-0 flex-1">
               <p class="truncate font-medium">{{ p.name }}</p>
               <p class="text-sm text-slate-400">
@@ -110,7 +110,16 @@ export function bundleText(minutes: number): string {
                 @if (!p.active) { · inactive }
               </p>
             </div>
-            <button type="button" class="btn" (click)="edit(p)">Edit</button>
+            <button type="button" class="btn" (click)="edit(p)" data-edit>Edit</button>
+            <div class="flex w-full flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
+              @if (rowDelete() === p.id) {
+                <span class="text-sm text-red-300">Delete {{ p.name }}? A pass already sold is hidden instead.</span>
+                <button type="button" class="btn-danger !px-3 !py-1 !text-sm" (click)="removeRow(p)" data-row-delete-yes>Yes, delete</button>
+                <button type="button" class="btn !px-3 !py-1 !text-sm" (click)="rowDelete.set(null)">Keep</button>
+              } @else {
+                <button type="button" class="btn ml-auto !px-3 !py-1 !text-sm text-red-300" (click)="rowDelete.set(p.id)" data-row-delete>Delete</button>
+              }
+            </div>
           </li>
         } @empty {
           <li class="text-slate-400">No passes yet. Add one to start selling.</li>
@@ -128,6 +137,8 @@ export class PassTypes implements OnInit {
   protected readonly types = signal<string[]>([]);
   protected readonly editingId = signal<number | null>(null);
   protected readonly busy = signal(false);
+  /** the pass waiting for a yes to its delete */
+  protected readonly rowDelete = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
@@ -162,6 +173,22 @@ export class PassTypes implements OnInit {
     if (pt.error) return this.toast.error(friendlyError(pt.error));
     this.passes.set((pt.data ?? []) as PassType[]);
     this.types.set([...new Set((st.data ?? []).map((s) => s.type as string))].sort());
+  }
+
+  /** A pass nobody has bought is removed for good; one that was sold is only hidden, so customers keep their history. */
+  protected async removeRow(p: PassType): Promise<void> {
+    const del = await this.sb.from('pass_types').delete().eq('id', p.id).select('id');
+    this.rowDelete.set(null);
+    if (!del.error && del.data?.length) {
+      this.toast.success('Pass deleted');
+    } else if (del.error?.code === '23503') {
+      const hide = await this.sb.from('pass_types').update({ active: false }).eq('id', p.id).select('id');
+      if (hide.error || !hide.data?.length) return this.toast.error(hide.error ? friendlyError(hide.error) : 'Not allowed');
+      this.toast.success('This pass has been sold, so it was hidden instead of deleted');
+    } else {
+      return this.toast.error(del.error ? friendlyError(del.error) : 'Not allowed');
+    }
+    await this.load();
   }
 
   protected startNew(): void {
