@@ -337,6 +337,9 @@ Reported at the same time and not yet found: stopping a forgotten running sessio
 ## Phase 39: tidier station card
 All the information stays visible, stacked in tidy blocks: the big timer and price, a label / value box (Customer, Package, Time left or Overtime, Timer, Tab), the overtime panel (status line, Charge / Don't charge side by side, your own amount), then **Bill** on its own wide row and a two-column grid (Extend, Stop or Undo stop, + Items, Left earlier?, Cancel session). Checked on a desktop and a 390 px phone with a fake backend (not the live one).
 
+## Phase 40: stations in use first
+Counter > Stations lists the stations that have a session (running, or stopped and not billed) first under "In use", and the unused ones after them under "Available"; each group keeps its normal order. A station moves between the groups when a session starts or is billed.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

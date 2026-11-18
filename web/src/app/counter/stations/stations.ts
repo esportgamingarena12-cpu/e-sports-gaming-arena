@@ -49,7 +49,13 @@ interface Card {
         <p class="mt-4 text-slate-400">No active stations. Add them under Admin → Stations.</p>
       } @else {
         <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          @for (c of cards(); track c.station.id) {
+          @for (c of cards(); track c.station.id; let i = $index) {
+            @if (i === 0 && activeCount() > 0) {
+              <li class="col-span-full text-xs font-semibold uppercase tracking-wide text-emerald-300" data-group="in-use">In use · {{ activeCount() }}</li>
+            }
+            @if (i === activeCount() && activeCount() < cards().length) {
+              <li class="col-span-full mt-2 text-xs font-semibold uppercase tracking-wide text-slate-400" data-group="available">Available · {{ cards().length - activeCount() }}</li>
+            }
             <li class="card space-y-2" [class]="borderFor(c)" [attr.data-station]="c.station.name">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
@@ -175,7 +181,7 @@ export class CounterStations implements OnInit, OnDestroy {
     for (const t of this.store.tabs()) bySession.set(t.session_id, [...(bySession.get(t.session_id) ?? []), t]);
     const byStation = this.store.sessionByStation();
 
-    return this.store.stations().map((station) => {
+    const all = this.store.stations().map((station) => {
       const session = byStation.get(station.id) ?? null;
       const next = upcomingBooking(this.store.bookings(), station.id, now);
       const booking = next
@@ -200,7 +206,12 @@ export class CounterStations implements OnInit, OnDestroy {
         canteen: items.reduce((sum, i) => sum + i.price * i.qty, 0),
       };
     });
+    // stations with a session (running, or stopped and not billed) first, the unused ones after; each group keeps its set order
+    return [...all.filter((c) => c.session !== null), ...all.filter((c) => c.session === null)];
   });
+
+  /** how many stations have a session right now (they are listed first) */
+  protected readonly activeCount = computed(() => this.cards().filter((c) => c.session !== null).length);
 
   ngOnInit(): void {
     this.store.start();
