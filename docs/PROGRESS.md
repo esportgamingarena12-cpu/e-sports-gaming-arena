@@ -335,7 +335,7 @@ Migration `0027_undo_stop.sql`: `undo_stop_session(session)` resumes a session t
 Reported at the same time and not yet found: stopping a forgotten running session affected another running session. The server functions work on one session id, the screens pass the id of the card or row, and the live data is consistent; waiting for the exact steps to reproduce it.
 
 ## Phase 39: tidier station card
-A station card with a running session is calmer: one info line (customer, phone, package minutes and time left or overtime) instead of three; the overtime control is one short line ("5 min over, free (grace)" or "charged +Rs 22.50") with the choices (Charge overtime, Don't charge, typed amount) behind **Change**; the everyday buttons are **Bill** (wide), **Extend**, **Stop** (or **Undo stop**) and a **...** button; + Items, Left earlier? and Cancel session are under the three dots.
+All the information stays visible, stacked in tidy blocks: the big timer and price, a label / value box (Customer, Package, Time left or Overtime, Timer, Tab), the overtime panel (status line, Charge / Don't charge side by side, your own amount), then **Bill** on its own wide row and a two-column grid (Extend, Stop or Undo stop, + Items, Left earlier?, Cancel session). Checked on a desktop and a 390 px phone with a fake backend (not the live one).
 
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).

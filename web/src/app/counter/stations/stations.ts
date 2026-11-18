@@ -68,31 +68,36 @@ interface Card {
                   <p class="font-mono text-2xl" data-timer>{{ c.played }}</p>
                   <p class="text-xl font-semibold text-emerald-300" data-charge>₹{{ c.charge.toFixed(2) }}</p>
                 </div>
-                <!-- one short line: who, which time, and how much is left -->
-                <p class="truncate text-sm text-slate-300" data-info>
-                  <span class="font-medium text-slate-100">{{ s.customer_name || 'Walk-in' }}</span>
-                  @if (s.customer_phone) { <span class="text-slate-400"> · {{ s.customer_phone }}</span> }
+                <!-- the details, as label / value rows -->
+                <dl class="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1 rounded-lg bg-slate-950/40 px-3 py-2 text-sm" data-info>
+                  <dt class="text-slate-400">Customer</dt>
+                  <dd class="min-w-0 truncate font-medium text-slate-100">{{ s.customer_name || 'Walk-in' }}@if (s.customer_phone) { <span class="font-normal text-slate-400"> · {{ s.customer_phone }}</span> }</dd>
+
                   @if (s.pass_name) {
-                    <span class="text-slate-400" data-pass-note> · {{ s.pass_name }} pass, {{ s.pass_minutes_left === null ? 'unlimited' : s.pass_minutes_left + ' min left' }}</span>
+                    <dt class="text-slate-400">Pass</dt>
+                    <dd class="min-w-0 truncate" data-pass-note>{{ s.pass_name }} · {{ s.pass_minutes_left === null ? 'unlimited' : s.pass_minutes_left + ' min left' }}</dd>
                   } @else if (s.package_minutes !== null) {
-                    <span class="text-slate-400"> · {{ s.package_minutes }} min</span>
+                    <dt class="text-slate-400">Package</dt>
+                    <dd class="min-w-0 truncate">{{ s.package_name }} · {{ s.package_minutes }} min · ₹{{ s.package_price }}</dd>
                     @if (c.packageLeft; as p) {
-                      <span [class]="p.over ? 'font-semibold text-red-400' : 'text-slate-300'" data-package-left> · {{ p.over ? 'overtime ' : '' }}{{ p.text }}{{ p.over ? '' : ' left' }}</span>
+                      <dt class="text-slate-400">{{ p.over ? 'Overtime' : 'Time left' }}</dt>
+                      <dd [class]="p.over ? 'font-semibold text-red-400' : 'text-slate-200'" data-package-left>{{ p.text }}</dd>
                     }
+                  } @else {
+                    <dt class="text-slate-400">Billing</dt>
+                    <dd>Per hour</dd>
                   }
-                </p>
+                  @if (c.timer; as t) {
+                    <dt class="text-slate-400">Timer</dt>
+                    <dd data-timer-note [class]="t.over ? 'font-semibold text-fuchsia-300' : 'text-slate-200'">{{ t.over ? 'over by ' : '' }}{{ t.text }}{{ t.over ? '' : ' left' }}</dd>
+                  }
+                  @if (c.items.length) {
+                    <dt class="text-slate-400">Tab</dt>
+                    <dd class="min-w-0 truncate"><span class="font-medium">₹{{ c.canteen.toFixed(2) }}</span> · {{ itemsText(c.items) }}</dd>
+                  }
+                </dl>
+
                 <app-overtime-control [session]="s" (changed)="store.load()" />
-                @if (c.timer; as t) {
-                  <p class="text-sm" data-timer-note>
-                    ⏰ Timer:
-                    <span [class]="t.over ? 'font-semibold text-fuchsia-300' : 'text-slate-300'">{{ t.over ? 'over by ' : '' }}{{ t.text }}{{ t.over ? '' : ' left' }}</span>
-                  </p>
-                }
-                @if (c.items.length) {
-                  <p class="truncate text-sm text-slate-300">
-                    Tab: {{ itemsText(c.items) }} · <span class="font-medium">₹{{ c.canteen.toFixed(2) }}</span>
-                  </p>
-                }
 
                 @if (confirmCancel() === s.id) {
                   <div class="rounded border border-red-500/40 bg-red-500/10 p-2 text-sm">
@@ -103,26 +108,23 @@ interface Card {
                     </div>
                   </div>
                 } @else {
-                  <!-- the everyday buttons; the rest are under the three dots -->
-                  <div class="flex items-center gap-2 pt-1">
-                    <button type="button" class="btn-primary flex-1 !py-2" [disabled]="busy() === s.id" (click)="bill(c)">Bill</button>
-                    <button type="button" class="btn-outline" [disabled]="busy() === s.id" (click)="extendFor.set({ station: c.station, session: s })" data-extend>Extend</button>
-                    @if (s.status !== 'ended') {
-                      <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'end_session')">Stop</button>
-                    } @else {
-                      <button type="button" class="btn" [disabled]="busy() === s.id" (click)="undoStop(s)" data-undo-stop title="Stopped by mistake: carry on, and the time since the Stop counts as played">Undo stop</button>
-                    }
-                    <button type="button" class="btn !px-3" (click)="moreFor.set(moreFor() === s.id ? null : s.id)" [attr.aria-expanded]="moreFor() === s.id" aria-label="More actions" data-more>⋯</button>
-                  </div>
-                  @if (moreFor() === s.id) {
-                    <div class="flex flex-wrap gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2" data-more-panel>
-                      <a class="btn !py-1 text-sm" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
-                      <button type="button" class="btn !py-1 text-sm" [disabled]="busy() === s.id" (click)="endFor.set({ station: c.station, session: s }); moreFor.set(null)" data-left-earlier title="The customer left and nobody pressed Stop">Left earlier?</button>
+                  <!-- buttons: Bill on its own wide row, the rest in a tidy grid -->
+                  <div class="space-y-2 pt-1">
+                    <button type="button" class="btn-primary w-full !py-2.5" [disabled]="busy() === s.id" (click)="bill(c)">Bill</button>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button type="button" class="btn-outline" [disabled]="busy() === s.id" (click)="extendFor.set({ station: c.station, session: s })" data-extend>Extend</button>
+                      @if (s.status !== 'ended') {
+                        <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'end_session')">Stop</button>
+                      } @else {
+                        <button type="button" class="btn !border-violet-400/60 !text-violet-200" [disabled]="busy() === s.id" (click)="undoStop(s)" data-undo-stop title="Stopped by mistake: carry on, and the time since the Stop counts as played">Undo stop</button>
+                      }
+                      <a class="btn text-center" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
+                      <button type="button" class="btn" [disabled]="busy() === s.id" (click)="endFor.set({ station: c.station, session: s })" data-left-earlier title="The customer left and nobody pressed Stop">Left earlier?</button>
                       @if (isAdmin()) {
-                        <button type="button" class="btn !py-1 text-sm text-red-300" (click)="confirmCancel.set(s.id); moreFor.set(null)">Cancel session</button>
+                        <button type="button" class="btn col-span-2 text-red-300" (click)="confirmCancel.set(s.id)">Cancel session</button>
                       }
                     </div>
-                  }
+                  </div>
                 }
               } @else {
                 <button type="button" class="btn-primary w-full" (click)="startFor.set(c.station)">Start</button>
@@ -162,8 +164,6 @@ export class CounterStations implements OnInit, OnDestroy {
   protected readonly startFor = signal<Station | null>(null);
   protected readonly extendFor = signal<{ station: Station; session: OpenSession } | null>(null);
   protected readonly endFor = signal<{ station: Station; session: OpenSession } | null>(null);
-  /** the session whose extra buttons (+ Items, Left earlier?, Cancel) are showing */
-  protected readonly moreFor = signal<number | null>(null);
   protected readonly billFor = signal<BillSource | null>(null);
   protected readonly busy = signal<number | null>(null);
   protected readonly confirmCancel = signal<number | null>(null);
