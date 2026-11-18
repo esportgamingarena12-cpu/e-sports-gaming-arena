@@ -31,10 +31,7 @@ export function extendedTotal(minutes: number, price: number, add: { minutes: nu
             @for (p of options(); track p.id) {
               <button type="button" class="btn-outline flex w-full items-center justify-between gap-2 !py-2 text-left"
                       [disabled]="busy()" (click)="addPackage(p)" data-extend-package>
-                <span class="min-w-0">
-                  <span class="block">+ {{ p.minutes }} min</span>
-                  <span class="block truncate text-xs font-normal text-slate-400">Package “{{ p.name }}” (for {{ station().name }})</span>
-                </span>
+                <span>+ {{ p.minutes }} min</span>
                 <span class="font-semibold">+₹{{ p.price }} <span class="text-xs font-normal text-slate-400">→ {{ after(p) }}</span></span>
               </button>
             } @empty {
