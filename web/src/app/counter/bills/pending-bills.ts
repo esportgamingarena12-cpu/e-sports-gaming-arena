@@ -72,6 +72,9 @@ export interface PendingRow {
               <div class="flex flex-wrap gap-2">
                 <button type="button" class="btn-primary" [disabled]="busy() === r.session.id" (click)="bill(r)" data-bill>{{ busy() === r.session.id ? 'Opening…' : 'Bill now' }}</button>
                 <a class="btn" routerLink="/counter/canteen" [queryParams]="{ tab: r.session.id }">+ Items</a>
+                @if (r.stopped) {
+                  <button type="button" class="btn" [disabled]="busy() === r.session.id" (click)="undoStop(r)" data-undo-stop title="Stopped by mistake: carry on, and the time since the Stop counts as played">Undo stop</button>
+                }
                 <button type="button" class="btn" (click)="endFor.set(r)" data-left-earlier title="The customer left and nobody pressed Stop">Customer left earlier? Set end time</button>
                 <a class="btn-outline" routerLink="/counter/stations">Stations</a>
               </div>
@@ -157,6 +160,15 @@ export class PendingBills {
       customerName: s.customer_name,
       items: r.items.map((t) => ({ productId: t.product_id, name: t.name, qty: t.qty, price: t.price })),
     });
+  }
+
+  /** A Stop pressed by mistake: the session carries on as if it had never been stopped. */
+  protected async undoStop(r: PendingRow): Promise<void> {
+    this.busy.set(r.session.id);
+    const err = await this.store.call('undo_stop_session', { p_session: r.session.id });
+    this.busy.set(null);
+    if (err) this.toast.error(err);
+    else this.toast.success('Resumed: the time since the Stop counts as played');
   }
 
   protected closeBill(): void {

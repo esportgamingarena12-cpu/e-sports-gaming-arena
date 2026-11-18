@@ -114,6 +114,8 @@ interface Card {
                     <button type="button" class="btn" [disabled]="busy() === s.id" (click)="endFor.set({ station: c.station, session: s })" data-left-earlier title="The customer left and nobody pressed Stop">Left earlier?</button>
                     @if (s.status !== 'ended') {
                       <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'end_session')">Stop</button>
+                    } @else {
+                      <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="undoStop(s)" data-undo-stop title="Stopped by mistake: carry on, and the time since the Stop counts as played">Undo stop</button>
                     }
                     <a class="btn" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
                     <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="bill(c)">Bill</button>
@@ -254,6 +256,15 @@ export class CounterStations implements OnInit, OnDestroy {
     const err = await this.store.call(fn, { p_session: s.id });
     this.busy.set(null);
     if (err) this.toast.error(err);
+  }
+
+  /** A Stop pressed by mistake: the session carries on as if it had never been stopped. */
+  protected async undoStop(s: OpenSession): Promise<void> {
+    this.busy.set(s.id);
+    const err = await this.store.call('undo_stop_session', { p_session: s.id });
+    this.busy.set(null);
+    if (err) this.toast.error(err);
+    else this.toast.success('Resumed: the time since the Stop counts as played');
   }
 
   protected async cancelSession(s: OpenSession): Promise<void> {
