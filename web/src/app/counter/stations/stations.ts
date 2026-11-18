@@ -9,6 +9,7 @@ import { formatIstTime } from '../../shared/format';
 import { alarmRemainingMs } from '../../core/time-up';
 import { relativeStart, upcomingBooking } from '../booking-utils';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
+import { EndTimeDialog } from './end-time-dialog';
 import { ExtendDialog } from './extend-dialog';
 import { OvertimeControl } from './overtime-control';
 import { StartDialog } from './start-dialog';
@@ -29,7 +30,7 @@ interface Card {
 
 @Component({
   selector: 'app-counter-stations',
-  imports: [StartDialog, ExtendDialog, CheckoutDialog, OvertimeControl, RouterLink],
+  imports: [StartDialog, ExtendDialog, EndTimeDialog, CheckoutDialog, OvertimeControl, RouterLink],
   providers: [CounterStore],
   template: `
     <section class="p-4">
@@ -110,6 +111,7 @@ interface Card {
                 } @else {
                   <div class="flex flex-wrap gap-2 pt-1">
                     <button type="button" class="btn-outline" [disabled]="busy() === s.id" (click)="extendFor.set({ station: c.station, session: s })" data-extend>Extend</button>
+                    <button type="button" class="btn" [disabled]="busy() === s.id" (click)="endFor.set({ station: c.station, session: s })" data-left-earlier title="The customer left and nobody pressed Stop">Left earlier?</button>
                     @if (s.status !== 'ended') {
                       <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'end_session')">Stop</button>
                     }
@@ -133,6 +135,10 @@ interface Card {
                           (started)="store.load()" (closed)="startFor.set(null)" />
       }
 
+      @if (endFor(); as en) {
+        <app-end-time-dialog [session]="en.session" [stationName]="en.station.name" (saved)="store.load()" (closed)="endFor.set(null)" />
+      }
+
       @if (extendFor(); as ex) {
         <app-extend-dialog [station]="ex.station" [session]="ex.session" [packages]="store.packages()"
                            (done)="store.load()" (closed)="extendFor.set(null)" />
@@ -153,6 +159,7 @@ export class CounterStations implements OnInit, OnDestroy {
 
   protected readonly startFor = signal<Station | null>(null);
   protected readonly extendFor = signal<{ station: Station; session: OpenSession } | null>(null);
+  protected readonly endFor = signal<{ station: Station; session: OpenSession } | null>(null);
   protected readonly billFor = signal<BillSource | null>(null);
   protected readonly busy = signal<number | null>(null);
   protected readonly confirmCancel = signal<number | null>(null);

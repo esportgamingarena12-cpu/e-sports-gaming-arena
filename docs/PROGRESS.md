@@ -326,6 +326,10 @@ Checked: the deployed `session_charge` source against migration 0024 (identical)
 Fixed: (1) Extend now clears an earlier overtime choice (migration `0025_extend_resets_overtime.sql`), so an old Don't charge or typed amount cannot silently apply to the new, longer time. (2) When a typed overtime amount has run past the grace, the card says so ("no longer applies ... block charge is on the bill") instead of changing the amount without explanation.
 Open (not changed, needs a decision): a session left running after the customer went home is billed up to the moment staff press Bill; there is no way to set the real end time. The receipt shows one gaming line, with no separate overtime line.
 
+## Phase 37: customer left earlier (set the real end time)
+Migration `0026_session_end_time.sql`: `set_session_end_time(session, end, reason)` and the append-only `session_end_log` (who, when, from, to, reason; staff can read it, nobody can edit or delete it from the app). The database refuses an end time before the start (plus any uncounted time) or in the future, a blank reason, and a billed or cancelled session; a correction stops the session at that time. Counter: **Left earlier?** on a station card and **Customer left earlier? Set end time** on each Pending bill open a window with the India-time box, a required reason and a live price preview (same overtime rules). Bills: an **End time corrected** badge and, when the bill is opened, who changed it, from what to what and why. Staff and admin can both use it. Tests: `end-time.spec.ts` (helpers and preview), `supabase/tests/dashboard/25_end_time.sql` (limits, audit log, permissions; run in the SQL editor).
+The Bills screen asks for `session_end_log`, so migration 0026 must be applied before this version is deployed.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

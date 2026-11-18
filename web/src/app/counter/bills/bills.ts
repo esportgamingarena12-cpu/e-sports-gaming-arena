@@ -21,7 +21,13 @@ interface BillRow {
   bill_items: { id: number; kind: string; name: string; qty: number; unit_price: number; amount: number }[];
   payments: { id: number; mode: string; amount: number; reference: string | null }[];
   /** the gaming session this bill paid for (none for a canteen-only sale) */
-  sessions: { started_at: string; ended_at: string | null; paused_seconds: number; stations: { name: string } | null } | null;
+  sessions: {
+    started_at: string;
+    ended_at: string | null;
+    paused_seconds: number;
+    stations: { name: string } | null;
+    session_end_log: { changed_at: string; from_end: string; to_end: string; reason: string; profiles: { full_name: string | null } | null }[];
+  } | null;
 }
 
 const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Card' };
@@ -84,6 +90,7 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
                     @if (b.sessions?.stations?.name; as st) { <span class="rounded bg-cyan-400/15 px-2 py-0.5 text-xs font-medium text-cyan-200" data-station-name>{{ st }}</span> }
                     @if (b.status === 'void') { <span class="rounded bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-300" data-void-badge>VOID</span> }
                     @else { <span class="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300" data-paid-badge>PAID</span> }
+                    @if (b.sessions?.session_end_log?.length) { <span class="rounded bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-300" data-end-corrected>End time corrected</span> }
                   </span>
                   <span class="mt-0.5 block truncate text-xs text-slate-300" data-bill-time>
                     {{ timeText(b) }} · {{ modes(b) }}
@@ -101,6 +108,12 @@ const MODE_LABEL: Record<string, string> = { cash: 'Cash', upi: 'UPI', card: 'Ca
                       </li>
                     }
                   </ul>
+                  @for (e of b.sessions?.session_end_log ?? []; track e.changed_at) {
+                    <p class="rounded bg-amber-500/10 p-2 text-xs text-amber-200" data-end-log>
+                      End time corrected on {{ when(e.changed_at) }}{{ e.profiles?.full_name ? ' by ' + e.profiles?.full_name : '' }}:
+                      it would have ended {{ when(e.from_end) }}, now {{ when(e.to_end) }}. Reason: {{ e.reason }}
+                    </p>
+                  }
                   <p class="flex justify-between"><span>Subtotal</span><span>{{ money(b.subtotal) }}</span></p>
                   @if (b.discount > 0) { <p class="flex justify-between"><span>Discount</span><span>-{{ money(b.discount) }}</span></p> }
                   <p class="flex justify-between font-semibold"><span>Total</span><span>{{ money(b.total) }}</span></p>
@@ -283,7 +296,7 @@ export class Bills implements OnInit, OnDestroy {
   private static readonly COLUMNS =
     'bill_no, created_at, customer_name, subtotal, discount, total, status, void_reason, ' +
     'bill_items(id, kind, name, qty, unit_price, amount), payments(id, mode, amount, reference), ' +
-    'sessions(started_at, ended_at, paused_seconds, stations(name))';
+    'sessions(started_at, ended_at, paused_seconds, stations(name), session_end_log(changed_at, from_end, to_end, reason, profiles(full_name)))';
 
   private toRows(data: unknown): BillRow[] {
     return ((data ?? []) as BillRow[]).map((b) => ({

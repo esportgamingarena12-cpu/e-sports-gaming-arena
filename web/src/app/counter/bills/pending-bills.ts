@@ -6,6 +6,7 @@ import { ToastService } from '../../shared/toast.service';
 import { inr } from '../../shared/format';
 import { CounterStore, OpenSession, TabLine } from '../counter.store';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
+import { EndTimeDialog } from '../stations/end-time-dialog';
 import { OvertimeControl } from '../stations/overtime-control';
 
 export interface PendingRow {
@@ -27,7 +28,7 @@ export interface PendingRow {
  */
 @Component({
   selector: 'app-pending-bills',
-  imports: [CheckoutDialog, OvertimeControl, RouterLink],
+  imports: [CheckoutDialog, EndTimeDialog, OvertimeControl, RouterLink],
   template: `
     <section class="space-y-3" data-pending-list>
       @if (store.error(); as e) { <p class="rounded bg-red-500/15 p-2 text-sm text-red-300" role="alert">{{ e }}</p> }
@@ -71,11 +72,16 @@ export interface PendingRow {
               <div class="flex flex-wrap gap-2">
                 <button type="button" class="btn-primary" [disabled]="busy() === r.session.id" (click)="bill(r)" data-bill>{{ busy() === r.session.id ? 'Opening…' : 'Bill now' }}</button>
                 <a class="btn" routerLink="/counter/canteen" [queryParams]="{ tab: r.session.id }">+ Items</a>
+                <button type="button" class="btn" (click)="endFor.set(r)" data-left-earlier title="The customer left and nobody pressed Stop">Customer left earlier? Set end time</button>
                 <a class="btn-outline" routerLink="/counter/stations">Stations</a>
               </div>
             </li>
           }
         </ul>
+      }
+
+      @if (endFor(); as en) {
+        <app-end-time-dialog [session]="en.session" [stationName]="en.station" (saved)="store.load()" (closed)="endFor.set(null)" />
       }
 
       @if (billFor(); as src) {
@@ -92,6 +98,7 @@ export class PendingBills {
   /** the Bills screen reloads its paid list when one of these has been paid */
   readonly billed = output<void>();
   protected readonly billFor = signal<BillSource | null>(null);
+  protected readonly endFor = signal<PendingRow | null>(null);
   protected readonly busy = signal<number | null>(null);
   protected inr = inr;
 
