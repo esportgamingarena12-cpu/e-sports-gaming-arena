@@ -68,22 +68,19 @@ interface Card {
                   <p class="font-mono text-2xl" data-timer>{{ c.played }}</p>
                   <p class="text-xl font-semibold text-emerald-300" data-charge>₹{{ c.charge.toFixed(2) }}</p>
                 </div>
-                @if (s.pass_name) {
-                  <p class="text-sm" data-pass-note>
-                    <span class="badge bg-violet-500/25 text-violet-200">{{ s.pass_name }} pass</span>
-                    <span class="text-slate-300">{{ s.pass_minutes_left === null ? 'unlimited' : s.pass_minutes_left + ' min on the pass' }}</span>
-                  </p>
-                }
-                @if (s.package_name) {
-                  <p class="text-sm">
-                    Package “{{ s.package_name }}”:
+                <!-- one short line: who, which time, and how much is left -->
+                <p class="truncate text-sm text-slate-300" data-info>
+                  <span class="font-medium text-slate-100">{{ s.customer_name || 'Walk-in' }}</span>
+                  @if (s.customer_phone) { <span class="text-slate-400"> · {{ s.customer_phone }}</span> }
+                  @if (s.pass_name) {
+                    <span class="text-slate-400" data-pass-note> · {{ s.pass_name }} pass, {{ s.pass_minutes_left === null ? 'unlimited' : s.pass_minutes_left + ' min left' }}</span>
+                  } @else if (s.package_minutes !== null) {
+                    <span class="text-slate-400"> · {{ s.package_minutes }} min</span>
                     @if (c.packageLeft; as p) {
-                      <span [class]="p.over ? 'font-semibold text-red-400' : 'text-slate-300'" data-package-left>
-                        {{ p.over ? 'overtime ' : '' }}{{ p.text }}{{ p.over ? '' : ' left' }}
-                      </span>
+                      <span [class]="p.over ? 'font-semibold text-red-400' : 'text-slate-300'" data-package-left> · {{ p.over ? 'overtime ' : '' }}{{ p.text }}{{ p.over ? '' : ' left' }}</span>
                     }
-                  </p>
-                }
+                  }
+                </p>
                 <app-overtime-control [session]="s" (changed)="store.load()" />
                 @if (c.timer; as t) {
                   <p class="text-sm" data-timer-note>
@@ -91,11 +88,8 @@ interface Card {
                     <span [class]="t.over ? 'font-semibold text-fuchsia-300' : 'text-slate-300'">{{ t.over ? 'over by ' : '' }}{{ t.text }}{{ t.over ? '' : ' left' }}</span>
                   </p>
                 }
-                @if (s.customer_name || s.customer_phone) {
-                  <p class="truncate text-sm text-slate-400">{{ s.customer_name }} {{ s.customer_phone }}</p>
-                }
                 @if (c.items.length) {
-                  <p class="text-sm text-slate-300">
+                  <p class="truncate text-sm text-slate-300">
                     Tab: {{ itemsText(c.items) }} · <span class="font-medium">₹{{ c.canteen.toFixed(2) }}</span>
                   </p>
                 }
@@ -109,20 +103,26 @@ interface Card {
                     </div>
                   </div>
                 } @else {
-                  <div class="flex flex-wrap gap-2 pt-1">
+                  <!-- the everyday buttons; the rest are under the three dots -->
+                  <div class="flex items-center gap-2 pt-1">
+                    <button type="button" class="btn-primary flex-1 !py-2" [disabled]="busy() === s.id" (click)="bill(c)">Bill</button>
                     <button type="button" class="btn-outline" [disabled]="busy() === s.id" (click)="extendFor.set({ station: c.station, session: s })" data-extend>Extend</button>
-                    <button type="button" class="btn" [disabled]="busy() === s.id" (click)="endFor.set({ station: c.station, session: s })" data-left-earlier title="The customer left and nobody pressed Stop">Left earlier?</button>
                     @if (s.status !== 'ended') {
                       <button type="button" class="btn" [disabled]="busy() === s.id" (click)="act(s, 'end_session')">Stop</button>
                     } @else {
-                      <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="undoStop(s)" data-undo-stop title="Stopped by mistake: carry on, and the time since the Stop counts as played">Undo stop</button>
+                      <button type="button" class="btn" [disabled]="busy() === s.id" (click)="undoStop(s)" data-undo-stop title="Stopped by mistake: carry on, and the time since the Stop counts as played">Undo stop</button>
                     }
-                    <a class="btn" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
-                    <button type="button" class="btn-primary !py-1" [disabled]="busy() === s.id" (click)="bill(c)">Bill</button>
-                    @if (isAdmin()) {
-                      <button type="button" class="btn text-red-300" (click)="confirmCancel.set(s.id)">Cancel</button>
-                    }
+                    <button type="button" class="btn !px-3" (click)="moreFor.set(moreFor() === s.id ? null : s.id)" [attr.aria-expanded]="moreFor() === s.id" aria-label="More actions" data-more>⋯</button>
                   </div>
+                  @if (moreFor() === s.id) {
+                    <div class="flex flex-wrap gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2" data-more-panel>
+                      <a class="btn !py-1 text-sm" routerLink="/counter/canteen" [queryParams]="{ tab: s.id }">+ Items</a>
+                      <button type="button" class="btn !py-1 text-sm" [disabled]="busy() === s.id" (click)="endFor.set({ station: c.station, session: s }); moreFor.set(null)" data-left-earlier title="The customer left and nobody pressed Stop">Left earlier?</button>
+                      @if (isAdmin()) {
+                        <button type="button" class="btn !py-1 text-sm text-red-300" (click)="confirmCancel.set(s.id); moreFor.set(null)">Cancel session</button>
+                      }
+                    </div>
+                  }
                 }
               } @else {
                 <button type="button" class="btn-primary w-full" (click)="startFor.set(c.station)">Start</button>
@@ -162,6 +162,8 @@ export class CounterStations implements OnInit, OnDestroy {
   protected readonly startFor = signal<Station | null>(null);
   protected readonly extendFor = signal<{ station: Station; session: OpenSession } | null>(null);
   protected readonly endFor = signal<{ station: Station; session: OpenSession } | null>(null);
+  /** the session whose extra buttons (+ Items, Left earlier?, Cancel) are showing */
+  protected readonly moreFor = signal<number | null>(null);
   protected readonly billFor = signal<BillSource | null>(null);
   protected readonly busy = signal<number | null>(null);
   protected readonly confirmCancel = signal<number | null>(null);

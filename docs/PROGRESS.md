@@ -334,6 +334,9 @@ The Bills screen asks for `session_end_log`, so migration 0026 must be applied b
 Migration `0027_undo_stop.sql`: `undo_stop_session(session)` resumes a session that was stopped by mistake and not yet billed. It carries on as if never stopped: the time since the Stop counts as played (so it is not the old `reopen_session`, which leaves the gap out and is no longer offered). It is written to `session_end_log` ("Stop undone") and shown on the bill. Counter: **Undo stop** on a stopped station card and on a stopped Pending bill. Test: `supabase/tests/dashboard/26_undo_stop.sql` (also checks that stopping or resuming one session does not touch another).
 Reported at the same time and not yet found: stopping a forgotten running session affected another running session. The server functions work on one session id, the screens pass the id of the card or row, and the live data is consistent; waiting for the exact steps to reproduce it.
 
+## Phase 39: tidier station card
+A station card with a running session is calmer: one info line (customer, phone, package minutes and time left or overtime) instead of three; the overtime control is one short line ("5 min over, free (grace)" or "charged +Rs 22.50") with the choices (Charge overtime, Don't charge, typed amount) behind **Change**; the everyday buttons are **Bill** (wide), **Extend**, **Stop** (or **Undo stop**) and a **...** button; + Items, Left earlier? and Cancel session are under the three dots.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).

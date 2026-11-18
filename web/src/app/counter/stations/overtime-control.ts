@@ -17,19 +17,23 @@ import { OpenSession } from '../counter.store';
   imports: [FormsModule],
   template: `
     @if (state(); as o) {
-      <div class="rounded-lg border p-2 text-sm" [class]="o.charged ? 'border-amber-500/40 bg-amber-500/10' : 'border-emerald-500/30 bg-emerald-500/5'" data-overtime>
-        <p>
-          ⏱ Overtime <span class="font-semibold" data-overtime-minutes>{{ o.overMinutes }} min</span> ·
-          @if (o.charged) {
-            <span class="font-medium text-amber-300" data-overtime-status>charged +₹{{ (o.customRupees ?? o.ifChargedRupees).toFixed(2) }}{{ o.customRupees !== null ? ' (your amount)' : '' }}</span>
-          } @else {
-            <span class="font-medium text-emerald-300" data-overtime-status>not charged{{ o.withinGrace && !o.mode ? ' (inside the ' + session().overtime_grace_min + ' min grace)' : '' }}</span>
-          }
-        </p>
+      <div class="rounded-lg border px-2 py-1.5 text-sm" [class]="o.charged ? 'border-amber-500/40 bg-amber-500/10' : 'border-emerald-500/30 bg-emerald-500/5'" data-overtime>
+        <div class="flex items-center justify-between gap-2">
+          <p class="min-w-0 truncate">
+            ⏱ <span class="font-semibold" data-overtime-minutes>{{ o.overMinutes }} min</span> over ·
+            @if (o.charged) {
+              <span class="font-medium text-amber-300" data-overtime-status>charged +₹{{ (o.customRupees ?? o.ifChargedRupees).toFixed(2) }}</span>
+            } @else {
+              <span class="font-medium text-emerald-300" data-overtime-status>free{{ o.withinGrace && !o.mode ? ' (grace)' : '' }}</span>
+            }
+          </p>
+          <button type="button" class="shrink-0 rounded px-2 py-0.5 text-xs text-slate-300 underline hover:text-white" (click)="open.set(!open())" [attr.aria-expanded]="open()" data-overtime-toggle>{{ open() ? 'Hide' : 'Change' }}</button>
+        </div>
         @if (o.customExpired) {
           <p class="mt-1 text-xs text-amber-200" data-overtime-expired>Your ₹{{ (o.typedRupees ?? 0).toFixed(2) }} no longer applies: the overtime is past the {{ session().overtime_grace_min }} min grace, so the normal block charge is on the bill.</p>
         }
-        <div class="mt-2 flex flex-wrap items-center gap-2">
+        @if (open()) {
+        <div class="mt-2 flex flex-wrap items-center gap-2" data-overtime-options>
           <button type="button" class="btn !px-3 !py-1 !text-xs" [class]="o.charged ? '!border-amber-400 !bg-amber-500/20 !text-amber-100' : ''"
                   [disabled]="busy()" (click)="set('charge')" data-overtime-charge>Charge overtime (+₹{{ o.ifChargedRupees.toFixed(2) }})</button>
           <button type="button" class="btn !px-3 !py-1 !text-xs" [class]="!o.charged ? '!border-emerald-400 !bg-emerald-500/20 !text-emerald-100' : ''"
@@ -37,7 +41,7 @@ import { OpenSession } from '../counter.store';
           @if (o.withinGrace) {
             <span class="flex items-center gap-1" data-overtime-custom>
               <span class="text-xs text-slate-400">or charge</span>
-              <input type="number" inputmode="decimal" min="0" step="0.01" class="field !mt-0 !min-h-0 w-24 !py-1 text-sm" placeholder="₹ amount"
+              <input type="number" inputmode="decimal" min="0" step="0.01" class="field !mt-0 !min-h-0 w-24 !py-1 text-sm" placeholder="₹ 0"
                      [ngModel]="amount()" (ngModelChange)="amount.set($event)" [attr.aria-label]="'Overtime amount in rupees'" data-overtime-amount />
               <button type="button" class="btn !px-3 !py-1 !text-xs" [disabled]="busy() || !amountOk()" (click)="setAmount()" data-overtime-amount-save>Set</button>
             </span>
@@ -46,6 +50,7 @@ import { OpenSession } from '../counter.store';
             <button type="button" class="text-xs text-slate-400 underline" [disabled]="busy()" (click)="set(null)" data-overtime-auto>Automatic</button>
           }
         </div>
+        }
       </div>
     }
   `,
@@ -58,6 +63,8 @@ export class OvertimeControl {
   readonly session = input.required<OpenSession>();
   readonly changed = output<void>();
   protected readonly busy = signal(false);
+  /** the choices (charge, don't charge, typed amount) are hidden until "Change" is pressed */
+  protected readonly open = signal(false);
   /** the rupees typed in the box (inside the grace only) */
   protected readonly amount = signal<number | string | null>(null);
   protected readonly amountOk = computed(() => {
