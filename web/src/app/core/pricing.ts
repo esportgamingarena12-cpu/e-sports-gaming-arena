@@ -69,6 +69,10 @@ export interface OvertimeState {
   ifChargedRupees: number;
   /** the amount staff typed, when it is the one on the bill; otherwise null */
   customRupees: number | null;
+  /** staff typed an amount, but the overtime has gone past the grace, so the normal block charge is on the bill instead */
+  customExpired: boolean;
+  /** the amount staff typed (even when it no longer applies) */
+  typedRupees: number | null;
   mode: 'charge' | 'waive' | null;
 }
 
@@ -85,6 +89,8 @@ export function overtimeState(s: SessionSnapshot, endMs: number): OvertimeState 
     withinGrace: over <= (s.overtime_grace_min ?? 0) * 60_000,
     ifChargedRupees: roundHalfUp(blocks * toPaise(s.rate_per_hour), 60) / 100,
     customRupees: customOvertimePaise(s, over) === null ? null : (customOvertimePaise(s, over) as number) / 100,
+    customExpired: s.overtime_mode === 'charge' && s.overtime_amount != null && s.overtime_amount !== '' && over > (s.overtime_grace_min ?? 0) * 60_000,
+    typedRupees: s.overtime_amount == null || s.overtime_amount === '' ? null : toPaise(s.overtime_amount) / 100,
     mode: s.overtime_mode ?? null,
   };
 }

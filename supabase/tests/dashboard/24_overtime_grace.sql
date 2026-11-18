@@ -25,7 +25,7 @@ begin
     ('00000000-0000-0000-0000-0000000000ae', 'Cust', 'customer', true)
   on conflict (id) do update set role = excluded.role, active = true;
   insert into stations (name, type, rate_per_hour, sort_order) values ('T24 PC', 'pc', 90, 961), ('T24 PC2', 'pc', 90, 962);
-  insert into packages (name, minutes, price, station_type, active) values ('T24 P30', 30, 50, 'pc', true);
+  insert into packages (name, minutes, price, station_type, active) values ('T24 P30', 30, 50, 'pc', true), ('T24 P60', 60, 90, 'pc', true);
 
   -- the example only holds with 15 minute blocks, so make that so for this test (rolled back)
   update settings set billing_block_min = 15, overtime_grace_min = 10;
@@ -99,6 +99,14 @@ begin
   set local role authenticated;
   perform set_overtime_mode(v_s, null);
   reset role;
+
+  -- extending the package starts a fresh overtime decision (migration 0025; this part needs 0025 and extend_session from 0021)
+  set local role authenticated;
+  perform set_overtime_mode(v_s, 'charge', 10);
+  perform extend_session(v_s, (select id from packages where name = 'T24 P60'));
+  reset role;
+  res := pg_temp.chk(res, (select overtime_mode is null and overtime_amount is null from sessions where id = v_s), 'Extend clears the earlier overtime choice and typed amount');
+  res := pg_temp.chk(res, (select package_minutes from sessions where id = v_s) = 90, 'and the package time was added (30 + 60 = 90)');
 
   -- a per-hour session has no overtime
   set local role authenticated;

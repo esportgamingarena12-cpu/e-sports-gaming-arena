@@ -224,6 +224,12 @@ describe('pricing: a custom overtime amount typed by staff (inside the grace onl
     expect(customOvertimePaise(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), 11 * 60_000)).toBeNull();
     expect(customOvertimePaise(pc30(), 6 * 60_000)).toBeNull();
   });
+  it('overtimeState says when a typed amount has run past the grace and no longer applies', () => {
+    const o = overtimeState(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), at(45))!;
+    expect(o).toMatchObject({ customExpired: true, customRupees: null, typedRupees: 10, charged: true, ifChargedRupees: 22.5 });
+    expect(overtimeState(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), at(36))!.customExpired).toBe(false);
+    expect(overtimeState(pc30(), at(45))!.customExpired).toBe(false);
+  });
   it('overtimeState shows the custom amount', () => {
     const o = overtimeState(pc30({ overtime_mode: 'charge', overtime_amount: 10 }), at(36))!;
     expect(o).toMatchObject({ charged: true, customRupees: 10, ifChargedRupees: 22.5, withinGrace: true });

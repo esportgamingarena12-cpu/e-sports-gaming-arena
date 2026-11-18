@@ -26,6 +26,9 @@ import { OpenSession } from '../counter.store';
             <span class="font-medium text-emerald-300" data-overtime-status>not charged{{ o.withinGrace && !o.mode ? ' (inside the ' + session().overtime_grace_min + ' min grace)' : '' }}</span>
           }
         </p>
+        @if (o.customExpired) {
+          <p class="mt-1 text-xs text-amber-200" data-overtime-expired>Your ₹{{ (o.typedRupees ?? 0).toFixed(2) }} no longer applies: the overtime is past the {{ session().overtime_grace_min }} min grace, so the normal block charge is on the bill.</p>
+        }
         <div class="mt-2 flex flex-wrap items-center gap-2">
           <button type="button" class="btn !px-3 !py-1 !text-xs" [class]="o.charged ? '!border-amber-400 !bg-amber-500/20 !text-amber-100' : ''"
                   [disabled]="busy()" (click)="set('charge')" data-overtime-charge>Charge overtime (+₹{{ o.ifChargedRupees.toFixed(2) }})</button>
