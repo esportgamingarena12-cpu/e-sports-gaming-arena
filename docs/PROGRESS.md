@@ -338,7 +338,7 @@ Reported at the same time and not yet found: stopping a forgotten running sessio
 All the information stays visible, stacked in tidy blocks: the big timer and price, a label / value box (Customer, Package, Time left or Overtime, Timer, Tab), the overtime panel (status line, Charge / Don't charge side by side, your own amount), then **Bill** on its own wide row and a two-column grid (Extend, Stop or Undo stop, + Items, Left earlier?, Cancel session). Checked on a desktop and a 390 px phone with a fake backend (not the live one).
 
 ## Phase 40: stations in use first
-Counter > Stations lists the stations that have a session (running, or stopped and not billed) first under "In use", and the unused ones after them under "Available"; each group keeps its normal order. A station moves between the groups when a session starts or is billed.
+Counter > Stations lists the stations that have a session (running, or stopped and not billed) first and the unused ones after them, and the cards fill the screen like bricks (`layout.ts`): each card goes into the shortest column, so with two busy stations the unused ones stack in the free third column, and when a third session starts it takes that column and the unused ones move down under the others. 1 column on a phone, 2 on a tablet, 3 on a wide screen. Checked on a desktop width with a fake backend.
 
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).

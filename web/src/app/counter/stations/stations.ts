@@ -11,6 +11,7 @@ import { relativeStart, upcomingBooking } from '../booking-utils';
 import { BillSource, CheckoutDialog } from '../checkout/checkout-dialog';
 import { EndTimeDialog } from './end-time-dialog';
 import { ExtendDialog } from './extend-dialog';
+import { columnCount, distributeColumns } from './layout';
 import { OvertimeControl } from './overtime-control';
 import { StartDialog } from './start-dialog';
 
@@ -48,14 +49,11 @@ interface Card {
       } @else if (cards().length === 0) {
         <p class="mt-4 text-slate-400">No active stations. Add them under Admin → Stations.</p>
       } @else {
-        <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          @for (c of cards(); track c.station.id; let i = $index) {
-            @if (i === 0 && activeCount() > 0) {
-              <li class="col-span-full text-xs font-semibold uppercase tracking-wide text-emerald-300" data-group="in-use">In use · {{ activeCount() }}</li>
-            }
-            @if (i === activeCount() && activeCount() < cards().length) {
-              <li class="col-span-full mt-2 text-xs font-semibold uppercase tracking-wide text-slate-400" data-group="available">Available · {{ cards().length - activeCount() }}</li>
-            }
+        <!-- busy stations first, the unused ones fill the free space and stack in the shortest column -->
+        <div class="mt-4 grid items-start gap-3" [style.grid-template-columns]="'repeat(' + cols() + ', minmax(0, 1fr))'" data-stations>
+          @for (col of columns(); track $index) {
+          <ul class="flex min-w-0 flex-col gap-3">
+          @for (c of col; track c.station.id) {
             <li class="card space-y-2" [class]="borderFor(c)" [attr.data-station]="c.station.name">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
@@ -137,7 +135,9 @@ interface Card {
               }
             </li>
           }
-        </ul>
+          </ul>
+          }
+        </div>
       }
 
       @if (startFor(); as st) {
@@ -167,6 +167,7 @@ export class CounterStations implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   protected readonly isAdmin = computed(() => this.auth.role() === 'admin');
 
+  private onResize: () => void = () => undefined;
   protected readonly startFor = signal<Station | null>(null);
   protected readonly extendFor = signal<{ station: Station; session: OpenSession } | null>(null);
   protected readonly endFor = signal<{ station: Station; session: OpenSession } | null>(null);
@@ -210,14 +211,18 @@ export class CounterStations implements OnInit, OnDestroy {
     return [...all.filter((c) => c.session !== null), ...all.filter((c) => c.session === null)];
   });
 
-  /** how many stations have a session right now (they are listed first) */
-  protected readonly activeCount = computed(() => this.cards().filter((c) => c.session !== null).length);
+  /** how many columns fit the screen, and the cards placed into them (see layout.ts) */
+  protected readonly cols = signal(columnCount(window.innerWidth));
+  protected readonly columns = computed(() => distributeColumns(this.cards(), this.cols(), (c) => (c.session ? 10 : 3)));
 
   ngOnInit(): void {
+    this.onResize = () => this.cols.set(columnCount(window.innerWidth));
+    window.addEventListener('resize', this.onResize);
     this.store.start();
   }
 
   ngOnDestroy(): void {
+    window.removeEventListener('resize', this.onResize);
     this.store.stop();
   }
 
