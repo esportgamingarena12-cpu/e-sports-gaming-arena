@@ -76,7 +76,7 @@ interface Card {
                 }
                 @if (s.package_name) {
                   <p class="text-sm">
-                    {{ s.package_name }}:
+                    Package “{{ s.package_name }}”:
                     @if (c.packageLeft; as p) {
                       <span [class]="p.over ? 'font-semibold text-red-400' : 'text-slate-300'" data-package-left>
                         {{ p.over ? 'overtime ' : '' }}{{ p.text }}{{ p.over ? '' : ' left' }}
@@ -294,7 +294,7 @@ export class CounterStations implements OnInit, OnDestroy {
       kind: 'station',
       sessionId: s.id,
       title: c.station.name,
-      gamingLabel: `Gaming – ${c.station.name} (${s.pass_name ? s.pass_name + ' pass' : (s.package_name ?? 'per hour')})`,
+      gamingLabel: `Gaming – ${c.station.name} (${s.pass_name ? s.pass_name + ' pass' : s.package_name ? 'package “' + s.package_name + '”' : 'per hour'})`,
       gaming: Number(data),
       played: formatDuration(playedMs(ended, chargeEndMs(ended, this.clock.now()))),
       customerName: s.customer_name,

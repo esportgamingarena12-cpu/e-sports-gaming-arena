@@ -127,7 +127,7 @@ export class PendingBills {
           items,
           canteen,
           total: Math.round((gaming + canteen) * 100) / 100,
-          label: s.pass_name ? `${s.pass_name} pass` : (s.package_name ?? 'per hour'),
+          label: s.pass_name ? `${s.pass_name} pass` : s.package_name ? `package “${s.package_name}”` : 'per hour',
         };
       })
       .sort((a, b) => Number(b.stopped) - Number(a.stopped) || Date.parse(a.session.started_at) - Date.parse(b.session.started_at));

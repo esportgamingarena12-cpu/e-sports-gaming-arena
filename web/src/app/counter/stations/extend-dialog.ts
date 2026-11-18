@@ -24,14 +24,17 @@ export function extendedTotal(minutes: number, price: number, add: { minutes: nu
           <p class="text-sm text-slate-300" data-extend-pass>A pass session runs on the customer's pass, so it cannot be extended here.</p>
         } @else if (session().package_minutes !== null) {
           <p class="text-sm text-slate-300">
-            Now: {{ session().package_name }} · {{ session().package_minutes }} min · ₹{{ session().package_price }}.
+            This session stays on {{ station().name }}. Now: package “{{ session().package_name }}” · {{ session().package_minutes }} min · ₹{{ session().package_price }}.
             Pick the time to add. Its price is added to the bill.
           </p>
           <div class="space-y-2">
             @for (p of options(); track p.id) {
               <button type="button" class="btn-outline flex w-full items-center justify-between gap-2 !py-2 text-left"
                       [disabled]="busy()" (click)="addPackage(p)" data-extend-package>
-                <span>+ {{ p.minutes }} min <span class="text-slate-400">({{ p.name }})</span></span>
+                <span class="min-w-0">
+                  <span class="block">+ {{ p.minutes }} min</span>
+                  <span class="block truncate text-xs font-normal text-slate-400">Package “{{ p.name }}” (for {{ station().name }})</span>
+                </span>
                 <span class="font-semibold">+₹{{ p.price }} <span class="text-xs font-normal text-slate-400">→ {{ after(p) }}</span></span>
               </button>
             } @empty {
