@@ -340,6 +340,9 @@ All the information stays visible, stacked in tidy blocks: the big timer and pri
 ## Phase 40: stations in use first
 Counter > Stations lists the stations that have a session (running, or stopped and not billed) first and the unused ones after them, and the cards fill the screen like bricks (`layout.ts`): each card goes into the shortest column, so with two busy stations the unused ones stack in the free third column, and when a third session starts it takes that column and the unused ones move down under the others. 1 column on a phone, 2 on a tablet, 3 on a wide screen. Checked on a desktop width with a fake backend.
 
+## Go-live clean-up (2026-11-19)
+Before going live the test activity from before 19 Nov (India time) was deleted from the live project with `supabase/maintenance/clear_test_data_2026-11-19.sql` (one transaction): 15 bills, 29 bill lines, 14 payments, 44 sessions, 14 tab items, 3 bookings. Kept: all accounts, customers, stations, packages, pass types, products, stock counts and stock history (its link to the deleted bills cleared), games, settings, opening hours, booking rules, and today's 2 running sessions. Bill numbers were restarted so the first real bill is #1. A read-only copy of every table was saved first in `backups/` on the owner's PC (git-ignored, contains personal data). To do by hand: stop or cancel the 2 test sessions that were running, and correct the stock counts under Inventory before opening.
+
 ## Open items / to do later
 - Add real photos or the shop's logo when available (see Phase 13 decision 1).
 - Phase 10 acceptance still open: installs on Android and iPhone; production end-to-end. The 1-hour reminder email itself was proven by pgTAP only (a live one needs a booking starting within the hour).
