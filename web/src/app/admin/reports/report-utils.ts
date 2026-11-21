@@ -343,3 +343,63 @@ export function avatarInitials(name: string | null | undefined): string {
   if (parts.length === 0) return 'W';
   return (parts.length === 1 ? parts[0][0] : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+// ---------- usage report: PC or PS5, and the canteen ranking ----------
+
+export interface UsageType { type: string; stations: number; sessions: number; minutes: number; revenue: number }
+export interface UsageStation { id: number; name: string; type: string; active: boolean; sessions: number; minutes: number; revenue: number }
+export interface CanteenItem { name: string; category: string | null; qty: number; amount: number }
+export interface UsageReport { from: string; to: string; by_type: UsageType[]; by_station: UsageStation[]; canteen: CanteenItem[] }
+
+/** "pc" -> "PC", "ps5" -> "PS5". */
+export const typeName = (t: string): string => t.toUpperCase();
+
+/** 125 -> "2 h 5 min", 45 -> "45 min", 0 -> "0 min". */
+export function hoursText(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes));
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h} h ${m % 60} min` : `${m} min`;
+}
+
+/** Share of a total as a percentage with one decimal (0 when the total is 0). */
+export const percentOf = (part: number, total: number): number => (total > 0 ? Math.round((part * 1000) / total) / 10 : 0);
+
+/**
+ * Which kind of station is used more, by hours played. `tie` when the top two are equal, null when nothing was played.
+ * `share` is the leader's percentage of all the hours.
+ */
+export function mostUsedType(types: UsageType[]): { type: string; share: number; tie: boolean } | null {
+  const total = types.reduce((s, t) => s + t.minutes, 0);
+  if (total <= 0) return null;
+  const sorted = [...types].sort((a, b) => b.minutes - a.minutes);
+  return { type: sorted[0].type, share: percentOf(sorted[0].minutes, total), tie: sorted.length > 1 && sorted[1].minutes === sorted[0].minutes };
+}
+
+/** The best sellers: items that sold at least one, most first (ties by amount, then name), at most n. */
+export function bestSellers(items: CanteenItem[], n = 10): CanteenItem[] {
+  return items
+    .filter((i) => i.qty > 0)
+    .sort((a, b) => b.qty - a.qty || b.amount - a.amount || a.name.localeCompare(b.name))
+    .slice(0, n);
+}
+
+/** The slowest sellers: fewest sold first, items that sold nothing included, at most n. */
+export function slowestSellers(items: CanteenItem[], n = 10): CanteenItem[] {
+  return [...items].sort((a, b) => a.qty - b.qty || a.amount - b.amount || a.name.localeCompare(b.name)).slice(0, n);
+}
+
+/** CSV of the usage report: kinds of station, each station, and every canteen item. */
+export function buildUsageCsv(u: UsageReport): string {
+  const lines: string[] = [];
+  lines.push(row(['Kind of station', 'Stations', 'Sessions', 'Hours played', 'Gaming revenue (₹)']));
+  for (const t of u.by_type) lines.push(row([typeName(t.type), t.stations, t.sessions, (t.minutes / 60).toFixed(2), money(t.revenue)]));
+  lines.push('');
+  lines.push(row(['Station', 'Kind', 'Sessions', 'Hours played', 'Gaming revenue (₹)']));
+  for (const s of u.by_station) lines.push(row([s.name, typeName(s.type), s.sessions, (s.minutes / 60).toFixed(2), money(s.revenue)]));
+  lines.push('');
+  lines.push(row(['Canteen item', 'Category', 'Quantity sold', 'Amount (₹)']));
+  for (const i of u.canteen) lines.push(row([i.name, i.category ?? '', i.qty, money(i.amount)]));
+  return lines.join('\r\n') + '\r\n';
+}
+
+export const usageCsvFileName = (r: { from: string; to: string }): string => `usage-${r.from}_to_${r.to}.csv`;

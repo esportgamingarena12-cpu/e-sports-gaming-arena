@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
 import { todayIst } from '../../shared/format';
-import { DashboardData, DashStation, HourRow, LiveSession, SalesReport, TrendRow } from './report-utils';
+import { DashboardData, DashStation, HourRow, LiveSession, SalesReport, TrendRow, UsageReport } from './report-utils';
 
 /** Wrapper over the reporting functions. Every method throws an Error with a plain message. */
 @Injectable({ providedIn: 'root' })
@@ -26,6 +26,9 @@ export class ReportsService {
   }
   report(from: string, to: string): Promise<SalesReport> {
     return this.call('sales_report', { p_from: from, p_to: to });
+  }
+  usage(from: string, to: string): Promise<UsageReport> {
+    return this.call('usage_report', { p_from: from, p_to: to });
   }
   today(): Promise<SalesReport> {
     return this.call('today_report');
