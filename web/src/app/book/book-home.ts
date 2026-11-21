@@ -56,7 +56,7 @@ const addDays = (day: string, n: number): string =>
         <div>
           <p class="eyebrow">Welcome to</p>
           <h1 class="mt-2 font-display text-5xl font-bold italic leading-[0.95] tracking-wide sm:text-6xl lg:text-7xl">
-            E-SPORT<br /><span class="glow-text">GAMING ARENA</span>
+            E-SPORTS<br /><span class="glow-text">GAMING ARENA</span>
           </h1>
           <p class="mt-4 font-display text-lg font-semibold tracking-wide text-slate-100">
             Play <span class="text-violet-400">|</span> Compete <span class="text-violet-400">|</span> Stream
@@ -236,7 +236,7 @@ const addDays = (day: string, n: number): string =>
         <div>
           <h2 class="font-display text-3xl font-bold leading-tight sm:text-4xl">The Ultimate <span class="glow-text">Gaming</span> Studio in Your City</h2>
           <p class="mt-3 text-sm text-slate-300">
-            Whether you are a casual gamer or a competitive player, E-Sport Gaming Arena gives you the right setup, comfort and honest pricing to level up your game.
+            Whether you are a casual gamer or a competitive player, E-Sports Gaming Arena gives you the right setup, comfort and honest pricing to level up your game.
           </p>
           <ul class="mt-4 space-y-2 text-sm" data-checks>
             @for (c of checks; track c) {

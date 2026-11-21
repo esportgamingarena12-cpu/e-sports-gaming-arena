@@ -42,7 +42,7 @@ import { Component, input } from '@angular/core';
         <g class="ls-flicker">
           <rect x="170" y="84" width="260" height="76" rx="16" fill="#0b0b14" stroke="#22d3ee" stroke-width="3.5" />
           <rect x="170" y="84" width="260" height="76" rx="16" fill="none" stroke="#22d3ee" stroke-width="10" opacity="0.45" filter="url(#ls-blur)" />
-          <text x="300" y="124" text-anchor="middle" fill="#ede9fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="34" letter-spacing="6" font-style="italic">E-SPORT</text>
+          <text x="300" y="124" text-anchor="middle" fill="#ede9fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="34" letter-spacing="6" font-style="italic">E-SPORTS</text>
           <text x="300" y="148" text-anchor="middle" fill="#22d3ee" font-family="Rajdhani, sans-serif" font-weight="700" font-size="16" letter-spacing="9">GAMING ARENA</text>
         </g>
 

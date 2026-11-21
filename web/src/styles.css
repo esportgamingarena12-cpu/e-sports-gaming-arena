@@ -3,7 +3,7 @@
 @import "@fontsource/rajdhani/700.css";
 @import "@fontsource-variable/inter";
 
-/* ---- Theme: E-Sport Gaming Arena palette ----
+/* ---- Theme: E-Sports Gaming Arena palette ----
    The existing screens use the slate / emerald / orange / cyan scales, so remapping those scales
    to the brand palette restyles everything at once. */
 @theme {

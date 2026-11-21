@@ -13,7 +13,7 @@ import { Icon } from './icon';
       </span>
       <span class="leading-none" [class.hidden]="compact()">
         <span class="sr-only">E-Sports Gaming Arena</span>
-        <span aria-hidden="true" class="block font-display text-lg font-bold tracking-wider text-slate-50">E-SPORT</span>
+        <span aria-hidden="true" class="block font-display text-lg font-bold tracking-wider text-slate-50">E-SPORTS</span>
         <span aria-hidden="true" class="block font-display text-xs font-bold tracking-[0.22em] text-cyan-300">GAMING ARENA</span>
       </span>
     </span>

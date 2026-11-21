@@ -188,7 +188,7 @@ export class HeroArt {
       <g>
         <rect x="178" y="70" width="204" height="52" rx="12" fill="#0b0b14" stroke="#22d3ee" stroke-width="3" />
         <rect x="178" y="70" width="204" height="52" rx="12" fill="none" stroke="#22d3ee" stroke-width="8" opacity="0.4" filter="url(#ra-blur)" />
-        <text x="280" y="95" text-anchor="middle" fill="#ddd6fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="23" letter-spacing="4" font-style="italic">E-SPORT</text>
+        <text x="280" y="95" text-anchor="middle" fill="#ddd6fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="23" letter-spacing="4" font-style="italic">E-SPORTS</text>
         <text x="280" y="113" text-anchor="middle" fill="#22d3ee" font-family="Rajdhani, sans-serif" font-weight="700" font-size="13" letter-spacing="6">GAMING ARENA</text>
       </g>
       <!-- floor -->
