@@ -389,3 +389,11 @@ Changed:
 Left alone on purpose: 16 moderate npm findings, all in build tools (Angular CLI's own helpers), none of it ships to visitors; clearing
 them needs Angular 22 (a major upgrade, do it as its own planned phase).
 If a new outside service is ever added (analytics, maps, fonts, a payment page), add its host to the policy in `_headers` or the browser will block it.
+
+### Phase 42: sign-up and role lock (2026-11-23)
+Checked live: a new sign-up always becomes a customer (the trigger ignores any role in the sign-up data, role defaults to customer);
+only an admin can change a role (row level security); promote_admin is not callable by customers, staff or visitors; the app's roles cannot
+read auth.users (passwords and hashes); no app table has a password, hash or token column; the mail secret table is unreadable to the app.
+Added `0029_profile_role_guard.sql`: a trigger that also refuses any role or active change unless an admin is signed in (second lock; the
+admin-create-staff function and the SQL editor are not affected because nobody is "signed in" there). Applied to production.
+Test: `supabase/tests/dashboard/28_signup_roles.sql` (paste in the SQL editor; every line should say "ok"). Not run yet.
