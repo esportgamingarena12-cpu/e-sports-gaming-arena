@@ -11,6 +11,15 @@ const json = (status: number, body: Record<string, unknown>) =>
 
 const MAX_ATTEMPTS = 3;
 
+/** Compare two secrets without stopping at the first different character (so timing reveals nothing). */
+function sameSecret(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
 interface Row {
   id: number;
   kind: MailKind;
@@ -36,7 +45,7 @@ Deno.serve(async (req) => {
   // so there is no second copy to keep in sync.
   const { data: mailCfg } = await db.from('mail_config').select('secret').maybeSingle();
   const secret = mailCfg?.secret as string | undefined;
-  if (!secret || req.headers.get('x-mail-secret') !== secret) return json(401, { error: 'Not allowed' });
+  if (!secret || !sameSecret(req.headers.get('x-mail-secret') ?? '', secret)) return json(401, { error: 'Not allowed' });
 
   const resendKey = Deno.env.get('RESEND_API_KEY');
   if (!resendKey) return json(500, { error: 'RESEND_API_KEY is not set' });

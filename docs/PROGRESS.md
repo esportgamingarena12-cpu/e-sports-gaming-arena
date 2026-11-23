@@ -370,3 +370,22 @@ Migration `0028_usage_report.sql`: `usage_report(from, to)` (admin only, range o
 - Not run: "supabase db reset runs clean twice" (needs local Supabase CLI + Docker).
 - Customer first-time signup (a brand-new email) through the code flow was not tested; only an existing user's code login was.
 - Minor: after a full page reload the top bar briefly shows the signed-out buttons until the session is restored.
+
+## Security review (2026-11-23)
+Checked: git history (81 commits) and the current files for secrets (only the public anon key exists); the live site for exposed
+files (.env, .git, source maps, package.json: none are served, every path returns the app page); row level security (every table has it,
+test 15 enforces it); database functions (all fixed search_path, only get_availability and booking_info open to visitors); XSS (no raw
+HTML sinks in the app, booking emails escape every value); passwords (Supabase Auth hashes them with bcrypt, the app never stores one);
+production dependencies (npm audit: 0 known problems).
+Changed:
+- `web/public/_headers`: added Content-Security-Policy (scripts only from this site, nothing can frame it, data only to our own Supabase
+  project), Strict-Transport-Security, Permissions-Policy, Cross-Origin-Opener-Policy.
+- `web/angular.json`: production build no longer puts a tiny inline script in index.html (the new policy would have blocked it and left the
+  page unstyled).
+- `web/scripts/check-build-keys.mjs` (runs on `npm run deploy:cf`): now also fails if the headers are missing or index.html needs inline scripts.
+- `admin-create-staff` function: browser calls allowed only from this site (was any site); `send-booking-email`: the shared secret is
+  compared in constant time. Both need `npx supabase functions deploy <name>` to take effect.
+- Patch updates: supabase-js 2.119.2, postcss 8.5.33, Angular CLI/build 21.2.30, Playwright 1.65.1.
+Left alone on purpose: 16 moderate npm findings, all in build tools (Angular CLI's own helpers), none of it ships to visitors; clearing
+them needs Angular 22 (a major upgrade, do it as its own planned phase).
+If a new outside service is ever added (analytics, maps, fonts, a payment page), add its host to the policy in `_headers` or the browser will block it.

@@ -36,9 +36,26 @@ for (const f of files) {
   }
   if (/PASTE_PRODUCTION/.test(text)) problems.push(`${f}: still has the PASTE_PRODUCTION placeholder`);
 }
+// The security headers must ship with the site, and the page must not need inline scripts (the policy forbids them).
+try {
+  const headers = readFileSync(join(root, '_headers'), 'utf8');
+  for (const need of ['Content-Security-Policy', "script-src 'self'", "object-src 'none'", "frame-ancestors 'none'", 'Strict-Transport-Security', 'Permissions-Policy']) {
+    if (!headers.includes(need)) problems.push(`_headers: missing ${need}`);
+  }
+  if (/unsafe-eval|script-src[^;]*unsafe-inline/.test(headers)) problems.push('_headers: scripts must not allow unsafe-inline or unsafe-eval');
+} catch {
+  problems.push('_headers file is missing from the build');
+}
+try {
+  const index = readFileSync(join(root, 'index.html'), 'utf8');
+  if (/\son(load|error|click)=/i.test(index)) problems.push('index.html: has an inline event handler, which the security policy would block');
+  if (/<script(?![^>]*\ssrc=)[^>]*>/i.test(index)) problems.push('index.html: has an inline script, which the security policy would block');
+} catch {
+  problems.push('index.html is missing from the build');
+}
 console.log(`Scanned ${files.length} files. Key roles found: ${[...roles].join(', ') || 'none'}`);
 if (problems.length) {
   console.error('PROBLEMS:\n- ' + problems.join('\n- '));
   process.exit(1);
 }
-console.log('OK: no service_role key, only the public anon key.');
+console.log('OK: no service_role key, only the public anon key; security headers present; no inline scripts.');
