@@ -396,4 +396,4 @@ only an admin can change a role (row level security); promote_admin is not calla
 read auth.users (passwords and hashes); no app table has a password, hash or token column; the mail secret table is unreadable to the app.
 Added `0029_profile_role_guard.sql`: a trigger that also refuses any role or active change unless an admin is signed in (second lock; the
 admin-create-staff function and the SQL editor are not affected because nobody is "signed in" there). Applied to production.
-Test: `supabase/tests/dashboard/28_signup_roles.sql` (paste in the SQL editor; every line should say "ok"). Not run yet.
+Test: `supabase/tests/dashboard/28_signup_roles.sql` (paste in the SQL editor; every line should say "ok"). Run on production 2026-11-23: 16 checks, 0 failed; no test data left behind.
