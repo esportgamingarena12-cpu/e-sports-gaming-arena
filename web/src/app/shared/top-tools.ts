@@ -106,6 +106,11 @@ export function initials(name: string | null | undefined): string {
           @if (open() === 'user') {
             <div class="absolute right-0 z-50 mt-1 w-48 rounded-lg border border-violet-500/30 bg-slate-900 p-1 shadow-2xl">
               <p class="truncate px-3 py-2 text-xs text-slate-400">{{ p.email }}</p>
+              @if (p.role === 'customer') {
+                <a routerLink="/book/my-data" class="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-slate-800" (click)="open.set(null)" data-my-data-link>
+                  <app-icon name="user" [size]="16" /> My data &amp; privacy
+                </a>
+              }
               <a routerLink="/account/password" class="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-slate-800" (click)="open.set(null)" data-change-password>
                 <app-icon name="lock" [size]="16" /> Change password
               </a>

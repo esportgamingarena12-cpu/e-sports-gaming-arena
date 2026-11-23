@@ -10,6 +10,7 @@ import { Icon } from '../shared/icon';
 import { BookingInfo, BookingService, FreeSlot } from './booking.service';
 import { lengthLabel, typeLabel } from './portal';
 import { buildPlans } from './plans';
+import { LegalLinks } from '../legal/legal-links';
 import { FoodPic } from '../shared/food-image';
 import { ServerClock } from '../core/server-clock';
 import { gamesFor, tickerItems } from './games';
@@ -21,7 +22,7 @@ const addDays = (day: string, n: number): string =>
 /** Public booking page: anyone can see free times; signing in is asked only when they pick one. */
 @Component({
   selector: 'app-book-home',
-  imports: [Icon, RoomArt, ControllerArt, ClockArt, RouterLink, FoodPic, GamePoster, HeroSlider, HeroSlide],
+  imports: [Icon, RoomArt, ControllerArt, ClockArt, RouterLink, FoodPic, GamePoster, HeroSlider, HeroSlide, LegalLinks],
   template: `
     <!-- Coming-soon ticker: upcoming games and the new ones, set by the owner in Admin > Games -->
     @if (ticker().length > 0) {
@@ -510,6 +511,7 @@ const addDays = (day: string, n: number): string =>
         <a href="#book" class="btn-primary inline-flex shrink-0 items-center gap-2" data-band-book>Book Now <app-icon name="arrow" [size]="16" /></a>
       </div>
       <p class="mt-6 text-center text-xs text-slate-500">© E-Sports Gaming Arena · <a routerLink="/login" class="underline hover:text-slate-300" data-staff-link>Staff login</a></p>
+      <div class="mt-2"><app-legal-links /></div>
     </section>
   `,
 })
@@ -691,7 +693,7 @@ export class BookHome implements OnInit {
       this.error.set('Staff accounts book from the counter.');
       return;
     }
-    if (!this.auth.customer()) {
+    if (!this.auth.customer() || this.auth.needsConsent()) {
       await this.router.navigate(['/book/profile'], { queryParams: { next: this.resumeUrl(start) } });
       return;
     }

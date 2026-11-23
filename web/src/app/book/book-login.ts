@@ -1,10 +1,11 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { afterLoginPath, oauthErrorFrom } from '../core/google-login';
 import { passwordProblem, passwordsMatch } from '../core/password-login';
 import { Icon } from '../shared/icon';
+import { LegalLinks } from '../legal/legal-links';
 import { LoginStage } from '../shared/login-stage';
 import { notBlank } from '../shared/validators';
 import { BookingInfo, BookingService } from './booking.service';
@@ -33,7 +34,7 @@ const FIELD =
 
 @Component({
   selector: 'app-book-login',
-  imports: [ReactiveFormsModule, Icon, LoginStage],
+  imports: [ReactiveFormsModule, Icon, LoginStage, RouterLink, LegalLinks],
   template: `
     <section class="mx-auto my-4 grid max-w-5xl overflow-hidden rounded-2xl border border-violet-500/30 bg-slate-900/70 shadow-[0_0_60px_-20px_rgb(139_92_246_/_0.8)] sm:my-8 md:min-h-[34rem] md:grid-cols-[1.05fr_1fr]">
       <app-login-stage class="h-44 md:h-auto" variant="customer" eyebrow="Players club"
@@ -146,12 +147,19 @@ const FIELD =
               <label class="flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" formControlName="remember" class="size-4 accent-violet-500" data-su-remember /> Remember me
               </label>
+              <label class="flex items-start gap-2 text-sm text-slate-300">
+                <input type="checkbox" formControlName="agree" class="mt-0.5 size-4 shrink-0 accent-violet-500" data-su-agree />
+                <span>I have read the <a routerLink="/terms" target="_blank" rel="noopener" class="text-cyan-300 underline">Terms</a> and the
+                  <a routerLink="/privacy" target="_blank" rel="noopener" class="text-cyan-300 underline">Privacy Policy</a> and I agree.
+                  I am 18 or older, or my parent or guardian agrees.</span>
+              </label>
               <button type="submit" [disabled]="signupForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signup-submit>
                 {{ busy() ? 'Creating your account…' : 'Create account' }}
                 @if (!busy()) { <app-icon name="arrow" /> }
               </button>
             </form>
           }
+          <div class="mt-4"><app-legal-links [newTab]="true" /></div>
 
         }
       </div>
@@ -191,6 +199,7 @@ export class BookLogin implements OnInit {
       password: ['', [Validators.required, strongPassword]],
       confirm: ['', [Validators.required]],
       remember: [true],
+      agree: [false, [Validators.requiredTrue]],
     },
     { validators: passwordsAgree },
   );
@@ -230,7 +239,7 @@ export class BookLogin implements OnInit {
 
   private async go(role: 'admin' | 'staff' | 'customer', next: string | null): Promise<void> {
     await this.auth.refreshCustomer();
-    const to = afterLoginPath({ role, hasCustomer: !!this.auth.customer() }, next, this.auth.homeFor);
+    const to = afterLoginPath({ role, hasCustomer: !!this.auth.customer() && !this.auth.needsConsent() }, next, this.auth.homeFor);
     if (to.kind === 'profile') await this.router.navigate(['/book/profile'], { queryParams: { next: to.next } });
     else await this.router.navigateByUrl(to.url);
   }
@@ -282,6 +291,8 @@ export class BookLogin implements OnInit {
     try {
       const p = await this.auth.signUpCustomer(v.name.trim(), email, v.password, v.remember);
       if (p) {
+        // remember that they agreed; if this fails they are simply asked again on the next screen
+        await this.auth.recordConsent().catch(() => undefined);
         await this.go(p.role, this.next());
       } else {
         // the project asks for the email to be confirmed first: no session yet

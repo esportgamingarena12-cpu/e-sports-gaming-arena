@@ -21,11 +21,13 @@ async function toSignUp(page: Page): Promise<void> {
   await expect(page.locator('[data-signup-form]')).toBeVisible();
 }
 
-async function fillSignUp(page: Page, over: { name?: string; email?: string; password?: string; confirm?: string } = {}): Promise<void> {
+async function fillSignUp(page: Page, over: { name?: string; email?: string; password?: string; confirm?: string; agree?: boolean } = {}): Promise<void> {
   await page.locator('[data-su-name]').fill(over.name ?? 'Test Player');
   await page.locator('[data-su-email]').fill(over.email ?? 'player@example.com');
   await page.locator('[data-su-password]').fill(over.password ?? 'Gaming2026');
   await page.locator('[data-su-confirm]').fill(over.confirm ?? over.password ?? 'Gaming2026');
+  // the Terms and Privacy Policy box is required; ticked unless a test says otherwise
+  if (over.agree !== false) await page.locator('[data-su-agree]').check();
 }
 
 test.describe('create account and sign in with a password', () => {
@@ -35,11 +37,24 @@ test.describe('create account and sign in with a password', () => {
     await expect(page.locator('[data-tab-signin]')).toHaveAttribute('aria-selected', 'true');
     await toSignUp(page);
     await expect(page.locator('[data-tab-signup]')).toHaveAttribute('aria-selected', 'true');
-    for (const k of ['su-name', 'su-email', 'su-password', 'su-confirm']) await expect(page.locator(`[data-${k}]`)).toBeVisible();
+    for (const k of ['su-name', 'su-email', 'su-password', 'su-confirm', 'su-agree']) await expect(page.locator(`[data-${k}]`)).toBeVisible();
     await expect(page.locator('[data-google]')).toBeVisible();
     await expect(page.locator('[data-use-code]')).toHaveCount(0); // no emailed-code option any more
     await page.locator('[data-tab-signin]').click();
     await expect(page.locator('[data-signin-form]')).toBeVisible();
+  });
+
+  test('the sign-up form cannot be sent until the Terms and Privacy Policy box is ticked', async ({ page }) => {
+    await open(page);
+    await toSignUp(page);
+    await expect(page.locator('[data-su-agree]')).not.toBeChecked();
+    await fillSignUp(page, { agree: false });
+    await expect(page.locator('[data-signup-submit]')).toBeDisabled();
+    await page.locator('[data-su-agree]').check();
+    await expect(page.locator('[data-signup-submit]')).toBeEnabled();
+    // the links open the real pages in a new tab
+    await expect(page.locator('[data-signup-form] a[href="/terms"]')).toHaveAttribute('target', '_blank');
+    await expect(page.locator('[data-signup-form] a[href="/privacy"]')).toHaveAttribute('target', '_blank');
   });
 
   test('"Remember me" is ticked by default on both forms', async ({ page }) => {
@@ -185,7 +200,7 @@ test.describe('remember me', () => {
         status: 200,
         contentType: 'application/json',
         headers: { 'access-control-allow-origin': '*' },
-        body: JSON.stringify({ id: 'user-1', email: 'player@example.com', full_name: 'Player', phone: null, role: 'customer', active: true }),
+        body: JSON.stringify({ id: 'user-1', email: 'player@example.com', full_name: 'Player', phone: null, role: 'customer', active: true, consent_version: '2026-11-23' }),
       }),
     );
     await page.route('**/rest/v1/customers**', (route) =>

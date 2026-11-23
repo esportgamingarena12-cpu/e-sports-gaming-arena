@@ -2,6 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
 import { googleRedirectUrl, PendingGoogle, rememberPending, takePending } from './google-login';
+import { consentNeeded, LEGAL_VERSION } from './legal';
 import { homeFor, Profile, Role } from './models';
 import { ALIVE_KEY, changePasswordError, REMEMBER_KEY, shouldEndSession, signInError, signUpError } from './password-login';
 
@@ -28,6 +29,8 @@ export class AuthService {
 
   readonly role = computed<Role | null>(() => this.profile()?.role ?? null);
   readonly home = computed(() => homeFor(this.role()));
+  /** A customer who has not yet agreed to the current Terms and Privacy Policy. */
+  readonly needsConsent = computed(() => consentNeeded(this.profile()));
   readonly isStaff = computed(() => this.role() === 'admin' || this.role() === 'staff');
 
   readonly homeFor = homeFor;
@@ -68,7 +71,7 @@ export class AuthService {
     }
     const { data } = await this.sb
       .from('profiles')
-      .select('id, email, full_name, phone, role, active')
+      .select('id, email, full_name, phone, role, active, consent_version')
       .eq('id', session.user.id)
       .maybeSingle();
     const profile = (data as Profile | null) ?? null;
@@ -201,6 +204,14 @@ export class AuthService {
     }
     const { error } = await this.sb.auth.updateUser({ password: next });
     if (error) throw new Error(changePasswordError(error.message));
+  }
+
+  /** Saves that the signed-in customer agreed to the current Terms and Privacy Policy. */
+  async recordConsent(): Promise<void> {
+    const { error } = await this.sb.rpc('record_consent', { p_version: LEGAL_VERSION });
+    if (error) throw new Error(error.message);
+    const p = this.profile();
+    if (p) this.profile.set({ ...p, consent_version: LEGAL_VERSION });
   }
 
   async signOut(): Promise<void> {

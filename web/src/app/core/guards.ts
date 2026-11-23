@@ -38,3 +38,12 @@ export const adminGuard = roleGuard(['admin'], '/login');
 export const staffGuard = roleGuard(['admin', 'staff'], '/login');
 export const signedInGuard = roleGuard(['admin', 'staff', 'customer'], '/book/login');
 export const customerGuard = roleGuard(['customer'], '/book/login');
+
+/** A customer who has not agreed to the current Terms and Privacy Policy is sent to agree first, then back here. */
+export const consentGuard: CanActivateFn = async (_route, state) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  await auth.whenReady();
+  if (auth.needsConsent()) return router.createUrlTree(['/book/profile'], { queryParams: { next: state.url } });
+  return true;
+};

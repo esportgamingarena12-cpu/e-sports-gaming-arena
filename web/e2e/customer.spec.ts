@@ -44,6 +44,8 @@ async function passwordLogin(request: APIRequestContext, n: number): Promise<Tok
 /** Opens the page already signed in as test customer n. */
 async function signedInAs(page: Page, request: APIRequestContext, n: number): Promise<Tokens> {
   const tokens = await passwordLogin(request, n);
+  // these accounts have agreed to the Terms and Privacy Policy (keep this in step with LEGAL_VERSION in core/legal.ts)
+  await rpc(request, tokens, 'record_consent', { p_version: '2026-11-23' });
   await page.addInitScript(([k, v]) => localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(tokens)]);
   return tokens;
 }

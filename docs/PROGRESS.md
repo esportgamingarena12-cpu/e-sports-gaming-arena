@@ -397,3 +397,19 @@ read auth.users (passwords and hashes); no app table has a password, hash or tok
 Added `0029_profile_role_guard.sql`: a trigger that also refuses any role or active change unless an admin is signed in (second lock; the
 admin-create-staff function and the SQL editor are not affected because nobody is "signed in" there). Applied to production.
 Test: `supabase/tests/dashboard/28_signup_roles.sql` (paste in the SQL editor; every line should say "ok"). Run on production 2026-11-23: 16 checks, 0 failed; no test data left behind.
+
+## Phase 43: legal pages and data rights, DPDP (2026-11-23)
+Built: public pages /terms, /privacy, /refunds, /grievance (linked from the home footer, sign-up and profile); a required Terms and
+Privacy checkbox at sign-up (with "18 or older, or a parent or guardian agrees"); the same agreement asked once on the profile step for
+Google sign-ins and existing customers (also before My bookings); the version agreed and the date are stored (`profiles.consent_version`,
+`consented_at`, `LEGAL_VERSION` in `core/legal.ts`: change it to ask everyone again). New customer page /book/my-data ("My data & privacy"):
+what we hold, JSON download, correct details, change password, delete account. Admin Settings has a "Legal & contact" card.
+Migration `0030_privacy_rights.sql` (applied to production): settings.legal_name / grievance_* / refund_days / record_years; legal_info()
+(public); record_consent(); export_my_data(); delete_my_account().
+Deleting an account never changes the shop's numbers: bookings, sessions, bills, payments, stock and passes keep their amounts, statuses and
+counts; only the person is taken out (login, name, phone, email, booking notes, name on past sessions/bills). It is refused while a session is
+running or unbilled, or a booking is still upcoming. Walk-in customers and their sessions are never touched (nothing is matched by phone). An
+unused pass is left as it is and cannot be used afterwards: the customer must confirm that on purpose. Only customers can use it.
+Tests: 364 unit tests, 20 browser tests (legal pages, sign-up box), `supabase/tests/dashboard/29_privacy_rights.sql` (34 checks, run on
+production 2026-11-23, 0 failed, rolled back; it proves money and counts are identical before and after a deletion).
+Owner to-do: see docs/LEGAL-CHECKLIST.md. This is a careful starting text, not legal advice: have a lawyer read the pages before relying on them.

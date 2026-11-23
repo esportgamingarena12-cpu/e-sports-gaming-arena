@@ -75,6 +75,32 @@ import { integer, notBlank, upiId } from '../../shared/validators';
             <p class="text-xs text-slate-400">Running sessions keep the values they started with.</p>
           </div>
 
+          <div class="card space-y-3" data-legal-card>
+            <h2 class="font-medium">Legal &amp; contact (shown on the Terms, Privacy and Contact pages)</h2>
+            <label class="label">Registered business name (if different from the shop name)
+              <input formControlName="legal_name" class="field" data-legal-name />
+            </label>
+            <label class="label">Grievance Officer name
+              <input formControlName="grievance_name" class="field" data-grievance-name />
+            </label>
+            <label class="label">Grievance email (customers write here about privacy and complaints)
+              <input formControlName="grievance_email" type="email" class="field" data-grievance-email />
+              <app-field-error [control]="form.controls.grievance_email" />
+            </label>
+            <label class="label">Grievance phone (leave empty to show the shop phone)
+              <input formControlName="grievance_phone" inputmode="tel" class="field" data-grievance-phone />
+            </label>
+            <label class="label">Refunds are paid within (days)
+              <input formControlName="refund_days" type="number" inputmode="numeric" class="field" data-refund-days />
+              <app-field-error [control]="form.controls.refund_days" />
+            </label>
+            <label class="label">Bills and payment records are kept for (years)
+              <input formControlName="record_years" type="number" inputmode="numeric" class="field" data-record-years />
+              <app-field-error [control]="form.controls.record_years" />
+            </label>
+            <p class="text-xs text-slate-400">The refund days and record years are printed in the policies. Ask your accountant how long records must be kept. The cancel-before time comes from Booking settings.</p>
+          </div>
+
           <button type="submit" class="btn-primary" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save' }}</button>
         </form>
       }
@@ -101,6 +127,12 @@ export class ShopSettings implements OnInit {
     billing_block_min: [15, [Validators.required, Validators.min(1), integer]],
     min_bill_min: [30, [Validators.required, Validators.min(0), integer]],
     overtime_grace_min: [10, [Validators.required, Validators.min(0), Validators.max(120), integer]],
+    legal_name: [''],
+    grievance_name: [''],
+    grievance_email: ['', [Validators.email]],
+    grievance_phone: [''],
+    refund_days: [7, [Validators.required, Validators.min(1), Validators.max(60), integer]],
+    record_years: [8, [Validators.required, Validators.min(1), Validators.max(15), integer]],
   });
 
   async ngOnInit(): Promise<void> {
@@ -122,6 +154,12 @@ export class ShopSettings implements OnInit {
         billing_block_min: data.billing_block_min,
         min_bill_min: data.min_bill_min,
         overtime_grace_min: data.overtime_grace_min ?? 10,
+        legal_name: data.legal_name ?? '',
+        grievance_name: data.grievance_name ?? '',
+        grievance_email: data.grievance_email ?? '',
+        grievance_phone: data.grievance_phone ?? '',
+        refund_days: data.refund_days ?? 7,
+        record_years: data.record_years ?? 8,
       });
     }
     this.loaded.set(true);
@@ -149,6 +187,12 @@ export class ShopSettings implements OnInit {
         billing_block_min: Number(v.billing_block_min),
         min_bill_min: Number(v.min_bill_min),
         overtime_grace_min: Number(v.overtime_grace_min),
+        legal_name: blank(v.legal_name),
+        grievance_name: blank(v.grievance_name),
+        grievance_email: blank(v.grievance_email),
+        grievance_phone: blank(v.grievance_phone),
+        refund_days: Number(v.refund_days),
+        record_years: Number(v.record_years),
         updated_at: new Date().toISOString(),
       })
       .eq('id', true)

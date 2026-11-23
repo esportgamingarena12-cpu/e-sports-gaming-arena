@@ -18,6 +18,7 @@ const addDays = (day: string, n: number): string =>
         <h1 class="text-xl font-semibold">My bookings</h1>
         <a routerLink="/book" class="btn-primary" data-new>Book a slot</a>
       </div>
+      <p class="text-xs text-slate-500"><a routerLink="/book/my-data" class="underline hover:text-slate-300" data-my-data-from-bookings>My data &amp; privacy</a>: see, download or delete what we hold about you.</p>
 
       @if (error()) { <p class="text-sm text-red-400" role="alert" data-error>{{ error() }}</p> }
       @if (notice()) { <p class="text-sm text-emerald-300" role="status" data-notice>{{ notice() }}</p> }
