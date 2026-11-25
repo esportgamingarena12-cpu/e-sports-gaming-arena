@@ -470,3 +470,11 @@ Left in place and ready: the widget (`shared/turnstile.ts`), the token plumbing,
 widget "E-Sports Gaming Arena login" (hostnames e-sports-gaming-arena.pages.dev, localhost). To try again: test the live /login in a normal
 full-size Chrome with DevTools closed, on mobile data and in a second browser; only if it passes silently every time put the site key back
 (`0x4AAAAAAGR6lR0Q65WpAeFA`, public) and push; then, last, the owner rotates the secret and pastes it into Supabase (Authentication > Attack Protection).
+
+### Turnstile switched back ON in the app (2026-11-25)
+Local test in the owner's normal full-size Chrome (DevTools closed) on localhost:4200: the check passed silently ("Security check passed"). The
+600010 failures came from DevTools/device mode being open and from the automated browser; Cloudflare's docs list 600* as "bot behavior
+detected". The public site key is back in `web/src/environments/*.ts` and a small green "Security check passed" message shows when it passes.
+Supabase's CAPTCHA is still OFF (not enforced), so logins work with or without a token. Remaining order: (1) owner tests the live /login in a
+normal Chrome and on a phone using mobile data; (2) owner rotates the Turnstile secret in Cloudflare and pastes it into Supabase > Authentication >
+Attack Protection > CAPTCHA (Turnstile); (3) owner signs in right after; if it fails, switch the Supabase CAPTCHA off and tell the assistant.
