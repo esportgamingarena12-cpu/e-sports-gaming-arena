@@ -6,7 +6,7 @@ import { homeFor } from '../core/models';
 import { changePasswordProblem } from '../core/password-login';
 import { Icon } from './icon';
 import { ToastService } from './toast.service';
-import { CAPTCHA_REQUIRED, Turnstile } from './turnstile';
+import { Turnstile, waitForToken } from './turnstile';
 
 /** Change password: the same screen for admin, staff and customers (they reach it from the account menu, above Logout). */
 @Component({
@@ -45,7 +45,7 @@ import { CAPTCHA_REQUIRED, Turnstile } from './turnstile';
 
         @if (needsCurrent()) { <app-turnstile (token)="captcha.set($event)" /> }
         <div class="flex gap-2">
-          <button type="submit" class="btn-primary flex-1" [disabled]="busy() || captchaBlocked()" data-save>
+          <button type="submit" class="btn-primary flex-1" [disabled]="busy()" data-save>
             <app-icon name="lock" [size]="16" /> {{ busy() ? 'Saving…' : 'Change password' }}
           </button>
           <a class="btn" [routerLink]="home()">Back</a>
@@ -68,7 +68,6 @@ export class ChangePassword {
   protected readonly needsCurrent = computed(() => this.auth.hasPassword());
   protected readonly captcha = signal('');
   private readonly turnstile = viewChild(Turnstile);
-  protected readonly captchaBlocked = computed(() => CAPTCHA_REQUIRED && this.needsCurrent() && !this.captcha());
   protected readonly home = computed(() => homeFor(this.auth.role() ?? 'customer'));
 
   protected async save(): Promise<void> {
@@ -79,7 +78,7 @@ export class ChangePassword {
     if (bad) return;
     this.busy.set(true);
     try {
-      await this.auth.changePassword(v.current, v.next, this.captcha());
+      await this.auth.changePassword(v.current, v.next, this.needsCurrent() ? await waitForToken(() => this.captcha()) : '');
       this.form.reset({ current: '', next: '', confirm: '' });
       this.done.set(true);
       this.toast.success('Password changed');

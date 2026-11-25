@@ -432,3 +432,16 @@ correct password signs in (then it was deleted).
 To unlock someone early (they typed it wrong 5 times): in the SQL editor run `delete from login_attempts;` (or only that key).
 The browser tests that sign in straight against Supabase's login with e2e test accounts will need the CAPTCHA off in the project they run
 against, or Cloudflare's dummy test keys, once the CAPTCHA is on.
+
+### Turnstile switched on in the app (2026-11-25)
+A Turnstile widget "E-Sports Gaming Arena login" (Managed, hostnames e-sports-gaming-arena.pages.dev and localhost) was created in the owner's
+Cloudflare account; its public SITE key is in `web/src/environments/*.ts`. The SECRET key is only for Supabase (Authentication > Attack
+Protection > CAPTCHA > Turnstile), pasted by the owner, never in this repo or in chat.
+The sign-in buttons are never blocked by the check: `waitForToken` waits up to 4 s for the token and then sends whatever there is, so a slow or
+failed check cannot lock anyone out while Supabase's CAPTCHA is still off. Once Supabase's CAPTCHA is ON, a login without a valid token is
+refused by Supabase ("Please complete the security check").
+Order to follow: (1) deploy this app, (2) the owner signs in once on the live site to prove the check works in a real browser, (3) only then
+the owner pastes the secret into Supabase. To switch the CAPTCHA off in an emergency: Supabase > Authentication > Attack Protection > CAPTCHA > off.
+Checked: with Cloudflare's published always-passes test key a token is issued under the exact security policy with no violations; the browser
+tests use a stand-in script and prove the token is sent with the login. The real key was not tested in the automated browser (Cloudflare does
+not complete its check there).

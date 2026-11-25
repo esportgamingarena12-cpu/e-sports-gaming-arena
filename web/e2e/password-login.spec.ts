@@ -12,7 +12,19 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const REF = new URL(environment.SUPABASE_URL).hostname.split('.')[0];
 const STORE_KEY = `sb-${REF}-auth-token`;
 
+/** Stands in for Cloudflare's security-check script: it hands over a token at once (the real one needs a real browser and network). */
+async function fakeTurnstile(page: Page): Promise<void> {
+  await page.route('**/challenges.cloudflare.com/turnstile/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/javascript',
+      body: "window.turnstile = { render: (el, o) => { setTimeout(() => o.callback('test-token'), 50); return 'w1'; }, reset: () => {}, remove: () => {} };",
+    }),
+  );
+}
+
 async function open(page: Page, width = 1280): Promise<void> {
+  await fakeTurnstile(page);
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/book/login');
   await expect(page.locator('[data-google]')).toBeVisible();
@@ -158,7 +170,7 @@ test.describe('create account and sign in with a password', () => {
     await page.locator('[data-si-password]').fill('WrongOne1');
     await page.locator('[data-signin-submit]').click();
     await expect(page.locator('[data-error]')).toContainText('Wrong email or password');
-    expect(body).toMatchObject({ email: 'player@example.com', password: 'WrongOne1', verify_only: false });
+    expect(body).toMatchObject({ email: 'player@example.com', password: 'WrongOne1', verify_only: false, captcha_token: 'test-token' });
     await expect(page).toHaveURL(/\/book\/login/);
   });
 
@@ -185,6 +197,7 @@ test.describe('create account and sign in with a password', () => {
       if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
       return route.fulfill({ status: 401, contentType: 'application/json', headers: CORS, body: JSON.stringify({ error: 'Wrong email or password' }) });
     });
+    await fakeTurnstile(page);
     await page.goto('/login');
     await page.locator('input[type="email"]').fill('staff@example.com');
     await page.locator('#staff-password').fill('WrongOne1');

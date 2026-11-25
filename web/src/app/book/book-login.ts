@@ -7,7 +7,7 @@ import { passwordProblem, passwordsMatch } from '../core/password-login';
 import { Icon } from '../shared/icon';
 import { LegalLinks } from '../legal/legal-links';
 import { LoginStage } from '../shared/login-stage';
-import { CAPTCHA_REQUIRED, Turnstile } from '../shared/turnstile';
+import { Turnstile, waitForToken } from '../shared/turnstile';
 import { notBlank } from '../shared/validators';
 import { BookingInfo, BookingService } from './booking.service';
 import { loginChips } from './plans';
@@ -99,7 +99,7 @@ const FIELD =
               <label class="flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" formControlName="remember" class="size-4 accent-violet-500" data-remember /> Remember me
               </label>
-              <button type="submit" [disabled]="signinForm.invalid || busy() || captchaBlocked()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signin-submit>
+              <button type="submit" [disabled]="signinForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signin-submit>
                 {{ busy() ? 'Signing in…' : 'Sign in' }}
                 @if (!busy()) { <app-icon name="arrow" /> }
               </button>
@@ -154,7 +154,7 @@ const FIELD =
                   <a routerLink="/privacy" target="_blank" rel="noopener" class="text-cyan-300 underline">Privacy Policy</a> and I agree.
                   I am 18 or older, or my parent or guardian agrees.</span>
               </label>
-              <button type="submit" [disabled]="signupForm.invalid || busy() || captchaBlocked()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signup-submit>
+              <button type="submit" [disabled]="signupForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signup-submit>
                 {{ busy() ? 'Creating your account…' : 'Create account' }}
                 @if (!busy()) { <app-icon name="arrow" /> }
               </button>
@@ -260,8 +260,6 @@ export class BookLogin implements OnInit {
   /** the Cloudflare security-check token for the next try ('' until it is ready) */
   protected readonly captcha = signal('');
   private readonly turnstile = viewChild(Turnstile);
-  /** true while the security check is switched on and has not finished */
-  protected readonly captchaBlocked = computed(() => CAPTCHA_REQUIRED && !this.captcha());
 
   protected async signIn(): Promise<void> {
     if (this.signinForm.invalid) {
@@ -272,7 +270,7 @@ export class BookLogin implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const p = await this.auth.signInCustomer(v.email.trim(), v.password, v.remember, this.captcha());
+      const p = await this.auth.signInCustomer(v.email.trim(), v.password, v.remember, await waitForToken(() => this.captcha()));
       await this.go(p.role, this.next());
     } catch (e) {
       this.error.set((e as Error).message);
@@ -298,7 +296,7 @@ export class BookLogin implements OnInit {
     this.error.set(null);
     this.info2.set(null);
     try {
-      const p = await this.auth.signUpCustomer(v.name.trim(), email, v.password, v.remember, this.captcha());
+      const p = await this.auth.signUpCustomer(v.name.trim(), email, v.password, v.remember, await waitForToken(() => this.captcha()));
       if (p) {
         // remember that they agreed; if this fails they are simply asked again on the next screen
         await this.auth.recordConsent().catch(() => undefined);

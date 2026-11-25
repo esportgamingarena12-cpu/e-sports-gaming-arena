@@ -17,6 +17,18 @@ const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render
 /** True once a Turnstile site key is set: then every password login must carry a token from this widget. */
 export const CAPTCHA_REQUIRED = !!environment.TURNSTILE_SITE_KEY;
 
+/**
+ * Waits (up to `ms`) for the security check to hand over its token and returns it ('' when it never came).
+ * The sign-in buttons are never blocked while it works: a login simply sends whatever token there is, and the server
+ * decides (so a slow or failed check can never lock people out before the check is switched on in Supabase).
+ */
+export async function waitForToken(read: () => string, ms = 4000): Promise<string> {
+  if (!CAPTCHA_REQUIRED) return '';
+  const end = Date.now() + ms;
+  while (!read() && Date.now() < end) await new Promise((r) => setTimeout(r, 100));
+  return read();
+}
+
 /** Loads Cloudflare's script once and resolves when `window.turnstile` is ready. */
 let loading: Promise<TurnstileApi> | null = null;
 function loadTurnstile(): Promise<TurnstileApi> {
