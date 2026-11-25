@@ -35,8 +35,10 @@ describe('password rules', () => {
 
 describe('error messages', () => {
   it('sign up: an existing email points to sign in or Google', () => {
-    expect(signUpError('User already registered')).toContain('already has an account');
-    expect(signUpError('A user with this email address has already been registered')).toContain('Sign in instead');
+    // the wording must not confirm that the email is registered
+    expect(signUpError('User already registered')).toContain('could not create an account');
+    expect(signUpError('User already registered')).not.toMatch(/already has an account|already registered/i);
+    expect(signUpError('A user with this email address has already been registered')).toMatch(/sign in instead/i);
     expect(signUpError('user_already_exists')).toContain('Google');
   });
   it('sign up: rate limits, weak passwords, bad emails, switched-off sign ups', () => {

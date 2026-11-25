@@ -25,7 +25,8 @@ export function passwordsMatch(password: string, confirm: string): boolean {
 /** Plain-language message for a Supabase sign-up error. */
 export function signUpError(message: string | null | undefined): string {
   const m = message ?? '';
-  if (/already (registered|exists|been registered)|user_already_exists/i.test(m)) return 'That email already has an account. Sign in instead, or use Google.';
+  // neutral on purpose: the message must not reveal whether an email is already registered
+  if (/already (registered|exists|been registered)|user_already_exists/i.test(m)) return 'We could not create an account with those details. If you already have one, sign in instead or use Google.';
   if (/rate limit|too many|over_email_send_rate_limit/i.test(m)) return 'Too many attempts. Please wait a few minutes and try again.';
   if (/password/i.test(m) && /(at least|short|weak|characters|pwned)/i.test(m)) return `Choose a stronger password (at least ${MIN_PASSWORD} characters, with letters and a number).`;
   if (/signups? (are |is )?(not allowed|disabled)/i.test(m)) return 'Sign up is switched off right now. Please use Google.';

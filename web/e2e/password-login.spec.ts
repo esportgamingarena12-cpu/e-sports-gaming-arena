@@ -113,7 +113,8 @@ test.describe('create account and sign in with a password', () => {
     await toSignUp(page);
     await fillSignUp(page, { name: 'Asha Rao', email: 'asha@example.com', password: 'Gaming2026' });
     await page.locator('[data-signup-submit]').click();
-    await expect(page.locator('[data-error]')).toContainText('already has an account');
+    await expect(page.locator('[data-error]')).toContainText('could not create an account');
+    await expect(page.locator('[data-error]')).not.toContainText('already has an account');
     expect(body.email).toBe('asha@example.com');
     expect(body.password).toBe('Gaming2026');
     expect(body.data?.full_name).toBe('Asha Rao');
