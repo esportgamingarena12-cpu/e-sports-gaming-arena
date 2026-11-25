@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -6,11 +6,12 @@ import { homeFor } from '../core/models';
 import { changePasswordProblem } from '../core/password-login';
 import { Icon } from './icon';
 import { ToastService } from './toast.service';
+import { CAPTCHA_REQUIRED, Turnstile } from './turnstile';
 
 /** Change password: the same screen for admin, staff and customers (they reach it from the account menu, above Logout). */
 @Component({
   selector: 'app-change-password',
-  imports: [ReactiveFormsModule, RouterLink, Icon],
+  imports: [ReactiveFormsModule, RouterLink, Icon, Turnstile],
   template: `
     <section class="mx-auto max-w-md p-4">
       <h1 class="page-title">Change password</h1>
@@ -42,8 +43,9 @@ import { ToastService } from './toast.service';
         @if (problem()) { <p class="text-sm text-red-400" role="alert" data-error>{{ problem() }}</p> }
         @if (done()) { <p class="rounded bg-emerald-500/15 p-2 text-sm text-emerald-300" role="status" data-done>Your password was changed.</p> }
 
+        @if (needsCurrent()) { <app-turnstile (token)="captcha.set($event)" /> }
         <div class="flex gap-2">
-          <button type="submit" class="btn-primary flex-1" [disabled]="busy()" data-save>
+          <button type="submit" class="btn-primary flex-1" [disabled]="busy() || captchaBlocked()" data-save>
             <app-icon name="lock" [size]="16" /> {{ busy() ? 'Saving…' : 'Change password' }}
           </button>
           <a class="btn" [routerLink]="home()">Back</a>
@@ -64,6 +66,9 @@ export class ChangePassword {
   protected readonly done = signal(false);
 
   protected readonly needsCurrent = computed(() => this.auth.hasPassword());
+  protected readonly captcha = signal('');
+  private readonly turnstile = viewChild(Turnstile);
+  protected readonly captchaBlocked = computed(() => CAPTCHA_REQUIRED && this.needsCurrent() && !this.captcha());
   protected readonly home = computed(() => homeFor(this.auth.role() ?? 'customer'));
 
   protected async save(): Promise<void> {
@@ -74,7 +79,7 @@ export class ChangePassword {
     if (bad) return;
     this.busy.set(true);
     try {
-      await this.auth.changePassword(v.current, v.next);
+      await this.auth.changePassword(v.current, v.next, this.captcha());
       this.form.reset({ current: '', next: '', confirm: '' });
       this.done.set(true);
       this.toast.success('Password changed');
@@ -82,6 +87,7 @@ export class ChangePassword {
       this.problem.set((e as Error).message);
     } finally {
       this.busy.set(false);
+      this.turnstile()?.reset(); // a security-check token works once
     }
   }
 }

@@ -6,7 +6,9 @@ import { environment } from '../src/environments/environment.development';
  * the test, so no real account is created or used.
  */
 const SIGNUP = '**/auth/v1/signup**';
-const TOKEN = '**/auth/v1/token?grant_type=password**';
+// every password login now goes through the secure-login function, which counts failed attempts (5 wrong = locked for 15 minutes)
+const LOGIN = '**/functions/v1/secure-login';
+const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
 const REF = new URL(environment.SUPABASE_URL).hostname.split('.')[0];
 const STORE_KEY = `sb-${REF}-auth-token`;
 
@@ -144,24 +146,50 @@ test.describe('create account and sign in with a password', () => {
     await expect(page.locator('[data-si-email]')).toHaveValue('newbie@example.com');
   });
 
-  test('sign in with a wrong password shows a plain message and sends the email and password', async ({ page }) => {
-    let body: { email?: string; password?: string } = {};
-    await page.route(TOKEN, (route) => {
+  test('sign in with a wrong password shows a plain message and sends the email and password to the secure login', async ({ page }) => {
+    let body: { email?: string; password?: string; verify_only?: boolean } = {};
+    await page.route(LOGIN, (route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
       body = route.request().postDataJSON();
-      return route.fulfill({
-        status: 400,
-        contentType: 'application/json',
-        headers: { 'access-control-allow-origin': '*' },
-        body: JSON.stringify({ code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' }),
-      });
+      return route.fulfill({ status: 401, contentType: 'application/json', headers: CORS, body: JSON.stringify({ error: 'Wrong email or password' }) });
     });
     await open(page);
     await page.locator('[data-si-email]').fill('player@example.com');
     await page.locator('[data-si-password]').fill('WrongOne1');
     await page.locator('[data-signin-submit]').click();
     await expect(page.locator('[data-error]')).toContainText('Wrong email or password');
-    expect(body).toMatchObject({ email: 'player@example.com', password: 'WrongOne1' });
+    expect(body).toMatchObject({ email: 'player@example.com', password: 'WrongOne1', verify_only: false });
     await expect(page).toHaveURL(/\/book\/login/);
+  });
+
+  test('a locked account gets the plain "try again in 15 minutes" message', async ({ page }) => {
+    await page.route(LOGIN, (route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+      return route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        headers: CORS,
+        body: JSON.stringify({ error: 'Too many attempts. Please try again in 15 minutes.', retry_after: 900 }),
+      });
+    });
+    await open(page);
+    await page.locator('[data-si-email]').fill('someone@example.com');
+    await page.locator('[data-si-password]').fill('WrongOne1');
+    await page.locator('[data-signin-submit]').click();
+    await expect(page.locator('[data-error]')).toContainText('Too many attempts. Please try again in 15 minutes.');
+    await expect(page).toHaveURL(/\/book\/login/);
+  });
+
+  test('the staff login also uses the secure login, with the same plain messages', async ({ page }) => {
+    await page.route(LOGIN, (route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+      return route.fulfill({ status: 401, contentType: 'application/json', headers: CORS, body: JSON.stringify({ error: 'Wrong email or password' }) });
+    });
+    await page.goto('/login');
+    await page.locator('input[type="email"]').fill('staff@example.com');
+    await page.locator('#staff-password').fill('WrongOne1');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByRole('alert')).toContainText('Wrong email or password');
   });
 
   test('the sign-in button needs an email and a password', async ({ page }) => {

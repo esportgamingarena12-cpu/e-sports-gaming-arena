@@ -1,10 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
+import { secureLogin } from './secure-login';
 import { googleRedirectUrl, PendingGoogle, rememberPending, takePending } from './google-login';
 import { consentNeeded, LEGAL_VERSION } from './legal';
 import { homeFor, Profile, Role } from './models';
-import { ALIVE_KEY, changePasswordError, REMEMBER_KEY, shouldEndSession, signInError, signUpError } from './password-login';
+import { ALIVE_KEY, changePasswordError, REMEMBER_KEY, shouldEndSession, signUpError } from './password-login';
 
 export interface CustomerRecord {
   id: number;
@@ -100,13 +101,10 @@ export class AuthService {
   }
 
   /** Admin / staff login. Throws an Error with a user-friendly message. */
-  async signInWithPassword(email: string, password: string): Promise<Profile> {
+  async signInWithPassword(email: string, password: string, captchaToken = ''): Promise<Profile> {
     this.notice.set(null);
-    const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
-    if (error) {
-      throw new Error(error.message === 'Invalid login credentials' ? 'Wrong email or password' : error.message);
-    }
-    await this.apply(data.session);
+    const session = await this.passwordSession(email, password, captchaToken);
+    await this.apply(session);
     const p = this.profile();
     if (!p) throw new Error(this.notice() ?? ACCOUNT_DISABLED);
     if (p.role === 'customer') {
@@ -114,6 +112,17 @@ export class AuthService {
       throw new Error('This login is for staff. Customers sign in from the Book page.');
     }
     return p;
+  }
+
+  /**
+   * A password login through the secure-login function (it counts failures and locks the account), then the session it returns
+   * is installed in this browser. Throws an Error with a plain message.
+   */
+  private async passwordSession(email: string, password: string, captchaToken: string): Promise<Session> {
+    const tokens = await secureLogin(this.sb, { email, password, captchaToken });
+    const { data, error } = await this.sb.auth.setSession({ access_token: tokens!.access_token, refresh_token: tokens!.refresh_token });
+    if (error || !data.session) throw new Error('Sign in did not work. Please try again.');
+    return data.session;
   }
 
   /** Saves the "Remember me" choice: unticked means the login ends when the browser is closed. */
@@ -126,12 +135,11 @@ export class AuthService {
   }
 
   /** Customer sign in with email and password. Staff and admins who use this form are signed in too. */
-  async signInCustomer(email: string, password: string, remember: boolean): Promise<Profile> {
+  async signInCustomer(email: string, password: string, remember: boolean, captchaToken = ''): Promise<Profile> {
     this.notice.set(null);
-    const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(signInError(error.message));
+    const session = await this.passwordSession(email, password, captchaToken);
     this.setRemember(remember);
-    await this.apply(data.session);
+    await this.apply(session);
     const p = this.profile();
     if (!p) throw new Error(this.notice() ?? ACCOUNT_DISABLED);
     return p;
@@ -141,9 +149,13 @@ export class AuthService {
    * Customer sign up. Returns the new profile when the customer is signed in straight away, or null when Supabase
    * is set to confirm the email first (then no session exists yet and the customer must open the email).
    */
-  async signUpCustomer(fullName: string, email: string, password: string, remember: boolean): Promise<Profile | null> {
+  async signUpCustomer(fullName: string, email: string, password: string, remember: boolean, captchaToken = ''): Promise<Profile | null> {
     this.notice.set(null);
-    const { data, error } = await this.sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    const { data, error } = await this.sb.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName }, ...(captchaToken ? { captchaToken } : {}) },
+    });
     if (error) throw new Error(signUpError(error.message));
     // with email confirmation on, an address that already has an account comes back without any identity
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error(signUpError('User already registered'));
@@ -196,11 +208,16 @@ export class AuthService {
    * the current one, which is checked first by signing in with it. A Google-only account can simply set one.
    * Throws an Error with a plain message.
    */
-  async changePassword(current: string, next: string): Promise<void> {
+  async changePassword(current: string, next: string, captchaToken = ''): Promise<void> {
     const email = this.session()?.user.email ?? this.profile()?.email ?? '';
     if (this.hasPassword()) {
-      const check = await this.sb.auth.signInWithPassword({ email, password: current });
-      if (check.error) throw new Error(/rate limit|too many/i.test(check.error.message) ? changePasswordError(check.error.message) : 'The current password is wrong');
+      // the current password is checked through the same counted, lockable login (nothing is signed in by this)
+      try {
+        await secureLogin(this.sb, { email, password: current, captchaToken, verifyOnly: true });
+      } catch (e) {
+        const m = (e as Error).message;
+        throw new Error(m === 'Wrong email or password' ? 'The current password is wrong' : m);
+      }
     }
     const { error } = await this.sb.auth.updateUser({ password: next });
     if (error) throw new Error(changePasswordError(error.message));

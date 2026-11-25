@@ -10,7 +10,7 @@
 # Security headers for every page and file.
 # Content-Security-Policy: scripts only from this site (no inline scripts, no eval); data and images only from this site and
 # our Supabase project; nothing may frame the site; forms only post to ourselves. Styles allow inline because Angular
-# adds component styles at run time. If a new outside service is ever added (analytics, maps, fonts), add its host here.
+# adds component styles at run time. Cloudflare Turnstile (the login security check) is the only outside service allowed. If a new outside service is ever added (analytics, maps, fonts), add its host here.
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
@@ -18,4 +18,4 @@
   Strict-Transport-Security: max-age=31536000
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin-allow-popups
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cwioasxspzutwglvnthl.supabase.co; font-src 'self'; connect-src 'self' https://cwioasxspzutwglvnthl.supabase.co wss://cwioasxspzutwglvnthl.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cwioasxspzutwglvnthl.supabase.co; font-src 'self'; connect-src 'self' https://cwioasxspzutwglvnthl.supabase.co wss://cwioasxspzutwglvnthl.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests

@@ -1,13 +1,14 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { Icon } from './icon';
 import { LoginStage } from './login-stage';
+import { CAPTCHA_REQUIRED, Turnstile } from './turnstile';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, Icon, LoginStage],
+  imports: [ReactiveFormsModule, Icon, LoginStage, Turnstile],
   template: `
     <section class="mx-auto my-4 grid max-w-5xl overflow-hidden rounded-2xl border border-violet-500/30 bg-slate-900/70 shadow-[0_0_60px_-20px_rgb(139_92_246_/_0.8)] sm:my-8 md:min-h-[34rem] md:grid-cols-[1.05fr_1fr]">
       <app-login-stage class="h-44 md:h-auto" variant="staff" eyebrow="Staff area"
@@ -47,7 +48,8 @@ import { LoginStage } from './login-stage';
           @if (error()) {
             <p class="text-sm text-red-400" role="alert">{{ error() }}</p>
           }
-          <button type="submit" [disabled]="form.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
+          <app-turnstile (token)="captcha.set($event)" />
+          <button type="submit" [disabled]="form.invalid || busy() || captchaBlocked()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
             {{ busy() ? 'Signing in…' : 'Sign in' }}
             @if (!busy()) { <app-icon name="arrow" /> }
           </button>
@@ -61,6 +63,9 @@ export class Login {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
+  protected readonly captcha = signal('');
+  private readonly turnstile = viewChild(Turnstile);
+  protected readonly captchaBlocked = computed(() => CAPTCHA_REQUIRED && !this.captcha());
   protected readonly show = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -83,12 +88,13 @@ export class Login {
     this.error.set(null);
     try {
       const { email, password } = this.form.getRawValue();
-      const p = await this.auth.signInWithPassword(email.trim(), password);
+      const p = await this.auth.signInWithPassword(email.trim(), password, this.captcha());
       await this.router.navigateByUrl(this.auth.homeFor(p.role));
     } catch (e) {
       this.error.set((e as Error).message);
     } finally {
       this.busy.set(false);
+      this.turnstile()?.reset(); // a security-check token works once
     }
   }
 }

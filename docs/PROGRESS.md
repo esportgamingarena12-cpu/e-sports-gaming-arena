@@ -413,3 +413,22 @@ unused pass is left as it is and cannot be used afterwards: the customer must co
 Tests: 364 unit tests, 20 browser tests (legal pages, sign-up box), `supabase/tests/dashboard/29_privacy_rights.sql` (34 checks, run on
 production 2026-11-23, 0 failed, rolled back; it proves money and counts are identical before and after a deletion).
 Owner to-do: see docs/LEGAL-CHECKLIST.md. This is a careful starting text, not legal advice: have a lawyer read the pages before relying on them.
+
+## Phase 44: login lockout and security check (2026-11-25)
+Why: the owner's security standard asks for a lock after 5 failed logins for 15 minutes, tracked on the server. Supabase's password-verification
+hook needs the Team plan, so every password login now goes through the `secure-login` Edge Function.
+Built: migration `0031_login_lockout.sql` (table `login_attempts`, functions `login_locked`, `login_failed`, `login_succeeded`, server side only,
+applied to production); Edge Function `secure-login` (deployed, v1): 5 wrong passwords for one account in 15 minutes lock that account for 15
+minutes, 20 wrong from one address lock that address, a correct password clears the count, wrong password / unknown email / locked account
+use the same plain answers, the email is stored only as a hash, the password is never stored or logged. The staff login, the customer sign-in
+and the "current password" check in Change password all use it. Google sign-in is not affected. Cloudflare Turnstile widget added
+(`shared/turnstile.ts`), invisible unless Cloudflare is unsure; it does nothing until `TURNSTILE_SITE_KEY` is set in `web/src/environments/*.ts`.
+CSP now also allows https://challenges.cloudflare.com (script, frame, connect).
+Switch-on order (do not change it): 1) site key into the environment files and pushed; 2) only then the Turnstile SECRET in Supabase >
+Authentication > Attack Protection > CAPTCHA. Turning it on earlier would block every login.
+Tests: 374 unit tests, 31 login/legal browser tests, `supabase/tests/dashboard/30_login_lockout.sql` (21 checks, run on production, rolled back),
+and live checks: 5 wrong then locked, other emails unaffected, bad input refused, foreign origins refused, and a throwaway customer proved a
+correct password signs in (then it was deleted).
+To unlock someone early (they typed it wrong 5 times): in the SQL editor run `delete from login_attempts;` (or only that key).
+The browser tests that sign in straight against Supabase's login with e2e test accounts will need the CAPTCHA off in the project they run
+against, or Cloudflare's dummy test keys, once the CAPTCHA is on.
