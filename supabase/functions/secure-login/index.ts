@@ -10,8 +10,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 // Supabase's edge runtime can finish small jobs after the answer has been sent (so the person does not wait for them).
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
-const inBackground = (p: Promise<unknown>) => {
-  const safe = p.catch(() => undefined);
+const inBackground = (p: PromiseLike<unknown>) => {
+  // a database request is a 'thenable' without .catch, so it is wrapped in a real promise first
+  const safe = Promise.resolve(p).catch(() => undefined);
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime) EdgeRuntime.waitUntil(safe);
 };
 
@@ -36,7 +37,7 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   const cors = corsFor(req);
   const json = (status: number, body: Record<string, unknown>, extra: Record<string, string> = {}) =>
     new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...extra } });
@@ -117,4 +118,16 @@ Deno.serve(async (req) => {
   }
   if (res.status === 429) return json(429, { error: 'Too many attempts. Please wait a few minutes and try again.' });
   return json(502, { error: 'Sign in did not work. Please try again.' });
+}
+
+// Safety net: whatever goes wrong, the browser still gets a proper answer (with the cross-site headers), never a bare crash.
+Deno.serve(async (req) => {
+  try {
+    return await handle(req);
+  } catch {
+    return new Response(JSON.stringify({ error: 'Sign in did not work. Please try again.' }), {
+      status: 500,
+      headers: { ...corsFor(req), 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  }
 });

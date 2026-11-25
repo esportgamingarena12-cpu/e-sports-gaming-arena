@@ -453,3 +453,10 @@ is thrown away and any session it made is ended), clears the success count after
 calls: about 0.5 to 0.9 s. The first call after idle is slower (the function starting up), so the login page sends a quiet empty "warm-up" request
 when it opens. A spinner shows on every sign-in button. The security-check widget shows Cloudflare's error code when it fails (and the login stops
 waiting for a token at once), to help find why the check fails on some browsers (it failed on localhost for the owner).
+
+### Fix: secure-login v3 (2026-11-25)
+v2 (the speed rewrite) broke every CORRECT password login: the background clean-up called `.catch` on a database request, which has none, so the
+function crashed and the browser saw "No connection". Wrong-password tests had passed, which is why it was missed. v3 wraps it in a real promise and
+adds a safety net so an unexpected error still returns a proper JSON answer with the cross-site headers. Re-tested live with a throwaway customer
+(deleted afterwards): correct password 200 with tokens, token accepted by Supabase, verify-only works, correct after two wrong still works.
+Rule from now on: any change to secure-login is tested for a CORRECT password as well as a wrong one before it is called done.
