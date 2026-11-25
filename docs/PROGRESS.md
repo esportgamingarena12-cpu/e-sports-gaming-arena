@@ -460,3 +460,13 @@ function crashed and the browser saw "No connection". Wrong-password tests had p
 adds a safety net so an unexpected error still returns a proper JSON answer with the cross-site headers. Re-tested live with a throwaway customer
 (deleted afterwards): correct password 200 with tokens, token accepted by Supabase, verify-only works, correct after two wrong still works.
 Rule from now on: any change to secure-login is tested for a CORRECT password as well as a wrong one before it is called done.
+
+### Turnstile switched OFF for now (2026-11-25)
+Cloudflare's check failed with code 600010 on localhost and on the live site (owner's Chrome and the automated browser), so it was not passing
+silently. Enforcing it in Supabase would have locked real visitors out, so `TURNSTILE_SITE_KEY` is set back to '' in `web/src/environments/*.ts`:
+the widget draws nothing and logins carry no token. Supabase's CAPTCHA was never switched on, so nothing changed there. Login protection now =
+the 5-failure / 15-minute lockout (secure-login) + Supabase's own limits + the neutral messages.
+Left in place and ready: the widget (`shared/turnstile.ts`), the token plumbing, the CSP entries for challenges.cloudflare.com, and the Cloudflare
+widget "E-Sports Gaming Arena login" (hostnames e-sports-gaming-arena.pages.dev, localhost). To try again: test the live /login in a normal
+full-size Chrome with DevTools closed, on mobile data and in a second browser; only if it passes silently every time put the site key back
+(`0x4AAAAAAGR6lR0Q65WpAeFA`, public) and push; then, last, the owner rotates the secret and pastes it into Supabase (Authentication > Attack Protection).

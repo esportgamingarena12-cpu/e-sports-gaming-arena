@@ -159,7 +159,7 @@ test.describe('create account and sign in with a password', () => {
   });
 
   test('sign in with a wrong password shows a plain message and sends the email and password to the secure login', async ({ page }) => {
-    let body: { email?: string; password?: string; verify_only?: boolean } = {};
+    let body: { email?: string; password?: string; verify_only?: boolean; captcha_token?: string } = {};
     await page.route(LOGIN, (route) => {
       if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
       body = route.request().postDataJSON();
@@ -170,7 +170,9 @@ test.describe('create account and sign in with a password', () => {
     await page.locator('[data-si-password]').fill('WrongOne1');
     await page.locator('[data-signin-submit]').click();
     await expect(page.locator('[data-error]')).toContainText('Wrong email or password');
-    expect(body).toMatchObject({ email: 'player@example.com', password: 'WrongOne1', verify_only: false, captcha_token: 'test-token' });
+    expect(body).toMatchObject({ email: 'player@example.com', password: 'WrongOne1', verify_only: false });
+    // the security-check token is sent only while the check is switched on (a site key is set)
+    expect(body.captcha_token ?? '').toBe(environment.TURNSTILE_SITE_KEY ? 'test-token' : '');
     await expect(page).toHaveURL(/\/book\/login/);
   });
 
