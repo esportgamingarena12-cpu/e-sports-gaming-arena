@@ -62,6 +62,9 @@ function loadTurnstile(): Promise<TurnstileApi> {
   selector: 'app-turnstile',
   template: `
     <div #box class="flex justify-center" data-turnstile></div>
+    @if (passed()) {
+      <p class="mt-1 text-center text-xs text-emerald-300" role="status" data-turnstile-passed>Security check passed</p>
+    }
     @if (problem(); as p) {
       <p class="mt-1 text-center text-xs text-amber-300" role="status" data-turnstile-problem>
         The security check could not run (code {{ p }}). You can still try to sign in.
@@ -73,6 +76,8 @@ export class Turnstile implements AfterViewInit, OnDestroy {
   readonly token = output<string>();
   /** the error code Cloudflare gave when the check failed (shown to help find the cause) */
   protected readonly problem = signal<string | null>(null);
+  /** true while a valid token is held */
+  protected readonly passed = signal(false);
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
   private widgetId: string | null = null;
   private destroyed = false;
@@ -92,11 +97,16 @@ export class Turnstile implements AfterViewInit, OnDestroy {
           callback: (tok: string) => {
             checkFailed = false;
             this.problem.set(null);
+            this.passed.set(true);
             this.token.emit(tok);
           },
-          'expired-callback': () => this.token.emit(''),
+          'expired-callback': () => {
+            this.passed.set(false);
+            this.token.emit('');
+          },
           'error-callback': (code?: string | number) => {
             checkFailed = true;
+            this.passed.set(false);
             this.problem.set(String(code ?? 'unknown'));
             console.warn('Security check problem, code', code); // the code is not sensitive; it helps find the cause
             this.token.emit('');
@@ -111,6 +121,7 @@ export class Turnstile implements AfterViewInit, OnDestroy {
   reset(): void {
     checkFailed = false;
     this.problem.set(null);
+    this.passed.set(false);
     this.token.emit('');
     if (this.widgetId && window.turnstile) window.turnstile.reset(this.widgetId);
   }
