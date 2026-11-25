@@ -445,3 +445,11 @@ the owner pastes the secret into Supabase. To switch the CAPTCHA off in an emerg
 Checked: with Cloudflare's published always-passes test key a token is issued under the exact security policy with no violations; the browser
 tests use a stand-in script and prove the token is sent with the login. The real key was not tested in the automated browser (Cloudflare does
 not complete its check there).
+
+### Faster secure login (2026-11-25)
+The first secure-login took 1.6 to 3.5 s (several database calls one after another). Now: migration `0032_login_failed_pair.sql` (one call counts a
+failure for the account and the address); the function runs the lock check and Supabase's login at the same time (a locked account's login answer
+is thrown away and any session it made is ended), clears the success count after the answer is sent, and counts a failure before answering. Warm
+calls: about 0.5 to 0.9 s. The first call after idle is slower (the function starting up), so the login page sends a quiet empty "warm-up" request
+when it opens. A spinner shows on every sign-in button. The security-check widget shows Cloudflare's error code when it fails (and the login stops
+waiting for a token at once), to help find why the check fails on some browsers (it failed on localhost for the owner).

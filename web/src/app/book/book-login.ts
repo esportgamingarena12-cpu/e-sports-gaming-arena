@@ -100,6 +100,7 @@ const FIELD =
                 <input type="checkbox" formControlName="remember" class="size-4 accent-violet-500" data-remember /> Remember me
               </label>
               <button type="submit" [disabled]="signinForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signin-submit>
+                @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
                 {{ busy() ? 'Signing in…' : 'Sign in' }}
                 @if (!busy()) { <app-icon name="arrow" /> }
               </button>
@@ -155,6 +156,7 @@ const FIELD =
                   I am 18 or older, or my parent or guardian agrees.</span>
               </label>
               <button type="submit" [disabled]="signupForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signup-submit>
+                @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
                 {{ busy() ? 'Creating your account…' : 'Create account' }}
                 @if (!busy()) { <app-icon name="arrow" /> }
               </button>
@@ -206,6 +208,7 @@ export class BookLogin implements OnInit {
     { validators: passwordsAgree },
   );
   constructor() {
+    this.auth.warmUpLogin();
     // the banner shows the real rates; if the shop info cannot be loaded it just shows the plain chips
     void this.svc.info().then((i) => this.info.set(i)).catch(() => undefined);
   }

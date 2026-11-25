@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, output, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, output, signal, viewChild } from '@angular/core';
 import { environment } from '../../environments/environment';
 
 interface TurnstileApi {
@@ -25,9 +25,13 @@ export const CAPTCHA_REQUIRED = !!environment.TURNSTILE_SITE_KEY;
 export async function waitForToken(read: () => string, ms = 4000): Promise<string> {
   if (!CAPTCHA_REQUIRED) return '';
   const end = Date.now() + ms;
-  while (!read() && Date.now() < end) await new Promise((r) => setTimeout(r, 100));
+  // stop waiting at once when the check has already failed: no token is coming
+  while (!read() && !checkFailed && Date.now() < end) await new Promise((r) => setTimeout(r, 100));
   return read();
 }
+
+/** True while the security check is in a failed state (set by the widget). */
+let checkFailed = false;
 
 /** Loads Cloudflare's script once and resolves when `window.turnstile` is ready. */
 let loading: Promise<TurnstileApi> | null = null;
@@ -56,10 +60,19 @@ function loadTurnstile(): Promise<TurnstileApi> {
  */
 @Component({
   selector: 'app-turnstile',
-  template: `<div #box class="flex justify-center" data-turnstile></div>`,
+  template: `
+    <div #box class="flex justify-center" data-turnstile></div>
+    @if (problem(); as p) {
+      <p class="mt-1 text-center text-xs text-amber-300" role="status" data-turnstile-problem>
+        The security check could not run (code {{ p }}). You can still try to sign in.
+      </p>
+    }
+  `,
 })
 export class Turnstile implements AfterViewInit, OnDestroy {
   readonly token = output<string>();
+  /** the error code Cloudflare gave when the check failed (shown to help find the cause) */
+  protected readonly problem = signal<string | null>(null);
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
   private widgetId: string | null = null;
   private destroyed = false;
@@ -76,9 +89,19 @@ export class Turnstile implements AfterViewInit, OnDestroy {
           sitekey: environment.TURNSTILE_SITE_KEY,
           appearance: 'interaction-only',
           theme: 'dark',
-          callback: (tok: string) => this.token.emit(tok),
+          callback: (tok: string) => {
+            checkFailed = false;
+            this.problem.set(null);
+            this.token.emit(tok);
+          },
           'expired-callback': () => this.token.emit(''),
-          'error-callback': () => this.token.emit(''),
+          'error-callback': (code?: string | number) => {
+            checkFailed = true;
+            this.problem.set(String(code ?? 'unknown'));
+            console.warn('Security check problem, code', code); // the code is not sensitive; it helps find the cause
+            this.token.emit('');
+            return false; // let Cloudflare show its own message too
+          },
         });
       })
       .catch(() => this.token.emit(''));
@@ -86,6 +109,8 @@ export class Turnstile implements AfterViewInit, OnDestroy {
 
   /** Asks for a fresh token (the old one was used). */
   reset(): void {
+    checkFailed = false;
+    this.problem.set(null);
     this.token.emit('');
     if (this.widgetId && window.turnstile) window.turnstile.reset(this.widgetId);
   }

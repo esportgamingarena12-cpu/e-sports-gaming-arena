@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
-import { secureLogin } from './secure-login';
+import { secureLogin, warmSecureLogin } from './secure-login';
 import { googleRedirectUrl, PendingGoogle, rememberPending, takePending } from './google-login';
 import { consentNeeded, LEGAL_VERSION } from './legal';
 import { homeFor, Profile, Role } from './models';
@@ -112,6 +112,11 @@ export class AuthService {
       throw new Error('This login is for staff. Customers sign in from the Book page.');
     }
     return p;
+  }
+
+  /** Called when a login page opens: wakes the login function so signing in is quick. */
+  warmUpLogin(): void {
+    warmSecureLogin(this.sb);
   }
 
   /**

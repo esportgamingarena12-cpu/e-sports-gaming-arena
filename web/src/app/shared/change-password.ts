@@ -46,7 +46,8 @@ import { Turnstile, waitForToken } from './turnstile';
         @if (needsCurrent()) { <app-turnstile (token)="captcha.set($event)" /> }
         <div class="flex gap-2">
           <button type="submit" class="btn-primary flex-1" [disabled]="busy()" data-save>
-            <app-icon name="lock" [size]="16" /> {{ busy() ? 'Saving…' : 'Change password' }}
+            @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
+            @if (!busy()) { <app-icon name="lock" [size]="16" /> } {{ busy() ? 'Saving…' : 'Change password' }}
           </button>
           <a class="btn" [routerLink]="home()">Back</a>
         </div>

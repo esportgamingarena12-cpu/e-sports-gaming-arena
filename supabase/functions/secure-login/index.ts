@@ -8,6 +8,13 @@
 // Secrets used (set by Supabase for every function): SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+// Supabase's edge runtime can finish small jobs after the answer has been sent (so the person does not wait for them).
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
+const inBackground = (p: Promise<unknown>) => {
+  const safe = p.catch(() => undefined);
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime) EdgeRuntime.waitUntil(safe);
+};
+
 const ALLOWED_ORIGINS = ['https://e-sports-gaming-arena.pages.dev', 'http://localhost:4200', 'http://127.0.0.1:4200'];
 const WINDOW_MINUTES = 15;
 const ACCOUNT_MAX = 5;
@@ -60,35 +67,35 @@ Deno.serve(async (req) => {
   const acctKey = `acct:${await sha256Hex(email)}`;
   const ipKey = `ip:${ip}`;
 
-  // ---- locked? ----
-  const { data: wait, error: lockErr } = await db.rpc('login_locked', { p_keys: [acctKey, ipKey] });
-  if (lockErr) return json(503, { error: 'Sign in did not work. Please try again.' }); // fail closed: never skip the check
+  // ---- the lock check and the real login run at the same time, so a normal login waits only once ----
+  // (If the account turns out to be locked the login answer is thrown away and any session it made is ended: nothing is learned from it.)
+  const lockCheck = db.rpc('login_locked', { p_keys: [acctKey, ipKey] });
+  const login = fetch(`${url}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(captcha ? { email, password, gotrue_meta_security: { captcha_token: captcha } } : { email, password }),
+  }).catch(() => null);
+  const [{ data: wait, error: lockErr }, res] = await Promise.all([lockCheck, login]);
+  const out = res ? ((await res.json().catch(() => ({}))) as Record<string, unknown>) : {};
+
+  const endSession = (accessToken: unknown) =>
+    inBackground(fetch(`${url}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey: anonKey, Authorization: `Bearer ${accessToken as string}` } }));
+
+  if (lockErr) {
+    if (res?.ok) endSession(out.access_token);
+    return json(503, { error: 'Sign in did not work. Please try again.' }); // fail closed: never skip the check
+  }
   if (typeof wait === 'number' && wait > 0) {
+    if (res?.ok) endSession(out.access_token);
     return json(429, { error: `Too many attempts. Please try again in ${Math.ceil(wait / 60)} minutes.`, retry_after: wait }, { 'Retry-After': String(wait) });
   }
-
-  // ---- the real login, done by Supabase ----
-  let res: Response;
-  try {
-    res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: { apikey: anonKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify(captcha ? { email, password, gotrue_meta_security: { captcha_token: captcha } } : { email, password }),
-    });
-  } catch {
-    return json(503, { error: 'Sign in did not work. Please try again.' });
-  }
-  const out = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res) return json(503, { error: 'Sign in did not work. Please try again.' });
 
   if (res.ok) {
-    await db.rpc('login_succeeded', { p_key: acctKey });
+    inBackground(db.rpc('login_succeeded', { p_key: acctKey })); // clearing the count can happen after the answer is sent
     if (verifyOnly) {
-      // only checking the password (Change password): end the extra session straight away and send nothing back
-      try {
-        await fetch(`${url}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey: anonKey, Authorization: `Bearer ${out.access_token as string}` } });
-      } catch {
-        /* the extra session simply expires */
-      }
+      // only checking the password (Change password): end the extra session and send nothing back
+      endSession(out.access_token);
       return json(200, { ok: true });
     }
     return json(200, out);
@@ -101,9 +108,8 @@ Deno.serve(async (req) => {
   if (/captcha/i.test(code) || /captcha/i.test(msg)) return json(400, { error: 'Please complete the security check and try again.', code: 'captcha' });
 
   if (res.status === 400 && (code === 'invalid_credentials' || /invalid login credentials/i.test(msg))) {
-    // unknown email and wrong password are counted the same way and answered the same way
-    await db.rpc('login_failed', { p_key: acctKey, p_max: ACCOUNT_MAX, p_minutes: WINDOW_MINUTES });
-    await db.rpc('login_failed', { p_key: ipKey, p_max: IP_MAX, p_minutes: WINDOW_MINUTES });
+    // unknown email and wrong password are counted the same way and answered the same way (waited for: the count must not be skipped)
+    await db.rpc('login_failed_pair', { p_acct: acctKey, p_ip: ipKey, p_acct_max: ACCOUNT_MAX, p_ip_max: IP_MAX, p_minutes: WINDOW_MINUTES });
     return json(401, { error: 'Wrong email or password' });
   }
   if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg)) {

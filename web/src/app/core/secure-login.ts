@@ -20,6 +20,14 @@ export function loginFailureText(status: number, body: { error?: string; code?: 
   return GENERIC;
 }
 
+/**
+ * Wakes the secure-login function while the login page is open, so the first real sign-in does not wait for it to start.
+ * It sends an empty request that is refused straight away (nothing is counted or stored) and ignores the answer.
+ */
+export function warmSecureLogin(sb: SupabaseClient): void {
+  void Promise.resolve(sb.functions.invoke('secure-login', { body: {} })).catch(() => undefined);
+}
+
 export interface LoginRequest {
   email: string;
   password: string;

@@ -50,6 +50,7 @@ import { Turnstile, waitForToken } from './turnstile';
           }
           <app-turnstile (token)="captcha.set($event)" />
           <button type="submit" [disabled]="form.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
+            @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
             {{ busy() ? 'Signing in…' : 'Sign in' }}
             @if (!busy()) { <app-icon name="arrow" /> }
           </button>
@@ -74,6 +75,7 @@ export class Login {
   });
 
   constructor() {
+    this.auth.warmUpLogin();
     // already signed in when the page opens -> go to your own area.
     // (While signing in, submit() does the redirect, so this must not fire a second one.)
     effect(() => {
