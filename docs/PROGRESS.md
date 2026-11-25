@@ -478,3 +478,13 @@ detected". The public site key is back in `web/src/environments/*.ts` and a smal
 Supabase's CAPTCHA is still OFF (not enforced), so logins work with or without a token. Remaining order: (1) owner tests the live /login in a
 normal Chrome and on a phone using mobile data; (2) owner rotates the Turnstile secret in Cloudflare and pastes it into Supabase > Authentication >
 Attack Protection > CAPTCHA (Turnstile); (3) owner signs in right after; if it fails, switch the Supabase CAPTCHA off and tell the assistant.
+
+### Turnstile CAPTCHA enforced in Supabase (2026-11-25): DONE
+The owner rotated the Turnstile secret in Cloudflare and saved it in Supabase > Authentication > Attack Protection > "Enable Captcha protection"
+(provider Turnstile by Cloudflare; this switch is at the top of that page: the "DISABLED / Configure in email provider" label belongs to the
+paid-plan "leaked passwords" row below it). Live tests by the owner: normal Chrome and phone on mobile data pass the check silently; admin login works.
+Checked from outside after saving: Supabase's own login with no token answers `captcha_failed (no captcha_token found)`, with a fake token
+`captcha_failed (invalid-input-response)`, and secure-login answers "Please complete the security check" (not counted against the account).
+Login protection now = Turnstile check (Supabase enforces it) + 5-failure / 15-minute lockout (secure-login) + Supabase limits + neutral messages.
+To switch it off in an emergency: Supabase > Authentication > Attack Protection > turn "Enable Captcha protection" off > Save changes.
+Local development: logging in with DevTools open (or an automated browser) fails the check; close DevTools, or switch the CAPTCHA off while developing.
