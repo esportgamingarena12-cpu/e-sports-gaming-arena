@@ -73,6 +73,24 @@ export interface TickerItem {
   text: string;
 }
 
+const sameTitle = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * The upcoming games that cannot be played yet. A game the shop has already added to its games list (so it is on the counter
+ * and can be played) is no longer "coming soon", even if it is still on the upcoming list.
+ */
+export function stillComing(upcoming: UpcomingGame[] | null | undefined, games: PublicGame[] | null | undefined): UpcomingGame[] {
+  const playable = games ?? [];
+  return (upcoming ?? []).filter((u) => !playable.some((g) => sameTitle(g.title, u.title)));
+}
+
+/** The label of the ticker: it says what is in it ("Coming soon", "New games", or both). */
+export function tickerLabel(items: TickerItem[]): string {
+  const soon = items.some((i) => i.kind === 'soon');
+  const fresh = items.some((i) => i.kind === 'new');
+  return soon && fresh ? 'New & coming soon' : fresh ? 'New games' : 'Coming soon';
+}
+
 /**
  * The lines of the scrolling ticker: upcoming games first (soonest first, an unknown date last), then games marked
  * New that can be played now. A release date in the past is shown without the date.
@@ -82,7 +100,7 @@ export function tickerItems(
   games: PublicGame[] | null | undefined,
   nowMs: number,
 ): TickerItem[] {
-  const soon: TickerItem[] = (upcoming ?? []).map((u) => {
+  const soon: TickerItem[] = stillComing(upcoming, games).map((u) => {
     const parts = [u.title];
     const when = releaseLabel(u.release_date);
     const left = countdownText(u.release_date, nowMs);

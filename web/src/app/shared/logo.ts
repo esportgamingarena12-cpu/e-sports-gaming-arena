@@ -1,7 +1,8 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { BrandingService, titleLines } from '../core/branding';
 import { Icon } from './icon';
 
-/** Controller mark with the two-line shop name. The full name is kept for screen readers and tests. */
+/** Controller mark with the shop name on two lines (first word over the rest). The full name is kept for screen readers and tests. */
 @Component({
   selector: 'app-logo',
   imports: [Icon],
@@ -12,13 +13,20 @@ import { Icon } from './icon';
         <app-icon name="gamepad" [size]="22" />
       </span>
       <span class="leading-none" [class.hidden]="compact()">
-        <span class="sr-only">E-Sports Gaming Arena</span>
-        <span aria-hidden="true" class="block font-display text-lg font-bold tracking-wider text-slate-50">E-SPORTS</span>
-        <span aria-hidden="true" class="block font-display text-xs font-bold tracking-[0.22em] text-cyan-300">GAMING ARENA</span>
+        <span class="sr-only">{{ name() }}</span>
+        @if (lines().top) {
+          <span aria-hidden="true" class="block font-display text-lg font-bold tracking-wider text-slate-50">{{ lines().top }}</span>
+          <span aria-hidden="true" class="block font-display text-xs font-bold tracking-[0.22em] text-cyan-300">{{ lines().main }}</span>
+        } @else {
+          <span aria-hidden="true" class="block font-display text-lg font-bold tracking-wider text-slate-50">{{ lines().main }}</span>
+        }
       </span>
     </span>
   `,
 })
 export class Logo {
   readonly compact = input(false);
+  private readonly branding = inject(BrandingService);
+  protected readonly name = computed(() => this.branding.brand().shop_name);
+  protected readonly lines = computed(() => titleLines(this.name()));
 }

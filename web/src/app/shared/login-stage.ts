@@ -1,4 +1,5 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { BrandingService, fitLength, titleLines } from '../core/branding';
 
 /**
  * The animated banner beside the login forms: a neon arena at night drawn in SVG, with moving screens,
@@ -8,8 +9,8 @@ import { Component, input } from '@angular/core';
 @Component({
   selector: 'app-login-stage',
   template: `
-    <div class="relative isolate h-full min-h-44 overflow-hidden bg-[#0b0820]" data-stage [attr.data-variant]="variant()">
-      <svg viewBox="0 0 600 640" preserveAspectRatio="xMidYMid slice" class="absolute inset-0 size-full" aria-hidden="true">
+    <div class="relative isolate h-full min-h-44 overflow-hidden bg-[#0b0820] md:bg-[radial-gradient(ellipse_at_72%_35%,rgb(139_92_246_/_0.4),transparent_62%),radial-gradient(ellipse_at_10%_100%,rgb(217_70_239_/_0.25),transparent_55%)]" data-stage [attr.data-variant]="variant()">
+      <svg viewBox="0 0 600 640" preserveAspectRatio="xMidYMid slice" class="absolute inset-0 size-full md:inset-y-0 md:left-[33%] lg:left-[38%] xl:left-[44%] md:w-[min(72vw,64rem)] lg:w-[min(58vw,64rem)] md:-translate-x-1/2 md:[mask-image:linear-gradient(to_right,transparent,black_20%,black_80%,transparent)]" aria-hidden="true" data-stage-scene>
         <defs>
           <linearGradient id="ls-sky" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#2a1166" /><stop offset="0.55" stop-color="#14103a" /><stop offset="1" stop-color="#0b0820" />
@@ -42,8 +43,12 @@ import { Component, input } from '@angular/core';
         <g class="ls-flicker">
           <rect x="170" y="84" width="260" height="76" rx="16" fill="#0b0b14" stroke="#22d3ee" stroke-width="3.5" />
           <rect x="170" y="84" width="260" height="76" rx="16" fill="none" stroke="#22d3ee" stroke-width="10" opacity="0.45" filter="url(#ls-blur)" />
-          <text x="300" y="124" text-anchor="middle" fill="#ede9fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="34" letter-spacing="6" font-style="italic">E-SPORTS</text>
-          <text x="300" y="148" text-anchor="middle" fill="#22d3ee" font-family="Rajdhani, sans-serif" font-weight="700" font-size="16" letter-spacing="9">GAMING ARENA</text>
+          @if (lines().top) {
+            <text x="300" y="124" text-anchor="middle" fill="#ede9fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="34" letter-spacing="6" font-style="italic" lengthAdjust="spacingAndGlyphs" [attr.textLength]="topFit()">{{ lines().top }}</text>
+            <text x="300" y="148" text-anchor="middle" fill="#22d3ee" font-family="Rajdhani, sans-serif" font-weight="700" font-size="16" letter-spacing="9" lengthAdjust="spacingAndGlyphs" [attr.textLength]="mainFit()">{{ lines().main }}</text>
+          } @else {
+            <text x="300" y="136" text-anchor="middle" fill="#ede9fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="30" letter-spacing="6" font-style="italic" lengthAdjust="spacingAndGlyphs" [attr.textLength]="mainFit()">{{ lines().main }}</text>
+          }
         </g>
 
         <!-- floor with perspective grid -->
@@ -117,16 +122,19 @@ import { Component, input } from '@angular/core';
         </g>
       </svg>
 
+      <!-- desktop: the scene fades into the page on its left and right edges, so the headline sits on calm dark -->
+      <div class="pointer-events-none absolute inset-y-0 left-0 hidden w-[46%] bg-linear-to-r from-[#0b0820]/95 via-[#0b0820]/75 to-transparent md:block" aria-hidden="true"></div>
+      <div class="pointer-events-none absolute inset-x-0 bottom-0 hidden h-40 bg-linear-to-t from-[#0b0820] to-transparent md:block" aria-hidden="true"></div>
       <!-- vignette so the text stays readable -->
       <div class="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-linear-to-t from-[#0b0820] via-[#0b0820]/70 to-transparent"></div>
 
-      <div class="relative flex h-full min-h-44 flex-col justify-end gap-2 p-5 sm:p-7">
-        <span class="eyebrow">{{ eyebrow() }}</span>
-        <h2 class="font-display text-2xl font-bold leading-tight text-slate-50 sm:text-4xl">
+      <div class="relative flex h-full min-h-44 flex-col justify-end gap-2 p-5 sm:p-7 md:min-h-[calc(100vh-4rem)] md:max-w-[calc(100vw-27rem)] lg:max-w-[46rem] md:justify-center md:gap-5 md:px-[5vw] md:pb-24">
+        <span class="eyebrow">{{ eyebrow() || shopName() }}</span>
+        <h2 class="font-display text-2xl font-bold leading-tight text-balance text-slate-50 sm:text-4xl md:text-4xl lg:text-5xl md:leading-[0.98] xl:text-6xl min-[1400px]:text-7xl" data-stage-headline>
           {{ headline() }}
         </h2>
-        <p class="hidden max-w-sm text-sm text-slate-300 sm:block">{{ tagline() }}</p>
-        <ul class="mt-1 hidden flex-wrap gap-2 sm:flex" data-chips>
+        <p class="hidden max-w-sm text-sm text-slate-300 sm:block md:max-w-xs md:text-base md:text-slate-200 lg:max-w-md lg:text-lg">{{ tagline() }}</p>
+        <ul class="mt-1 hidden flex-wrap gap-2 sm:flex md:hidden lg:flex" data-chips>
           @for (c of chips(); track c) {
             <li class="rounded-full border border-cyan-400/40 bg-slate-950/60 px-3 py-1 text-xs font-medium text-cyan-200 backdrop-blur">{{ c }}</li>
           }
@@ -160,7 +168,13 @@ import { Component, input } from '@angular/core';
 })
 export class LoginStage {
   readonly variant = input<'staff' | 'customer'>('customer');
-  readonly eyebrow = input('E-Sports Gaming Arena');
+  private readonly branding = inject(BrandingService);
+  protected readonly shopName = computed(() => this.branding.brand().shop_name);
+  protected readonly lines = computed(() => titleLines(this.shopName()));
+  /** a long name is squeezed into the sign (the sign is 260 wide) */
+  protected readonly topFit = computed(() => fitLength(this.lines().top, 9, 230));
+  protected readonly mainFit = computed(() => fitLength(this.lines().main, 14, 230));
+  readonly eyebrow = input<string>('');
   readonly headline = input('Level up your game time');
   readonly tagline = input('Book a station, play, pay at the counter.');
   readonly chips = input<string[]>([]);

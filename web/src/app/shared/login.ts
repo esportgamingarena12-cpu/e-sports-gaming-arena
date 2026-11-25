@@ -10,15 +10,15 @@ import { Turnstile, waitForToken } from './turnstile';
   selector: 'app-login',
   imports: [ReactiveFormsModule, Icon, LoginStage, Turnstile],
   template: `
-    <section class="mx-auto my-4 grid max-w-5xl overflow-hidden rounded-2xl border border-violet-500/30 bg-slate-900/70 shadow-[0_0_60px_-20px_rgb(139_92_246_/_0.8)] sm:my-8 md:min-h-[34rem] md:grid-cols-[1.05fr_1fr]">
-      <app-login-stage class="h-44 md:h-auto" variant="staff" eyebrow="Staff area"
+    <section class="relative isolate mx-auto my-4 grid max-w-5xl overflow-hidden rounded-2xl border border-violet-500/30 bg-slate-900/70 shadow-[0_0_60px_-20px_rgb(139_92_246_/_0.8)] sm:my-8 md:my-0 md:flex md:min-h-[calc(100vh-4rem)] md:max-w-none md:items-center md:rounded-none md:border-0 md:bg-transparent md:px-[5vw] md:shadow-none" data-login-screen>
+      <app-login-stage class="h-44 md:absolute md:inset-0 md:h-auto" variant="staff" eyebrow="Staff area"
         headline="Run the arena like a pro"
         tagline="Stations, billing, canteen and reports, all in one place."
         [chips]="['Live stations', 'Fast billing', 'Reports']" />
 
-      <div class="flex flex-col justify-center p-5 sm:p-9">
-        <span class="eyebrow">Welcome back</span>
-        <h1 class="mt-1 font-display text-3xl font-bold tracking-wide text-slate-50">Staff login</h1>
+      <div class="relative z-10 flex flex-col justify-center p-5 sm:p-9 md:my-10 md:ml-auto md:w-[23rem] lg:w-[26rem] xl:w-[28rem] md:max-w-full md:rounded-3xl md:border md:border-white/10 md:bg-[#0d0a24]/70 md:p-7 lg:p-8 xl:p-10 md:shadow-[0_30px_90px_-20px_rgb(0_0_0_/_0.9),0_0_90px_-30px_rgb(139_92_246_/_0.9),inset_0_1px_0_rgb(255_255_255_/_0.08)] md:backdrop-blur-2xl" data-login-panel>
+        <span class="pointer-events-none absolute inset-x-10 top-0 hidden h-px bg-linear-to-r from-transparent via-cyan-300 to-transparent md:block" aria-hidden="true"></span>
+        <h1 class="font-display text-3xl font-bold tracking-wide text-slate-50">Staff login</h1>
         <p class="mt-1 text-sm text-slate-400">Admin and counter staff.</p>
 
         @if (auth.notice(); as n) {

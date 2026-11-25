@@ -1,7 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AppUpdate } from './core/app-update';
+import { BrandingService } from './core/branding';
 import { AuthService } from './core/auth.service';
 import { homeFor } from './core/models';
 import { ReceiptView } from './counter/receipt/receipt';
@@ -35,7 +36,9 @@ export class App {
   private readonly router = inject(Router);
   /** starts watching for new versions of the app (see core/app-update.ts) */
   private readonly appUpdate = inject(AppUpdate);
-  protected readonly appName = 'E-Sports Gaming Arena';
+  private readonly branding = inject(BrandingService);
+  /** The shop name from Settings (the built-in name until it is loaded). */
+  protected readonly appName = computed(() => this.branding.brand().shop_name);
 
   /** False while the device has no connection (the installed app still opens its saved shell). */
   protected readonly online = signal(typeof navigator === 'undefined' ? true : navigator.onLine);
@@ -44,11 +47,13 @@ export class App {
   private readonly url = signal(this.router.url);
 
   constructor() {
+    this.branding.load();
     window.addEventListener('online', () => this.online.set(true));
     window.addEventListener('offline', () => this.online.set(false));
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e) => {
       this.url.set((e as NavigationEnd).urlAfterRedirects);
       this.menuOpen.set(false);
+      setTimeout(() => this.updateSection(), 60); // the page has drawn: work out which section is showing
     });
   }
 
@@ -92,6 +97,7 @@ export class App {
               { label: 'Products', path: '/admin/products', icon: 'tag' },
               { label: 'Games', path: '/admin/games', icon: 'gamepad' },
               { label: 'Booking rules', path: '/admin/booking-settings', icon: 'clock' },
+              { label: 'Home page wording', short: 'Wording', path: '/admin/branding', icon: 'sliders' },
               { label: 'Staff Management', short: 'Staff', path: '/admin/staff', icon: 'users' },
             ],
           },
@@ -147,13 +153,50 @@ export class App {
   });
 
   /** Visitor and customer top bar: sections of the booking page, plus My bookings for a customer. */
-  protected readonly topLinks = computed<{ label: string; path: string; fragment?: string }[]>(() => [
-    { label: 'Home', path: '/book' },
-    { label: 'The Studio', path: '/book', fragment: 'studio' },
-    { label: 'Rates', path: '/book', fragment: 'rates' },
-    { label: 'Book', path: '/book', fragment: 'book' },
-    ...(this.auth.role() === 'customer' ? [{ label: 'My bookings', path: '/book/my-bookings' }] : []),
+  protected readonly topLinks = computed<{ label: string; path: string; fragment?: string; icon: string }[]>(() => [
+    { label: 'Home', path: '/book', icon: 'home' },
+    { label: 'The Studio', path: '/book', fragment: 'studio', icon: 'gamepad' },
+    { label: 'Rates', path: '/book', fragment: 'rates', icon: 'rupee' },
+    { label: 'Book', path: '/book', fragment: 'book', icon: 'calendar' },
+    ...(this.auth.role() === 'customer' ? [{ label: 'My bookings', path: '/book/my-bookings', icon: 'receipt' }] : []),
   ]);
+
+  /** Escape closes the phone menu. */
+  @HostListener('document:keydown.escape')
+  protected closeMenuOnEscape(): void {
+    if (this.menuOpen()) this.menuOpen.set(false);
+  }
+
+  /** Which section of the booking page is at the top of the screen ('' = the very top), for the highlighted menu link. */
+  protected readonly section = signal('');
+  private sectionFrame = 0;
+
+  @HostListener('window:scroll')
+  protected onScroll(): void {
+    if (this.sectionFrame) return;
+    this.sectionFrame = requestAnimationFrame(() => {
+      this.sectionFrame = 0;
+      this.updateSection();
+    });
+  }
+
+  private updateSection(): void {
+    let cur = '';
+    if (this.url().split(/[?#]/)[0] === '/book') {
+      for (const id of ['studio', 'rates', 'book']) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= 140) cur = id;
+      }
+    }
+    if (cur !== this.section()) this.section.set(cur);
+  }
+
+  /** True when a top-bar link is the one for where the visitor is: Home at the top, a section while it is on screen, or the page itself. */
+  protected isActive(l: { label: string; path: string; fragment?: string }): boolean {
+    const path = this.url().split(/[?#]/)[0];
+    if (l.path === '/book') return path === '/book' && this.section() === (l.fragment ?? '');
+    return path === l.path;
+  }
 
   /** True on the plain booking page (no section anchor), for the highlighted Home link. */
   protected readonly isHome = computed(() => this.url().split(/[?#]/)[0] === '/book' && !this.url().includes('#'));

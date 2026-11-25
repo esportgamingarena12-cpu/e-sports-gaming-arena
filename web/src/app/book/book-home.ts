@@ -13,7 +13,9 @@ import { buildPlans } from './plans';
 import { LegalLinks } from '../legal/legal-links';
 import { FoodPic } from '../shared/food-image';
 import { ServerClock } from '../core/server-clock';
-import { gamesFor, tickerItems } from './games';
+import { BrandingService, fillBrand, glowParts, taglineParts, titleLines } from '../core/branding';
+import { gamesFor, stillComing, tickerItems, tickerLabel } from './games';
+import { dayChips, dayText } from './slot-picker';
 import { buildRateCard, gameHighlights, HoursGroup, hoursSummary, istParts, minutesLabel, openStatus } from './rate-card';
 
 const addDays = (day: string, n: number): string =>
@@ -26,9 +28,9 @@ const addDays = (day: string, n: number): string =>
   template: `
     <!-- Coming-soon ticker: upcoming games and the new ones, set by the owner in Admin > Games -->
     @if (ticker().length > 0) {
-      <div class="relative border-y border-fuchsia-400/30 bg-linear-to-r from-violet-900/70 via-slate-950 to-fuchsia-900/60" role="region" aria-label="Coming soon" data-ticker>
+      <div class="relative border-y border-fuchsia-400/30 bg-linear-to-r from-violet-900/70 via-slate-950 to-fuchsia-900/60" role="region" [attr.aria-label]="tickerTitle()" data-ticker>
         <div class="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2">
-          <span class="shrink-0 rounded-full bg-linear-to-r from-violet-600 to-fuchsia-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_16px_-2px_rgb(217_70_239_/_0.9)]">Coming soon</span>
+          <span class="shrink-0 rounded-full bg-linear-to-r from-violet-600 to-fuchsia-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_16px_-2px_rgb(217_70_239_/_0.9)]" data-ticker-label>{{ tickerTitle() }}</span>
           <div class="ticker-viewport relative min-w-0 flex-1 overflow-hidden" tabindex="0" aria-label="Upcoming and new games">
             <ul class="ticker-track flex w-max items-center gap-10 whitespace-nowrap" [style.--ticker-time]="tickerSeconds()" [style.--ticker-shift]="tickerShift()">
               @for (c of tickerCopies(); track c) {
@@ -56,16 +58,15 @@ const addDays = (day: string, n: number): string =>
         <div appSlide class="grid items-center gap-4 md:grid-cols-[1fr_1.25fr]" data-slide-welcome>
         <div>
           <p class="eyebrow">Welcome to</p>
-          <h1 class="mt-2 font-display text-5xl font-bold italic leading-[0.95] tracking-wide sm:text-6xl lg:text-7xl">
-            E-SPORTS<br /><span class="glow-text">GAMING ARENA</span>
+          <h1 class="mt-2 font-display text-5xl font-bold italic leading-[0.95] tracking-wide sm:text-6xl lg:text-7xl" data-hero-title>
+            @if (lines().top) { {{ lines().top }}<br /> }<span class="glow-text">{{ lines().main }}</span>
           </h1>
-          <p class="mt-4 font-display text-lg font-semibold tracking-wide text-slate-100">
-            Play <span class="text-violet-400">|</span> Compete <span class="text-violet-400">|</span> Stream
-            <span class="text-violet-400">|</span> Repeat
+          <p class="mt-4 font-display text-lg font-semibold tracking-wide text-slate-100" data-tagline>
+            @for (w of taglineWords(); track $index; let last = $last) {
+              {{ w }} @if (!last) { <span class="text-violet-400">|</span> }
+            }
           </p>
-          <p class="mt-3 max-w-md text-sm text-slate-300">
-            A premium gaming studio with high-performance PCs and consoles, billed fairly by the minute. See what is free and book your slot in under a minute.
-          </p>
+          <p class="mt-3 max-w-md text-sm text-slate-300">{{ brand().hero_text }}</p>
           <div class="mt-6 flex flex-wrap gap-3">
             <a href="#book" class="btn-primary inline-flex items-center gap-2" data-hero-book>Book a Gaming Slot <app-icon name="play" [size]="16" /></a>
             <a href="#rates" class="btn-outline inline-flex items-center" data-view-rates>View Rates</a>
@@ -195,7 +196,7 @@ const addDays = (day: string, n: number): string =>
               <span class="grid size-14 place-items-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_0_30px_-4px_rgb(217_70_239_/_0.9)]"><app-icon name="cup" [size]="30" /></span>
               <p class="eyebrow mt-3">Canteen</p>
               <h2 class="mt-2 font-display text-4xl font-bold leading-[1] tracking-wide sm:text-5xl lg:text-6xl">Snacks &amp; food, <span class="glow-text">right where you play</span></h2>
-              <p class="mt-4 max-w-md text-sm text-slate-300">Hungry mid-game? Add food and drinks to your gaming bill and pay once at the counter.</p>
+              <p class="mt-4 max-w-md text-sm text-slate-300">{{ brand().canteen_intro }}</p>
               <ul class="mt-4 flex flex-wrap gap-2">
                 @for (cat of c.categories; track cat) {
                   <li class="rounded-full border border-fuchsia-300/40 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-fuchsia-100">{{ cat }}</li>
@@ -235,12 +236,10 @@ const addDays = (day: string, n: number): string =>
       <div class="grid items-center gap-6 md:grid-cols-2">
         <div class="overflow-hidden rounded-xl border border-violet-400/50 shadow-[0_0_50px_-10px_rgb(168_85_247_/_0.9)]"><app-room-art /></div>
         <div>
-          <h2 class="font-display text-3xl font-bold leading-tight sm:text-4xl">The Ultimate <span class="glow-text">Gaming</span> Studio in Your City</h2>
-          <p class="mt-3 text-sm text-slate-300">
-            Whether you are a casual gamer or a competitive player, E-Sports Gaming Arena gives you the right setup, comfort and honest pricing to level up your game.
-          </p>
+          <h2 class="font-display text-3xl font-bold leading-tight sm:text-4xl" data-studio-title>@for (p of studioTitle(); track $index) { @if (p.glow) { <span class="glow-text">{{ p.t }}</span> } @else { {{ p.t }} } }</h2>
+          <p class="mt-3 text-sm text-slate-300">{{ studioText() }}</p>
           <ul class="mt-4 space-y-2 text-sm" data-checks>
-            @for (c of checks; track c) {
+            @for (c of checks(); track c) {
               <li class="flex items-center gap-2"><span class="text-cyan-300"><app-icon name="check" [size]="18" /></span>{{ c }}</li>
             }
           </ul>
@@ -256,7 +255,7 @@ const addDays = (day: string, n: number): string =>
           <div class="text-center">
             <p class="eyebrow">Rates &amp; timings</p>
             <h2 class="mt-1 font-display text-4xl font-bold sm:text-5xl">Simple, <span class="glow-text">fixed prices</span></h2>
-            <p class="mx-auto mt-2 max-w-xl text-sm text-slate-300">Pick a game, pick your time. What you see here is what you pay, at the counter.</p>
+            <p class="mx-auto mt-2 max-w-xl text-sm text-slate-300">{{ brand().rates_intro }}</p>
           </div>
 
           <div class="mt-8 grid gap-5 lg:grid-cols-[1.5fr_1fr]">
@@ -371,7 +370,7 @@ const addDays = (day: string, n: number): string =>
               <span class="grid size-12 place-items-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_0_24px_-4px_rgb(217_70_239_/_0.8)]"><app-icon name="cup" [size]="26" /></span>
               <p class="eyebrow mt-3">Canteen</p>
               <h2 class="mt-1 font-display text-3xl font-bold sm:text-4xl">Snacks &amp; food, <span class="glow-text">right where you play</span></h2>
-              <p class="mt-3 text-sm text-slate-300">Hungry mid-game? Add food and drinks to your gaming bill and pay once at the counter.</p>
+              <p class="mt-3 text-sm text-slate-300">{{ brand().canteen_intro }}</p>
               <ul class="mt-4 flex flex-wrap gap-2" data-canteen-categories>
                 @for (cat of c.categories; track cat) {
                   <li class="rounded-full border border-fuchsia-300/40 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-fuchsia-100">{{ cat }}</li>
@@ -400,7 +399,7 @@ const addDays = (day: string, n: number): string =>
         <div class="text-center">
           <p class="eyebrow">Passes</p>
           <h2 class="mt-1 font-display text-3xl font-bold sm:text-4xl">Play more, <span class="glow-text">pay less</span></h2>
-          <p class="mt-1 text-sm text-slate-400">Daily and monthly passes, bought at the counter and used when you start a session.</p>
+          <p class="mt-1 text-sm text-slate-400">{{ brand().passes_intro }}</p>
         </div>
         <div class="mt-6 flex flex-wrap justify-center gap-3" data-plans>
           @for (p of plans(); track p.key) {
@@ -432,9 +431,12 @@ const addDays = (day: string, n: number): string =>
       </section>
     }
 
-    <!-- Booking -->
-    <section id="book" class="mx-auto max-w-3xl scroll-mt-20 px-4 pb-10 pt-8">
-      <h2 class="page-title">Book a slot{{ info()?.shop_name ? ' · ' + info()!.shop_name : '' }}</h2>
+    <!-- Booking: one compact card (choices on the left, free times on the right) so little scrolling is needed -->
+    <section id="book" class="mx-auto max-w-4xl scroll-mt-20 px-4 pb-8 pt-6">
+      <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+        <h2 class="font-display text-3xl font-bold leading-none sm:text-4xl" data-book-title>Book a <span class="glow-text">slot</span></h2>
+        @if (info(); as i) { <p class="text-xs text-slate-400">Times are India time. Cancel or change until {{ i.cutoff_hours }} h before.</p> }
+      </div>
 
       @if (loadError()) {
         <p class="mt-3 text-sm text-red-400" role="alert">{{ loadError() }}</p>
@@ -442,57 +444,105 @@ const addDays = (day: string, n: number): string =>
         @if (i.types.length === 0) {
           <p class="mt-3 text-sm text-slate-400">Online booking is not open yet. Please visit the counter.</p>
         } @else {
-          <div class="card mt-3 space-y-4 sm:p-5">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <label class="label">Game
-                <select class="field" data-type (change)="type.set($any($event.target).value); reload()">
-                  @for (t of i.types; track t) { <option [value]="t" [selected]="t === type()">{{ label(t) }}</option> }
-                </select>
-              </label>
-              <label class="label">Date
-                <input type="date" class="field" data-day [value]="day()" [min]="today" [max]="maxDay()"
-                       (change)="day.set($any($event.target).value); reload()" />
-              </label>
-              <label class="label">Length
-                <select class="field" data-slots (change)="slots.set(+$any($event.target).value); reload()">
-                  @for (n of lengths(); track n) {
-                    <option [value]="n" [selected]="n === slots()">{{ len(n) }}</option>
-                  }
-                </select>
-              </label>
-            </div>
-            <p class="text-xs text-slate-400">
-              Times are India time. You can cancel or change a booking until {{ i.cutoff_hours }} h before it starts.
-            </p>
+          <div class="relative mt-3 overflow-hidden rounded-2xl border border-violet-400/30 bg-slate-900/60 shadow-[0_24px_70px_-30px_rgb(0_0_0_/_0.9),0_0_60px_-30px_rgb(139_92_246_/_0.8),inset_0_1px_0_rgb(255_255_255_/_0.07)] backdrop-blur-xl" data-booking-card>
+            <span class="pointer-events-none absolute inset-x-10 top-0 h-px bg-linear-to-r from-transparent via-cyan-300 to-transparent" aria-hidden="true"></span>
 
-            @if (loading()) {
-              <p class="text-sm text-slate-400">Checking free times…</p>
-            } @else if (free().length === 0) {
-              <p class="text-sm text-amber-300" data-no-times>No free times for this choice. Try another date or length.</p>
-            } @else {
-              <div class="grid grid-cols-3 gap-2 sm:grid-cols-4" data-slots-grid>
-                @for (s of free(); track s.slot_start) {
-                  <button type="button" class="btn !py-2.5 font-medium" data-slot
-                          [class]="picked() === s.slot_start ? '!border-violet-400 !bg-linear-to-r !from-violet-600 !to-fuchsia-500 !text-white' : ''"
-                          (click)="pick(s)">
-                    {{ time(s.slot_start) }}
-                  </button>
+            <!-- the real select stays in the page (hidden) so the choice is also reachable without the buttons -->
+            <select class="sr-only" data-type tabindex="-1" aria-hidden="true" (change)="type.set($any($event.target).value); reload()">
+              @for (t of i.types; track t) { <option [value]="t" [selected]="t === type()">{{ label(t) }}</option> }
+            </select>
+
+            <div class="grid grid-cols-[minmax(0,1fr)] gap-4 p-3 sm:p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:gap-6">
+              <div class="space-y-3">
+                <div>
+                  <p class="mb-1.5 text-xs font-semibold text-slate-400">Game</p>
+                  <div role="radiogroup" aria-label="Game" class="flex flex-wrap gap-2" data-game-choices>
+                    @for (t of i.types; track t) {
+                      <button type="button" role="radio" [attr.aria-checked]="t === type()" (click)="setType(t)" [attr.data-choice]="t"
+                              class="flex min-h-11 items-center gap-2 rounded-xl border px-3 py-1.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300"
+                              [class]="t === type() ? 'border-cyan-300/80 bg-linear-to-br from-violet-600/40 to-fuchsia-600/20 shadow-[0_0_26px_-10px_rgb(34_211_238_/_0.9)]' : 'border-slate-700/70 bg-slate-950/50 hover:border-violet-300/60'">
+                        <span [class]="t === type() ? 'text-cyan-200' : 'text-violet-300'"><app-icon [name]="t === 'pc' ? 'monitor' : 'gamepad'" [size]="20" /></span>
+                        <span class="leading-tight">
+                          <span class="block font-display text-base font-bold">{{ label(t) }}</span>
+                          @if (typePrice(t); as pr) { <span class="block text-[11px] text-slate-400">{{ pr }}</span> }
+                        </span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <div class="mb-1.5 flex items-center justify-between gap-2">
+                    <p class="text-xs font-semibold text-slate-400">Day</p>
+                    <label class="flex items-center gap-1.5 text-[11px] text-slate-500">Other date
+                      <input type="date" class="field !min-h-8 !w-auto !px-1.5 !py-0.5 text-xs" data-day [value]="day()" [min]="today" [max]="maxDay()"
+                             (change)="setDay($any($event.target).value)" />
+                    </label>
+                  </div>
+                  <div role="radiogroup" aria-label="Day" class="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-1" data-day-strip>
+                    @for (d of dayStrip(); track d.value) {
+                      <button type="button" role="radio" [attr.aria-checked]="d.value === day()" (click)="setDay(d.value)" [attr.data-day-choice]="d.value"
+                              class="flex w-14 shrink-0 snap-start flex-col items-center rounded-xl border py-1.5 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300"
+                              [class]="d.value === day() ? 'border-cyan-300/80 bg-linear-to-b from-violet-600 to-fuchsia-600 text-white shadow-[0_0_22px_-8px_rgb(217_70_239_/_0.95)]' : 'border-slate-700/70 bg-slate-950/50 text-slate-300 hover:border-violet-300/60 hover:text-white'">
+                        <span class="text-[10px] font-semibold leading-tight opacity-80">{{ d.top === 'Tomorrow' ? 'Tmrw' : d.top }}</span>
+                        <span class="font-display text-xl font-bold leading-none">{{ d.num }}</span>
+                        <span class="text-[10px] leading-tight opacity-80">{{ d.mon }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <p class="mb-1.5 text-xs font-semibold text-slate-400">Length</p>
+                  <div role="radiogroup" aria-label="Length" class="flex flex-wrap gap-1.5" data-length-choices>
+                    @for (n of lengths(); track n) {
+                      <button type="button" role="radio" [attr.aria-checked]="n === slots()" (click)="setSlots(n)" [attr.data-length]="n"
+                              class="rounded-full border px-3 py-1 text-xs font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300"
+                              [class]="n === slots() ? 'border-cyan-300/80 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_-8px_rgb(34_211_238_/_0.9)]' : 'border-slate-700/70 bg-slate-950/50 text-slate-300 hover:border-violet-300/60 hover:text-white'">{{ len(n) }}</button>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p class="mb-1.5 text-xs font-semibold text-slate-400">Start time</p>
+                @if (loading()) {
+                  <p class="sr-only" role="status">Checking free times…</p>
+                  <div class="grid grid-cols-4 gap-1.5" aria-hidden="true">
+                    @for (k of [1, 2, 3, 4, 5, 6, 7, 8]; track k) { <span class="h-10 animate-pulse rounded-lg bg-slate-800/70"></span> }
+                  </div>
+                } @else if (free().length === 0) {
+                  <p class="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200" data-no-times>No free times for this choice. Try another date or length.</p>
+                } @else {
+                  <div class="grid grid-cols-3 gap-1.5 sm:grid-cols-4" data-slots-grid>
+                    @for (s of free(); track s.slot_start) {
+                      <button type="button" data-slot (click)="pick(s)" [attr.aria-pressed]="picked() === s.slot_start"
+                              class="min-h-10 rounded-lg border px-1 py-2 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300"
+                              [class]="picked() === s.slot_start ? 'border-violet-300 bg-linear-to-r from-violet-600 to-fuchsia-500 text-white shadow-[0_0_22px_-6px_rgb(217_70_239_/_0.95)]' : 'border-slate-700/70 bg-slate-950/50 text-slate-200 hover:border-cyan-300/70 hover:text-white'">{{ time(s.slot_start) }}</button>
+                    }
+                  </div>
                 }
+                @if (error()) { <p class="mt-2 text-sm text-red-400" role="alert" data-error>{{ error() }}</p> }
               </div>
-            }
+            </div>
 
-            @if (error()) { <p class="text-sm text-red-400" role="alert" data-error>{{ error() }}</p> }
-
-            @if (picked(); as p) {
-              <div class="space-y-3 rounded-xl border border-violet-400/50 bg-slate-950/60 p-3" data-confirm>
-                <p class="text-sm">
-                  <span class="font-semibold text-cyan-300">{{ label(type()) }}</span> · {{ day() }} · {{ time(p) }} · {{ len(slots()) }}
-                </p>
-                <button type="button" class="btn-primary w-full" [disabled]="busy()" (click)="confirm()" data-book>
-                  {{ auth.session() ? (busy() ? 'Booking…' : 'Confirm booking') : 'Sign in to book' }}
-                </button>
-              </div>
-            }
+            <div class="border-t border-violet-400/20 bg-slate-950/50 px-3 py-2.5 sm:px-4">
+              @if (picked(); as p) {
+                <div class="flex flex-wrap items-center justify-between gap-2" data-confirm>
+                  <p class="text-sm">
+                    <span class="font-display text-base font-bold text-cyan-300">{{ label(type()) }}</span>
+                    <span class="mx-1 text-slate-600">/</span>{{ dayLabel() }}
+                    <span class="mx-1 text-slate-600">/</span><span class="font-semibold">{{ time(p) }}</span>
+                    <span class="mx-1 text-slate-600">/</span>{{ len(slots()) }}
+                  </p>
+                  <button type="button" class="btn-primary flex items-center justify-center gap-2 !px-6 !py-2 text-sm" [disabled]="busy()" (click)="confirm()" data-book>
+                    {{ auth.session() ? (busy() ? 'Booking…' : 'Confirm booking') : 'Sign in to book' }}
+                  </button>
+                </div>
+              } @else {
+                <p class="text-center text-xs text-slate-400" data-pick-hint>Pick a start time to continue.</p>
+              }
+            </div>
           </div>
         }
       } @else {
@@ -505,12 +555,12 @@ const addDays = (day: string, n: number): string =>
       <div class="mx-auto flex max-w-7xl flex-col items-start gap-4 overflow-hidden rounded-2xl border border-violet-500/40 bg-linear-to-r from-violet-800/50 via-slate-900 to-slate-900 p-5 shadow-[0_0_40px_-14px_rgb(168_85_247_/_0.9)] sm:flex-row sm:items-center sm:p-6">
         <div class="w-32 shrink-0 sm:w-44"><app-controller-art /></div>
         <div class="min-w-0 flex-1">
-          <h2 class="font-display text-2xl font-bold sm:text-3xl">Ready for your next session?</h2>
-          <p class="mt-1 text-sm text-slate-300">Pick a time, bring your friends, and walk in. We keep your station ready.</p>
+          <h2 class="font-display text-2xl font-bold sm:text-3xl">{{ brand().band_title }}</h2>
+          <p class="mt-1 text-sm text-slate-300">{{ brand().band_text }}</p>
         </div>
         <a href="#book" class="btn-primary inline-flex shrink-0 items-center gap-2" data-band-book>Book Now <app-icon name="arrow" [size]="16" /></a>
       </div>
-      <p class="mt-6 text-center text-xs text-slate-500">© E-Sports Gaming Arena · <a routerLink="/login" class="underline hover:text-slate-300" data-staff-link>Staff login</a></p>
+      <p class="mt-6 text-center text-xs text-slate-500" data-footer>{{ footerText() }} · <a routerLink="/login" class="underline hover:text-slate-300" data-staff-link>Staff login</a></p>
       <div class="mt-2"><app-legal-links /></div>
     </section>
   `,
@@ -542,19 +592,24 @@ export class BookHome implements OnInit {
 
   private seq = 0;
 
-  protected readonly features = computed(() => [
-    { icon: 'monitor', title: 'High-End PCs & Consoles', text: 'Smooth, fast, ready to play' },
-    { icon: 'wifi', title: 'Ultra-Fast Network', text: 'Low ping, no lag' },
-    { icon: 'calendar', title: 'Instant Booking', text: 'See free times live' },
-    { icon: 'check', title: 'Easy Changes', text: `Cancel or move until ${this.info()?.cutoff_hours ?? 2} h before` },
-  ]);
+  /** The shop's own wording (Admin > Settings > Branding); the built-in wording until it is loaded. */
+  protected readonly brand = inject(BrandingService).brand;
+  protected readonly lines = computed(() => titleLines(this.brand().shop_name));
+  protected readonly taglineWords = computed(() => taglineParts(this.brand().tagline));
+  protected readonly studioTitle = computed(() => glowParts(this.brand().studio_title));
+  protected readonly studioText = computed(() => fillBrand(this.brand().studio_text, this.brand().shop_name, this.info()?.cutoff_hours ?? null));
+  protected readonly footerText = computed(() => fillBrand(this.brand().footer, this.brand().shop_name, null));
 
-  protected readonly checks = [
-    'Performance gaming PCs',
-    'Console and multiplayer zone',
-    'Comfortable gaming lounge',
-    'Fair billing by the minute, pay at the counter',
-  ];
+  private static readonly FEATURE_ICONS = ['monitor', 'wifi', 'calendar', 'check'];
+  protected readonly features = computed(() =>
+    this.brand().features.map((f, i) => ({
+      icon: BookHome.FEATURE_ICONS[i] ?? 'check',
+      title: f.title,
+      text: fillBrand(f.text, this.brand().shop_name, this.info()?.cutoff_hours ?? null),
+    })),
+  );
+
+  protected readonly checks = computed(() => this.brand().checks);
 
   /** Hourly rate cards plus the passes that are for sale (real data from the shop settings). */
   protected readonly plans = computed(() => buildPlans(this.info()));
@@ -574,12 +629,14 @@ export class BookHome implements OnInit {
   protected readonly posterGames = computed(() => this.info()?.games ?? []);
   protected readonly shownGames = computed(() => gamesFor(this.posterGames(), this.gameFilter()).slice(0, 8));
   protected readonly moreGames = computed(() => Math.max(0, gamesFor(this.posterGames(), this.gameFilter()).length - 8));
-  protected readonly upcomingNames = computed(() => (this.info()?.upcoming ?? []).map((u) => u.title));
+  protected readonly upcomingNames = computed(() => stillComing(this.info()?.upcoming, this.info()?.games).map((u) => u.title));
   protected readonly typesText = computed(() => (this.info()?.types ?? []).map((t) => typeLabel(t)).join(' · '));
   /** Changes once an hour, so the ticker's countdown words update without rebuilding the strip every second. */
   private readonly hourNow = computed(() => Math.floor(this.clock.now() / 3_600_000) * 3_600_000);
   /** The ticker lines: upcoming games first, then games marked New. */
   protected readonly ticker = computed(() => tickerItems(this.info()?.upcoming, this.info()?.games, this.hourNow()));
+  /** What the label of the strip says: "Coming soon", "New games" or both. */
+  protected readonly tickerTitle = computed(() => tickerLabel(this.ticker()));
   /** Copies of the list (always an even number, at least 2) so the strip is wider than the screen even with one game. */
   protected readonly tickerCopies = computed(() => {
     const n = Math.max(1, this.ticker().length);
@@ -607,6 +664,30 @@ export class BookHome implements OnInit {
   /** Grid columns for the rate card: the game, then one column per package length. */
   protected cols(n: number): string {
     return `minmax(0,1.35fr) repeat(${n}, minmax(0,1fr))`;
+  }
+
+  /** The days to choose from, as a strip (from today to the last bookable day, at most two weeks). */
+  protected readonly dayStrip = computed(() => dayChips(this.today, this.maxDay(), 14));
+  protected readonly dayLabel = computed(() => dayText(this.day()));
+  /** "From Rs 90 / hour" for a game type, from the shop's own prices. */
+  protected typePrice(t: string): string | null {
+    const g = this.games().find((x) => x.type === t);
+    return g && g.price !== null ? `From ₹${g.price} / ${g.per}` : null;
+  }
+  protected setType(t: string): void {
+    if (t === this.type()) return;
+    this.type.set(t);
+    void this.reload();
+  }
+  protected setDay(d: string): void {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < this.today || d > this.maxDay() || d === this.day()) return;
+    this.day.set(d);
+    void this.reload();
+  }
+  protected setSlots(n: number): void {
+    if (n === this.slots()) return;
+    this.slots.set(n);
+    void this.reload();
   }
 
   protected chooseType(t: string | null): void {

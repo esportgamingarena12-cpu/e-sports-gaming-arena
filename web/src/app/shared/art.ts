@@ -1,4 +1,5 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { BrandingService, fitLength, titleLines } from '../core/branding';
 
 /*
  * Neon illustrations drawn in code (SVG), in the brand palette. They scale to any size, add no image files and
@@ -188,8 +189,12 @@ export class HeroArt {
       <g>
         <rect x="178" y="70" width="204" height="52" rx="12" fill="#0b0b14" stroke="#22d3ee" stroke-width="3" />
         <rect x="178" y="70" width="204" height="52" rx="12" fill="none" stroke="#22d3ee" stroke-width="8" opacity="0.4" filter="url(#ra-blur)" />
-        <text x="280" y="95" text-anchor="middle" fill="#ddd6fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="23" letter-spacing="4" font-style="italic">E-SPORTS</text>
-        <text x="280" y="113" text-anchor="middle" fill="#22d3ee" font-family="Rajdhani, sans-serif" font-weight="700" font-size="13" letter-spacing="6">GAMING ARENA</text>
+        @if (lines().top) {
+          <text x="280" y="95" text-anchor="middle" fill="#ddd6fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="23" letter-spacing="4" font-style="italic" lengthAdjust="spacingAndGlyphs" [attr.textLength]="topFit()">{{ lines().top }}</text>
+          <text x="280" y="113" text-anchor="middle" fill="#22d3ee" font-family="Rajdhani, sans-serif" font-weight="700" font-size="13" letter-spacing="6" lengthAdjust="spacingAndGlyphs" [attr.textLength]="mainFit()">{{ lines().main }}</text>
+        } @else {
+          <text x="280" y="104" text-anchor="middle" fill="#ddd6fe" font-family="Rajdhani, sans-serif" font-weight="700" font-size="23" letter-spacing="4" font-style="italic" lengthAdjust="spacingAndGlyphs" [attr.textLength]="mainFit()">{{ lines().main }}</text>
+        }
       </g>
       <!-- floor -->
       <path d="M0 200 H560 V340 H0Z" fill="#0b0b14" />
@@ -219,6 +224,11 @@ export class HeroArt {
   `,
 })
 export class RoomArt {
+  private readonly branding = inject(BrandingService);
+  protected readonly lines = computed(() => titleLines(this.branding.brand().shop_name));
+  /** a long name is squeezed into the sign (the sign is 204 wide) */
+  protected readonly topFit = computed(() => fitLength(this.lines().top, 9, 180));
+  protected readonly mainFit = computed(() => fitLength(this.lines().main, 14, 180));
   protected readonly backRow = [26, 132, 244, 356, 454];
   protected readonly frontRow = [30, 222, 394];
 }

@@ -47,7 +47,7 @@ test.describe('games on the home page', () => {
     await page.goto('/book');
     const ticker = page.locator('[data-ticker]');
     await expect(ticker).toBeVisible();
-    await expect(ticker).toContainText('Coming soon');
+    await expect(ticker.locator('[data-ticker-label]')).toHaveText(/Coming soon|New games|New & coming soon/i);
     await expect(ticker.locator('[data-ticker-item]').first()).toContainText(/SOON|NEW/);
     // the copy used for the endless loop is hidden from screen readers
     await expect(ticker.locator('.ticker-copy').first()).toHaveAttribute('aria-hidden', 'true');

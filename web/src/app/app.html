@@ -45,6 +45,7 @@
 }
 
 <header class="sticky top-0 z-20 border-b border-violet-500/20 bg-slate-950/85 backdrop-blur" [class]="sidebar() ? 'lg:pl-64' : ''">
+  <span class="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-violet-400/60 to-transparent" aria-hidden="true"></span>
   @if (!online()) {
     <p class="bg-amber-500 px-4 py-1 text-center text-xs font-medium text-slate-950" role="status" data-offline>
       You are offline. Saved screens still open, but bookings, bills and stock need a connection.
@@ -53,16 +54,18 @@
   @if (sidebar()) {
     <div class="mx-auto flex h-16 items-center gap-3 px-4">
       <button type="button" class="btn !p-2 lg:hidden" (click)="menuOpen.set(true)" aria-label="Menu"><app-icon name="menu" /></button>
-      <p class="min-w-0 flex-1 truncate font-display text-xl font-bold tracking-wide" data-title>{{ title() || appName }}</p>
+      <p class="min-w-0 flex-1 truncate font-display text-xl font-bold tracking-wide" data-title>{{ title() || appName() }}</p>
       <app-top-tools (logout)="logout()" />
     </div>
   } @else {
     <div class="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
       <a routerLink="/" aria-label="Home"><app-logo /></a>
-      <nav class="mx-auto hidden items-center gap-1 md:flex" aria-label="Main">
+      <nav class="mx-auto hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)] backdrop-blur md:flex" aria-label="Main" data-main-nav>
         @for (l of topLinks(); track l.label) {
-          <a [routerLink]="l.path" [fragment]="l.fragment" class="rounded px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:text-white"
-             [class]="l.label === 'Home' && isHome() ? '!text-white underline decoration-cyan-400 decoration-2 underline-offset-8' : ''">{{ l.label }}</a>
+          <a [routerLink]="l.path" [fragment]="l.fragment"
+             class="rounded-full px-4 py-1.5 text-sm font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300"
+             [class]="isActive(l) ? 'bg-linear-to-r from-violet-600 to-fuchsia-500 text-white shadow-[0_0_22px_-4px_rgb(168_85_247_/_0.95)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
+             [attr.aria-current]="isActive(l) ? 'true' : null" [attr.data-active]="isActive(l)">{{ l.label }}</a>
         }
       </nav>
       <div class="ml-auto flex items-center gap-2 md:ml-0">
@@ -74,27 +77,37 @@
           <a routerLink="/account/password" class="btn-outline hidden items-center gap-1.5 md:inline-flex" data-change-password><app-icon name="lock" [size]="16" /> Change password</a>
           <button type="button" (click)="logout()" class="btn">Logout</button>
         } @else if (auth.ready()) {
-          <a routerLink="/book/login" class="btn-outline hidden sm:inline-flex sm:items-center">Login</a>
+          <a routerLink="/book/login" class="hidden items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/5 px-4 py-2 text-sm font-semibold text-cyan-100 outline-none transition hover:border-cyan-200 hover:bg-cyan-300/15 hover:shadow-[0_0_24px_-6px_rgb(34_211_238_/_0.9)] focus-visible:ring-2 focus-visible:ring-cyan-300 sm:inline-flex" data-top-login><app-icon name="user" [size]="16" /> Login</a>
         }
-        <a routerLink="/book" fragment="book" class="btn-primary hidden items-center gap-1.5 !py-2 text-sm sm:inline-flex" data-top-book>Book a Slot <app-icon name="arrow" [size]="16" /></a>
+        <a routerLink="/book" fragment="book" class="btn-primary hidden items-center gap-1.5 !rounded-full !py-2 text-sm sm:inline-flex" data-top-book>Book a Slot <app-icon name="arrow" [size]="16" /></a>
         <button type="button" class="btn !p-2 md:hidden" (click)="menuOpen.set(!menuOpen())" aria-label="Menu" [attr.aria-expanded]="menuOpen()">
           <app-icon [name]="menuOpen() ? 'close' : 'menu'" />
         </button>
       </div>
     </div>
     @if (menuOpen()) {
-      <nav class="border-t border-slate-800 bg-slate-900 px-4 py-2 md:hidden" aria-label="Menu">
+      <!-- Phone menu: a card laid over the page (the page below does not move); tapping outside, a link or Escape closes it -->
+      <button type="button" class="absolute inset-x-0 top-full h-screen cursor-default bg-black/60 md:hidden" (click)="menuOpen.set(false)" aria-label="Close menu" tabindex="-1" data-menu-backdrop></button>
+      <nav class="absolute inset-x-3 top-full mt-2 rounded-2xl border border-violet-500/30 bg-slate-900/95 p-2 shadow-[0_18px_50px_-12px_rgb(0_0_0_/_0.8),0_0_40px_-16px_rgb(168_85_247_/_0.8)] backdrop-blur md:hidden" aria-label="Menu" data-public-menu>
         @for (l of topLinks(); track l.label) {
-          <a [routerLink]="l.path" [fragment]="l.fragment" class="flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-slate-200 hover:bg-slate-800">{{ l.label }}</a>
+          <a [routerLink]="l.path" [fragment]="l.fragment" (click)="menuOpen.set(false)"
+             class="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-medium transition hover:bg-slate-800"
+             [class]="isActive(l) ? 'bg-linear-to-r from-violet-600/30 to-transparent text-white' : 'text-slate-200'">
+            <span class="grid size-8 place-items-center rounded-lg bg-violet-500/15 text-violet-300"><app-icon [name]="l.icon" [size]="18" /></span>{{ l.label }}
+          </a>
         }
         @if (auth.profile()) {
-          <a routerLink="/account/password" (click)="menuOpen.set(false)" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-200 hover:bg-slate-800" data-change-password-menu><app-icon name="lock" /> Change password</a>
+          <a routerLink="/account/password" (click)="menuOpen.set(false)" class="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-medium text-slate-200 hover:bg-slate-800" data-change-password-menu>
+            <span class="grid size-8 place-items-center rounded-lg bg-violet-500/15 text-violet-300"><app-icon name="lock" [size]="18" /></span>Change password
+          </a>
         }
-        @if (!auth.profile() && auth.ready()) {
-          <a routerLink="/book/login" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-cyan-300 hover:bg-slate-800"><app-icon name="user" /> Login</a>
-          <a routerLink="/login" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 hover:bg-slate-800"><app-icon name="users" /> Staff login</a>
-        }
-        <a routerLink="/book" fragment="book" class="btn-primary my-2 flex items-center justify-center gap-1.5">Book a Slot <app-icon name="arrow" [size]="16" /></a>
+        <div class="mt-1 space-y-2 border-t border-slate-700/70 p-2 pt-3">
+          <a routerLink="/book" fragment="book" (click)="menuOpen.set(false)" class="btn-primary flex items-center justify-center gap-1.5">Book a Slot <app-icon name="arrow" [size]="16" /></a>
+          @if (!auth.profile() && auth.ready()) {
+            <a routerLink="/book/login" (click)="menuOpen.set(false)" class="btn-outline flex items-center justify-center gap-2"><app-icon name="user" [size]="16" /> Login</a>
+            <a routerLink="/login" (click)="menuOpen.set(false)" class="block py-1 text-center text-xs text-slate-400 hover:text-slate-200" data-menu-staff-login>Staff login</a>
+          }
+        </div>
       </nav>
     }
   }

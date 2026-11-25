@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countdownText, daysUntil, gamesFor, istDate, posterInitial, PublicGame, releaseLabel, tickerItems, UpcomingGame } from './games';
+import { countdownText, daysUntil, gamesFor, istDate, posterInitial, PublicGame, releaseLabel, stillComing, tickerItems, tickerLabel, UpcomingGame } from './games';
 
 const game = (title: string, station_type: string | null, over: Partial<PublicGame> = {}): PublicGame => ({
   title,
@@ -101,5 +101,24 @@ describe('ticker', () => {
   it('is empty with nothing coming and nothing new', () => {
     expect(tickerItems([], [game('Valorant', 'pc')], NOW)).toEqual([]);
     expect(tickerItems(null, null, NOW)).toEqual([]);
+  });
+});
+
+describe('a game that can already be played is not "coming soon"', () => {
+  it('drops an upcoming game that is also in the games list (same title, any capitals or spaces)', () => {
+    const up = [soon('GTA VI', null), soon('Other Game', null)];
+    expect(stillComing(up, [game(' gta vi ', 'pc', { is_new: true })]).map((u) => u.title)).toEqual(['Other Game']);
+    expect(stillComing(up, []).length).toBe(2);
+    expect(stillComing(null, null)).toEqual([]);
+  });
+  it('the ticker then shows it once, as now playing, not as coming soon', () => {
+    const items = tickerItems([soon('GTA VI', null)], [game('GTA VI', 'pc', { is_new: true })], NOW);
+    expect(items.map((i) => i.text)).toEqual(['GTA VI · now playing']);
+    expect(items[0].kind).toBe('new');
+  });
+  it('the ticker label says what is in it', () => {
+    expect(tickerLabel(tickerItems([soon('A', null)], [], NOW))).toBe('Coming soon');
+    expect(tickerLabel(tickerItems([], [game('B', 'pc', { is_new: true })], NOW))).toBe('New games');
+    expect(tickerLabel(tickerItems([soon('A', null)], [game('B', 'pc', { is_new: true })], NOW))).toBe('New & coming soon');
   });
 });
