@@ -97,6 +97,7 @@ export class App {
               { label: 'Products', path: '/admin/products', icon: 'tag' },
               { label: 'Games', path: '/admin/games', icon: 'gamepad' },
               { label: 'Booking rules', path: '/admin/booking-settings', icon: 'clock' },
+              { label: 'Happy hours', path: '/admin/happy-hours', icon: 'clock' },
               { label: 'Home page wording', short: 'Wording', path: '/admin/branding', icon: 'sliders' },
               { label: 'Staff Management', short: 'Staff', path: '/admin/staff', icon: 'users' },
             ],

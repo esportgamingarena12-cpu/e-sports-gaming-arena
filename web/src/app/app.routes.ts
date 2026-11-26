@@ -28,6 +28,7 @@ export const routes: Routes = [
       { path: 'products', loadComponent: () => import('./admin/products/products').then((m) => m.Products) },
       { path: 'games', loadComponent: () => import('./admin/games/games').then((m) => m.GamesAdmin) },
       { path: 'branding', loadComponent: () => import('./admin/branding/branding').then((m) => m.BrandingAdmin) },
+      { path: 'happy-hours', loadComponent: () => import('./admin/happy-hours/happy-hours').then((m) => m.HappyHoursAdmin) },
       { path: 'booking-settings', loadComponent: () => import('./admin/booking/booking-settings').then((m) => m.BookingSettings) },
       { path: 'staff', loadComponent: () => import('./admin/staff/staff').then((m) => m.StaffAdmin) },
     ],

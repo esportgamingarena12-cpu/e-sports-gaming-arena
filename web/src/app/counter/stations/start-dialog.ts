@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { SupabaseService } from '../../core/supabase.service';
 import { friendlyError } from '../../shared/errors';
@@ -6,6 +6,7 @@ import { formatIst } from '../../shared/format';
 import { FieldError } from '../../shared/field-error';
 import { phone } from '../../shared/validators';
 import { Pack, Station } from '../counter.store';
+import { discounted, HappyNow, timeText } from '../../core/happy-hours';
 
 interface FoundPass {
   pass_id: number;
@@ -53,14 +54,19 @@ interface FoundPass {
 
         <fieldset class="space-y-2" [class.hidden]="!!form.controls.passId.value">
           <legend class="label">Billing</legend>
+          @if (happy(); as h) {
+            <p class="rounded-lg border border-emerald-400/40 bg-emerald-500/10 p-2 text-sm text-emerald-200" data-happy-badge>
+              Happy hour: {{ h.percent }}% off until {{ until(h) }} ({{ h.name }}). The price is set when you press Start and stays for the whole session.
+            </p>
+          }
           <label class="flex items-center gap-2 rounded border border-slate-700 p-2 text-sm">
             <input type="radio" formControlName="plan" value="hour" />
-            <span>Per hour <span class="text-slate-400">· ₹{{ station().rate_per_hour }}/hr · pay for the time played</span></span>
+            <span>Per hour <span class="text-slate-400">· ₹{{ rate() }}/hr @if (pct() > 0) { <s class="opacity-70" data-list-price>₹{{ station().rate_per_hour }}</s> } · pay for the time played</span></span>
           </label>
           @for (p of options(); track p.id) {
             <label class="flex items-center gap-2 rounded border border-slate-700 p-2 text-sm">
               <input type="radio" formControlName="plan" [value]="'' + p.id" />
-              <span>{{ p.name }} <span class="text-slate-400">· {{ p.minutes }} min · ₹{{ p.price }}</span></span>
+              <span>{{ p.name }} <span class="text-slate-400">· {{ p.minutes }} min · ₹{{ price(p) }} @if (pct() > 0) { <s class="opacity-70">₹{{ p.price }}</s> }</span></span>
             </label>
           }
           @if (form.controls.plan.value !== 'hour') {
@@ -109,7 +115,7 @@ interface FoundPass {
     </div>
   `,
 })
-export class StartDialog {
+export class StartDialog implements OnInit {
   private readonly sb = inject(SupabaseService).client;
   private readonly fb = inject(FormBuilder);
 
@@ -136,10 +142,29 @@ export class StartDialog {
 
   protected readonly counts = [1, 2, 3, 4, 5, 6];
 
+  /** The happy hour running now for this game type, from the database clock (the server sets the real price when Start is pressed). */
+  protected readonly happy = signal<HappyNow | null>(null);
+  protected readonly pct = computed(() => this.happy()?.percent ?? 0);
+  protected readonly rate = computed(() => (this.pct() > 0 ? discounted(this.station().rate_per_hour, this.pct()) : this.station().rate_per_hour));
+  protected price(p: Pack): number | string {
+    return this.pct() > 0 ? discounted(p.price, this.pct()) : p.price;
+  }
+  protected until = (h: HappyNow): string => timeText(h.end);
+
+  async ngOnInit(): Promise<void> {
+    try {
+      const { data, error } = await this.sb.rpc('happy_hour_at', { p_type: this.station().type });
+      const row = (data as { percent: number; name: string; ends_at: string }[] | null)?.[0];
+      if (!error && row) this.happy.set({ percent: Number(row.percent), name: row.name, end: String(row.ends_at).slice(0, 5) });
+    } catch {
+      /* no badge: the server still applies any happy hour when the session starts */
+    }
+  }
+
   protected countNote(): string {
     const p = this.options().find((x) => '' + x.id === this.form.controls.plan.value);
     const n = Number(this.form.controls.count.value);
-    return p ? `${n * p.minutes} min in all · ₹${Math.round(n * Number(p.price) * 100) / 100}` : '';
+    return p ? `${n * p.minutes} min in all · ₹${Math.round(n * Number(this.price(p)) * 100) / 100}` : '';
   }
 
   protected readonly passes = signal<FoundPass[]>([]);

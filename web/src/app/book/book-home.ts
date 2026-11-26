@@ -16,6 +16,7 @@ import { ServerClock } from '../core/server-clock';
 import { BrandingService, fillBrand, glowParts, taglineParts, titleLines } from '../core/branding';
 import { gamesFor, stillComing, tickerItems, tickerLabel } from './games';
 import { dayChips, dayText } from './slot-picker';
+import { activeHappy, daysText, discounted, HappyHoursService, HappyNow, offDateText, timeText, windowText } from '../core/happy-hours';
 import { buildRateCard, gameHighlights, HoursGroup, hoursSummary, istParts, minutesLabel, openStatus } from './rate-card';
 
 const addDays = (day: string, n: number): string =>
@@ -43,6 +44,17 @@ const addDays = (day: string, n: number): string =>
               }
             </ul>
           </div>
+        </div>
+      </div>
+    }
+
+    <!-- Happy hour banner: only while one is running -->
+    @if (happyNow().length > 0) {
+      <div class="border-b border-emerald-400/30 bg-linear-to-r from-emerald-600/25 via-slate-950 to-emerald-600/15" role="status" data-happy-banner>
+        <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-center text-sm">
+          <span class="rounded-full bg-emerald-500 px-3 py-0.5 text-xs font-bold text-slate-950">Happy hour</span>
+          <span class="font-semibold text-emerald-100">{{ happyBannerText() }}</span>
+          <a href="#book" class="font-semibold text-cyan-300 underline underline-offset-2 hover:text-cyan-200">Book a slot</a>
         </div>
       </div>
     }
@@ -285,7 +297,7 @@ const addDays = (day: string, n: number): string =>
                         </span>
                         @for (m of rc.minutes; track m) {
                           @if (r.prices[m] !== undefined) {
-                            <span class="mx-auto rounded-xl bg-linear-to-b from-cyan-400/20 to-cyan-400/5 px-2.5 py-1.5 font-display text-lg font-bold text-cyan-100 ring-1 ring-cyan-300/40 sm:px-3 sm:text-xl" [attr.data-price]="m">₹{{ r.prices[m] }}</span>
+                            <span class="mx-auto rounded-xl bg-linear-to-b from-cyan-400/20 to-cyan-400/5 px-2.5 py-1.5 font-display text-lg font-bold text-cyan-100 ring-1 ring-cyan-300/40 sm:px-3 sm:text-xl" [attr.data-price]="m">@if (happyFor(r.station_type); as h) { <s class="mr-1 text-xs opacity-60" data-list-price>₹{{ r.prices[m] }}</s><span data-happy-price>₹{{ off(r.prices[m], h.percent) }}</span> } @else { ₹{{ r.prices[m] }} }</span>
                           } @else {
                             <span class="text-center text-slate-600">–</span>
                           }
@@ -335,6 +347,33 @@ const addDays = (day: string, n: number): string =>
                       </li>
                     }
                   </ul>
+                </div>
+              }
+
+              @if (happyInfo().on && happyInfo().rules.length > 0) {
+                <div class="relative overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-900/70 p-5 shadow-[0_0_50px_-18px_rgb(52_211_153_/_0.7)] backdrop-blur" data-happy-card>
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p class="eyebrow !text-emerald-300">Happy hours</p>
+                      <h3 class="font-display text-2xl font-bold">Play for less</h3>
+                    </div>
+                    @if (happyNow().length > 0) { <span class="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-slate-950" data-happy-live>On now</span> }
+                  </div>
+                  <ul class="mt-3 space-y-2" data-happy-rules>
+                    @for (r of happyRuleRows(); track $index) {
+                      <li class="flex items-center justify-between gap-3 rounded-2xl border px-4 py-2.5" [class]="r.live ? 'border-emerald-300/70 bg-emerald-400/10' : 'border-slate-700/60 bg-slate-950/50'" [attr.data-happy-rule]="r.name">
+                        <span class="min-w-0 text-sm">
+                          <span class="block font-semibold">{{ r.days }}, {{ r.window }}</span>
+                          <span class="block text-xs text-slate-400">{{ r.type }}</span>
+                        </span>
+                        <span class="shrink-0 rounded-full bg-emerald-500/20 px-3 py-1 font-display text-lg font-bold text-emerald-300">{{ r.percent }}% off</span>
+                      </li>
+                    }
+                  </ul>
+                  @if (happyOffRows().length > 0) {
+                    <p class="mt-3 text-xs text-slate-400" data-happy-off>No happy hour on {{ happyOffText() }}.</p>
+                  }
+                  <p class="mt-2 text-xs text-slate-400">The discount applies when your session starts inside a happy hour.</p>
                 </div>
               }
 
@@ -435,7 +474,11 @@ const addDays = (day: string, n: number): string =>
     <section id="book" class="mx-auto max-w-4xl scroll-mt-20 px-4 pb-8 pt-6">
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <h2 class="font-display text-3xl font-bold leading-none sm:text-4xl" data-book-title>Book a <span class="glow-text">slot</span></h2>
-        @if (info(); as i) { <p class="text-xs text-slate-400">Times are India time. Cancel or change until {{ i.cutoff_hours }} h before.</p> }
+        @if (info(); as i) {
+          <p class="text-xs text-slate-400">Times are India time. Cancel or change until {{ i.cutoff_hours }} h before.
+            @if (happyInfo().on && happyInfo().rules.length > 0) { <span class="text-emerald-300" data-happy-note>Happy hour prices apply when your session starts inside a happy hour.</span> }
+          </p>
+        }
       </div>
 
       @if (loadError()) {
@@ -637,6 +680,51 @@ export class BookHome implements OnInit {
   protected readonly ticker = computed(() => tickerItems(this.info()?.upcoming, this.info()?.games, this.hourNow()));
   /** What the label of the strip says: "Coming soon", "New games" or both. */
   protected readonly tickerTitle = computed(() => tickerLabel(this.ticker()));
+
+  // ---------- happy hours (the server sets the real price when a session starts; this only shows the rules) ----------
+  private readonly happyService = inject(HappyHoursService);
+  protected readonly happyInfo = this.happyService.info;
+  protected off = discounted;
+  /** The happy hour running now for a game type (the shop clock, India time). */
+  protected happyFor(type: string | null): HappyNow | null {
+    return activeHappy(this.happyInfo(), type, this.clock.now());
+  }
+  /** What is running now, one entry per game type. */
+  protected readonly happyNow = computed(() =>
+    (this.info()?.types ?? []).map((t) => ({ type: t, h: activeHappy(this.happyInfo(), t, this.clock.now()) })).filter((x): x is { type: string; h: HappyNow } => x.h !== null),
+  );
+  protected readonly happyBannerText = computed(() => {
+    const groups = new Map<string, string[]>();
+    for (const x of this.happyNow()) {
+      const key = `${x.h.percent}|${x.h.end}`;
+      groups.set(key, [...(groups.get(key) ?? []), typeLabel(x.type)]);
+    }
+    return [...groups.entries()]
+      .map(([key, names]) => {
+        const [pct, end] = key.split('|');
+        const who = names.length === (this.info()?.types.length ?? 0) ? 'all games' : names.join(' and ');
+        return `${pct}% off ${who} until ${timeText(end)}`;
+      })
+      .join(' · ');
+  });
+  /** The schedule lines for the card (live = running right now). */
+  protected readonly happyRuleRows = computed(() => {
+    const info = this.happyInfo();
+    const now = this.clock.now();
+    return info.rules.map((r) => ({
+      name: r.name,
+      days: daysText(r.days),
+      window: windowText(r),
+      percent: r.percent,
+      type: r.station_type ? `${typeLabel(r.station_type)} only` : 'All games',
+      live: activeHappy({ ...info, rules: [r] }, r.station_type ?? '', now) !== null,
+    }));
+  });
+  protected readonly happyOffRows = computed(() => this.happyInfo().off_dates.slice(0, 3));
+  protected happyOffText(): string {
+    return this.happyOffRows().map((o) => offDateText(o.day) + (o.label ? ` (${o.label})` : '')).join(', ');
+  }
+
   /** Copies of the list (always an even number, at least 2) so the strip is wider than the screen even with one game. */
   protected readonly tickerCopies = computed(() => {
     const n = Math.max(1, this.ticker().length);
@@ -717,6 +805,7 @@ export class BookHome implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    this.happyService.load();
     try {
       const i = await this.svc.info();
       this.info.set(i);
