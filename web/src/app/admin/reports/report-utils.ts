@@ -37,6 +37,9 @@ export interface SalesSummary {
   void_count: number;
   void_value: number;
   payments: PayModes;
+  /** paid bills whose session started in a happy hour, and the discount given on them (list price minus charged); missing on old answers */
+  happy_sessions?: number;
+  happy_discount?: number;
 }
 
 export interface SalesReport extends SalesSummary {

@@ -22,6 +22,15 @@ import { SalesSummary } from './report-utils';
         <div class="card"><p class="text-xs text-slate-400">Void bills</p>
           <p class="font-medium" data-voids>{{ v.void_count }}{{ v.void_count ? ' · ' + inr(v.void_value) : '' }}</p></div>
       </div>
+      @if ((v.happy_sessions ?? 0) > 0) {
+        <div class="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3" data-happy-line>
+          <p class="flex items-center gap-2 text-sm text-emerald-100">
+            <span class="rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-bold text-slate-950">Happy hour</span>
+            Discount given on {{ v.happy_sessions }} session{{ v.happy_sessions === 1 ? '' : 's' }}
+          </p>
+          <p class="font-display text-xl font-bold text-emerald-300" data-happy-discount>{{ inr(v.happy_discount ?? 0) }}</p>
+        </div>
+      }
     }
   `,
 })
