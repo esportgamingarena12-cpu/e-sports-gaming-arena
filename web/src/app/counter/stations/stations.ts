@@ -60,7 +60,12 @@ interface Card {
                   <p class="truncate text-lg font-semibold">{{ c.station.name }}</p>
                   <p class="text-xs text-slate-400">{{ c.station.type }} · ₹{{ c.station.rate_per_hour }}/hr</p>
                 </div>
-                <span class="shrink-0 rounded px-2 py-0.5 text-xs font-medium" [class]="badgeFor(c)">{{ labelFor(c) }}</span>
+                <span class="flex shrink-0 flex-col items-end gap-1">
+                  <span class="rounded px-2 py-0.5 text-xs font-medium" [class]="badgeFor(c)">{{ labelFor(c) }}</span>
+                  @if (c.session?.happy_pct; as hp) {
+                    <span class="inline-flex items-center gap-1 rounded-full border border-emerald-400/50 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-300 shadow-[0_0_14px_-4px_rgb(52_211_153_/_0.8)]" [attr.title]="c.session?.happy_name || 'Happy hour'" data-happy-tag>Happy hour −{{ hp }}%</span>
+                  }
+                </span>
               </div>
 
               @if (c.booking; as b) {
@@ -89,7 +94,7 @@ interface Card {
                     }
                   } @else {
                     <dt class="text-slate-400">Billing</dt>
-                    <dd>Per hour</dd>
+                    <dd>Per hour@if (s.happy_pct) { <span class="text-emerald-300"> · ₹{{ s.rate_per_hour }}/hr (happy hour)</span> }</dd>
                   }
                   @if (c.timer; as t) {
                     <dt class="text-slate-400">Timer</dt>

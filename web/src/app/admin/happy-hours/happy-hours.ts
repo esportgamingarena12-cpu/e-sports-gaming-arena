@@ -5,6 +5,7 @@ import { activeHappy, daysText, HappyInfo, HappyHoursService, HappyRule, offDate
 import { SupabaseService } from '../../core/supabase.service';
 import { typeLabel } from '../../book/portal';
 import { friendlyError } from '../../shared/errors';
+import { Icon } from '../../shared/icon';
 import { FieldError } from '../../shared/field-error';
 import { ToastService } from '../../shared/toast.service';
 import { integer, notBlank } from '../../shared/validators';
@@ -39,51 +40,104 @@ const hhmm = (t: string): string => t.slice(0, 5);
 
 @Component({
   selector: 'app-happy-hours-admin',
-  imports: [ReactiveFormsModule, FieldError],
+  imports: [ReactiveFormsModule, FieldError, Icon],
   template: `
-    <section class="p-4">
-      <h1 class="text-xl font-semibold">Happy hours</h1>
-      <p class="mt-1 max-w-2xl text-sm text-slate-400">
-        A discount for sessions that <strong>start</strong> inside a happy hour (India time). The price is set when the session starts and stays the same
-        until it ends, even if it runs past the end time. Passes are never discounted.
-      </p>
+    <section class="relative p-4">
+      <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-radial from-emerald-500/15 via-violet-700/10 to-transparent" aria-hidden="true"></div>
+
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="font-display text-3xl font-bold tracking-wide sm:text-4xl">Happy <span class="text-emerald-300">hours</span></h1>
+          <p class="mt-1 max-w-2xl text-sm text-slate-400">
+            A discount for sessions that <strong class="text-slate-200">start</strong> inside a happy hour (India time). The price is set when the session starts and stays
+            until it ends, even past the end time. Passes are never discounted.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-700/70 bg-slate-900/60 px-4 py-2 text-right" data-hh-count>
+          <p class="font-display text-3xl font-bold leading-none text-emerald-300">{{ recentCount() }}</p>
+          <p class="text-xs text-slate-400">sessions in a happy hour, last 30 days</p>
+        </div>
+      </div>
 
       @if (!loaded()) {
-        <p class="mt-3 text-slate-400">Loading…</p>
+        <p class="mt-4 text-slate-400">Loading…</p>
       } @else {
-        <div class="mt-4 grid max-w-5xl gap-4 lg:grid-cols-2">
-          <!-- master switch and what is running now -->
-          <div class="card space-y-3 lg:col-span-2" data-hh-master>
-            <label class="flex items-center gap-3">
-              <input type="checkbox" [checked]="on()" (change)="setOn($any($event.target).checked)" class="size-5" data-hh-on />
-              <span class="font-medium">Happy hours are {{ on() ? 'ON' : 'OFF' }}</span>
-            </label>
-            <p class="text-xs text-slate-400">Switch off to stop every happy hour at once (for example on a peak day or a holiday week). The rules below are kept.</p>
-            <div class="rounded-lg border border-slate-700 bg-slate-950/50 p-3 text-sm" data-hh-status>
-              <p class="mb-1 text-xs font-semibold text-slate-400">Right now</p>
-              @for (s of statusLines(); track s.type) {
-                <p><span class="font-semibold">{{ s.label }}:</span> <span [class]="s.text.startsWith('No') ? 'text-slate-400' : 'text-emerald-300'">{{ s.text }}</span></p>
-              }
+        <!-- master switch and what is running now -->
+        <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_1.4fr]" data-hh-master>
+          <div class="rounded-3xl border p-5 backdrop-blur transition"
+               [class]="on() ? 'border-emerald-400/50 bg-linear-to-br from-emerald-600/25 via-slate-900/80 to-slate-900/80 shadow-[0_0_60px_-22px_rgb(52_211_153_/_0.8)]' : 'border-slate-700/70 bg-slate-900/70'">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="font-display text-2xl font-bold">Happy hours are {{ on() ? 'ON' : 'OFF' }}</p>
+                <p class="mt-1 text-xs text-slate-400">The master switch. Turn it off to stop every happy hour at once, for example on a peak day. Your rules are kept.</p>
+              </div>
+              <button type="button" role="switch" [attr.aria-checked]="on()" (click)="setOn(!on())" [attr.aria-label]="'Happy hours on or off'"
+                class="relative h-7 w-12 shrink-0 rounded-full border transition focus-visible:outline-2 focus-visible:outline-cyan-300"
+                [class]="on() ? 'border-emerald-300/70 bg-emerald-500/40 shadow-[0_0_20px_-4px_rgb(52_211_153_/_0.9)]' : 'border-slate-600 bg-slate-800'" data-hh-on>
+                <span class="absolute top-0.5 size-5 rounded-full bg-white shadow transition-all" [class]="on() ? 'left-6' : 'left-0.5'"></span>
+              </button>
             </div>
           </div>
 
+          <div class="rounded-3xl border border-slate-700/70 bg-slate-900/70 p-5 backdrop-blur" data-hh-status>
+            <p class="text-xs font-semibold text-slate-400">Right now</p>
+            <ul class="mt-2 grid gap-2 sm:grid-cols-2">
+              @for (s of statusLines(); track s.type) {
+                <li class="flex items-center gap-3 rounded-2xl border px-3 py-2.5"
+                    [class]="s.live ? 'border-emerald-300/60 bg-emerald-400/10' : 'border-slate-700/60 bg-slate-950/50'">
+                  <span class="relative flex size-2.5 shrink-0">
+                    @if (s.live) { <span class="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span> }
+                    <span class="relative inline-flex size-2.5 rounded-full" [class]="s.live ? 'bg-emerald-400' : 'bg-slate-600'"></span>
+                  </span>
+                  <span class="min-w-0 text-sm">
+                    <span class="block font-semibold">{{ s.label }}</span>
+                    <span class="block truncate" [class]="s.live ? 'text-emerald-200' : 'text-slate-400'">{{ s.text }}</span>
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-5 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
           <!-- rules -->
           <div class="space-y-3">
-            <h2 class="font-medium">Rules</h2>
-            @if (rules().length === 0) { <p class="text-sm text-slate-400" data-hh-empty>No happy hour yet. Add one on the right.</p> }
+            <h2 class="font-display text-xl font-bold">Your happy hours</h2>
+            @if (rules().length === 0) {
+              <div class="rounded-3xl border border-dashed border-slate-600 p-8 text-center" data-hh-empty>
+                <p class="font-display text-xl font-bold">No happy hour yet</p>
+                <p class="mt-1 text-sm text-slate-400">Add your first one on the right, for example Monday to Friday, 3 to 6 pm, 20% off.</p>
+              </div>
+            }
             @for (r of rules(); track r.id) {
-              <div class="card space-y-2" [class.opacity-60]="!r.active" [attr.data-hh-rule]="r.name">
-                <div class="flex items-start justify-between gap-2">
-                  <div>
-                    <p class="font-semibold">{{ r.name }} <span class="ml-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-300">{{ r.percent }}% off</span></p>
-                    <p class="text-sm text-slate-300">{{ days(r) }}, {{ window(r) }}</p>
-                    <p class="text-xs text-slate-400">{{ r.station_type ? typeName(r.station_type) + ' only' : 'All games' }}{{ r.active ? '' : ' · switched off' }}</p>
+              <div class="group relative overflow-hidden rounded-3xl border bg-slate-900/70 p-4 backdrop-blur transition hover:-translate-y-0.5"
+                   [class]="r.active ? 'border-emerald-400/40 shadow-[0_0_40px_-22px_rgb(52_211_153_/_0.8)]' : 'border-slate-700/70 opacity-70'" [attr.data-hh-rule]="r.name">
+                <span class="absolute inset-y-0 left-0 w-1" [class]="r.active ? 'bg-linear-to-b from-emerald-300 to-cyan-400' : 'bg-slate-600'" aria-hidden="true"></span>
+                <div class="flex items-start gap-4 pl-2">
+                  <div class="grid size-16 shrink-0 place-items-center rounded-2xl text-center" [class]="r.active ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-800 text-slate-400'">
+                    <span class="font-display text-3xl font-bold leading-none">{{ r.percent }}<span class="text-base">%</span></span>
+                    <span class="-mt-3 text-[10px] font-semibold">off</span>
                   </div>
-                  <label class="flex items-center gap-1.5 text-xs text-slate-400">
-                    <input type="checkbox" [checked]="r.active" (change)="toggleRule(r, $any($event.target).checked)" [attr.aria-label]="'Rule ' + r.name + ' on or off'" data-hh-rule-active /> On
-                  </label>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate font-display text-xl font-bold">{{ r.name }}</p>
+                    <p class="mt-0.5 flex items-center gap-1.5 text-sm text-slate-300"><app-icon name="clock" [size]="15" />{{ window(r) }}</p>
+                    <div class="mt-2 flex flex-wrap items-center gap-1" aria-label="Days">
+                      @for (d of week; track d.n) {
+                        <span class="grid size-7 place-items-center rounded-full text-[10px] font-semibold"
+                              [class]="r.days.includes(d.n) ? 'bg-cyan-300/20 text-cyan-100 ring-1 ring-cyan-300/50' : 'bg-slate-800/70 text-slate-600'">{{ d.short.slice(0, 2) }}</span>
+                      }
+                      <span class="ml-1 rounded-full border border-slate-600 px-2 py-0.5 text-[11px] text-slate-300">{{ r.station_type ? typeName(r.station_type) + ' only' : 'All games' }}</span>
+                    </div>
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end gap-2">
+                    <button type="button" role="switch" [attr.aria-checked]="r.active" (click)="toggleRule(r, !r.active)" [attr.aria-label]="'Rule ' + r.name + ' on or off'"
+                class="relative h-7 w-12 shrink-0 rounded-full border transition focus-visible:outline-2 focus-visible:outline-cyan-300"
+                [class]="r.active ? 'border-emerald-300/70 bg-emerald-500/40 shadow-[0_0_20px_-4px_rgb(52_211_153_/_0.9)]' : 'border-slate-600 bg-slate-800'" data-hh-rule-active>
+                <span class="absolute top-0.5 size-5 rounded-full bg-white shadow transition-all" [class]="r.active ? 'left-6' : 'left-0.5'"></span>
+              </button>
+                  </div>
                 </div>
-                <div class="flex gap-2">
+                <div class="mt-3 flex gap-2 pl-2">
                   <button type="button" class="btn !py-1 text-xs" (click)="edit(r)" data-hh-edit>Edit</button>
                   <button type="button" class="btn !py-1 text-xs text-red-300" (click)="remove(r)" data-hh-delete>Delete</button>
                 </div>
@@ -92,8 +146,11 @@ const hhmm = (t: string): string => t.slice(0, 5);
           </div>
 
           <!-- add / edit -->
-          <form [formGroup]="form" (ngSubmit)="save()" class="card space-y-3" data-hh-form>
-            <h2 class="font-medium">{{ editingId() ? 'Edit happy hour' : 'Add a happy hour' }}</h2>
+          <form [formGroup]="form" (ngSubmit)="save()" class="h-fit space-y-4 rounded-3xl border border-violet-400/30 bg-slate-900/70 p-5 shadow-[0_0_60px_-28px_rgb(139_92_246_/_0.9)] backdrop-blur" data-hh-form>
+            <div class="flex items-center gap-2">
+              <span class="grid size-8 place-items-center rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white"><app-icon name="plus" [size]="18" /></span>
+              <h2 class="font-display text-xl font-bold">{{ editingId() ? 'Edit happy hour' : 'Add a happy hour' }}</h2>
+            </div>
             <label class="label">Name
               <input formControlName="name" class="field" maxlength="60" placeholder="Weekday afternoon" data-hh-name />
               <app-field-error [control]="form.controls.name" />
@@ -103,8 +160,8 @@ const hhmm = (t: string): string => t.slice(0, 5);
               <div class="mt-1 flex flex-wrap gap-1.5" data-hh-days>
                 @for (d of week; track d.n) {
                   <button type="button" role="checkbox" [attr.aria-checked]="dayOn(d.n)" (click)="toggleDay(d.n)" [attr.data-hh-day]="d.n"
-                          class="min-w-12 rounded-lg border px-3 py-1.5 text-sm font-medium"
-                          [class]="dayOn(d.n) ? 'border-cyan-300/80 bg-cyan-300/15 text-cyan-100' : 'border-slate-700 text-slate-400'">{{ d.short }}</button>
+                          class="min-w-12 rounded-full border px-3 py-1.5 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300"
+                          [class]="dayOn(d.n) ? 'border-cyan-300/80 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_-6px_rgb(34_211_238_/_0.9)]' : 'border-slate-700 text-slate-400 hover:border-violet-300/60'">{{ d.short }}</button>
                 }
               </div>
               @if (daysError()) { <p class="mt-1 text-xs text-red-400">{{ daysError() }}</p> }
@@ -118,51 +175,58 @@ const hhmm = (t: string): string => t.slice(0, 5);
               </label>
             </div>
             @if (timeError()) { <p class="text-xs text-red-400">{{ timeError() }}</p> }
-            <div class="grid grid-cols-2 gap-3">
+            <div>
               <label class="label">Discount (%)
                 <input type="number" formControlName="percent" inputmode="numeric" class="field" min="1" max="90" data-hh-percent />
                 <app-field-error [control]="form.controls.percent" />
               </label>
-              <label class="label">Applies to
-                <select formControlName="station_type" class="field" data-hh-type>
-                  <option value="">All games</option>
-                  @for (t of types(); track t) { <option [value]="t">{{ typeName(t) }} only</option> }
-                </select>
-              </label>
+              <div class="mt-2 flex flex-wrap gap-1.5" aria-label="Quick choices">
+                @for (q of quickPercents; track q) {
+                  <button type="button" (click)="setPercent(q)" class="rounded-full border px-3 py-1 text-xs font-semibold transition"
+                          [class]="form.controls.percent.value === q ? 'border-emerald-300/70 bg-emerald-400/15 text-emerald-200' : 'border-slate-700 text-slate-400 hover:border-emerald-300/50'">{{ q }}%</button>
+                }
+              </div>
             </div>
+            <label class="label">Applies to
+              <select formControlName="station_type" class="field" data-hh-type>
+                <option value="">All games</option>
+                @for (t of types(); track t) { <option [value]="t">{{ typeName(t) }} only</option> }
+              </select>
+            </label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" formControlName="active" class="size-4" /> This happy hour is on</label>
-            <p class="text-xs text-slate-400">Starts at the "From" time and stops at the "Until" time (a session starting exactly at "Until" is not discounted). It cannot run past midnight.</p>
+            <p class="text-xs text-slate-400">It starts at "From" and stops at "Until" (a session starting exactly at "Until" is not discounted). It cannot run past midnight.</p>
             <div class="flex gap-2">
               <button type="submit" class="btn-primary" [disabled]="busy()" data-hh-save>{{ busy() ? 'Saving…' : editingId() ? 'Save changes' : 'Add happy hour' }}</button>
               @if (editingId()) { <button type="button" class="btn" (click)="resetForm()">Cancel</button> }
             </div>
           </form>
+        </div>
 
-          <!-- off dates -->
-          <div class="card space-y-3 lg:col-span-2" data-hh-off>
-            <h2 class="font-medium">No happy hour on these dates</h2>
-            <p class="text-xs text-slate-400">Holidays, match days or other peak days. Nothing is discounted on these dates, even inside a happy hour.</p>
-            <form [formGroup]="offForm" (ngSubmit)="addOff()" class="flex flex-wrap items-end gap-2">
-              <label class="label">Date
-                <input type="date" formControlName="day" class="field" data-hh-off-day />
-              </label>
-              <label class="label grow">Reason (optional)
-                <input formControlName="label" class="field" maxlength="60" placeholder="Diwali" data-hh-off-label />
-              </label>
-              <button type="submit" class="btn-primary" [disabled]="offForm.invalid || busy()" data-hh-off-add>Add date</button>
-            </form>
-            <ul class="flex flex-wrap gap-2" data-hh-off-list>
-              @for (o of offDates(); track o.day) {
-                <li class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/50 px-3 py-1 text-sm">
-                  <span>{{ offText(o.day) }}{{ o.label ? ' · ' + o.label : '' }}</span>
-                  <button type="button" class="text-slate-400 hover:text-red-300" (click)="removeOff(o)" [attr.aria-label]="'Remove ' + o.day">✕</button>
-                </li>
-              }
-              @if (offDates().length === 0) { <li class="text-sm text-slate-500">None yet.</li> }
-            </ul>
+        <!-- off dates -->
+        <div class="mt-5 rounded-3xl border border-slate-700/70 bg-slate-900/70 p-5 backdrop-blur" data-hh-off>
+          <div class="flex items-center gap-2">
+            <span class="grid size-8 place-items-center rounded-xl bg-amber-400/15 text-amber-200"><app-icon name="calendar" [size]="18" /></span>
+            <h2 class="font-display text-xl font-bold">No happy hour on these dates</h2>
           </div>
-
-          <p class="text-xs text-slate-400 lg:col-span-2" data-hh-count>Sessions started in a happy hour in the last 30 days: <strong>{{ recentCount() }}</strong>.</p>
+          <p class="mt-1 text-xs text-slate-400">Holidays, match days or other peak days. Nothing is discounted on these dates, even inside a happy hour.</p>
+          <form [formGroup]="offForm" (ngSubmit)="addOff()" class="mt-3 flex flex-wrap items-end gap-2">
+            <label class="label">Date
+              <input type="date" formControlName="day" class="field" data-hh-off-day />
+            </label>
+            <label class="label grow">Reason (optional)
+              <input formControlName="label" class="field" maxlength="60" placeholder="Diwali" data-hh-off-label />
+            </label>
+            <button type="submit" class="btn-primary" [disabled]="offForm.invalid || busy()" data-hh-off-add>Add date</button>
+          </form>
+          <ul class="mt-3 flex flex-wrap gap-2" data-hh-off-list>
+            @for (o of offDates(); track o.day) {
+              <li class="flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-sm text-amber-100">
+                <span>{{ offText(o.day) }}{{ o.label ? ' · ' + o.label : '' }}</span>
+                <button type="button" class="text-amber-200/70 hover:text-red-300" (click)="removeOff(o)" [attr.aria-label]="'Remove ' + o.day">✕</button>
+              </li>
+            }
+            @if (offDates().length === 0) { <li class="text-sm text-slate-500">None yet.</li> }
+          </ul>
         </div>
       }
     </section>
@@ -201,6 +265,11 @@ export class HappyHoursAdmin implements OnInit {
     label: ['', Validators.maxLength(60)],
   });
 
+  protected readonly quickPercents = [10, 15, 20, 25, 30, 50];
+  protected setPercent(n: number): void {
+    this.form.controls.percent.setValue(n);
+  }
+
   protected typeName = typeLabel;
   protected days = (r: RuleRow): string => daysText(r.days);
   protected window = (r: RuleRow): string => windowText({ start: hhmm(r.start_time), end: hhmm(r.end_time) });
@@ -216,10 +285,11 @@ export class HappyHoursAdmin implements OnInit {
       return {
         type: t,
         label: typeLabel(t),
-        text: !this.on() ? 'No happy hour (switched off)' : h ? `${h.percent}% off until ${timeText(h.end)} (${h.name})` : 'No happy hour right now',
+        live: this.on() && h !== null,
+        text: !this.on() ? 'Switched off' : h ? `${h.percent}% off until ${timeText(h.end)}` : 'No happy hour right now',
       };
     });
-    return lines.length > 0 ? lines : [{ type: '', label: 'All games', text: this.on() ? 'No stations yet' : 'No happy hour (switched off)' }];
+    return lines.length > 0 ? lines : [{ type: '', label: 'All games', live: false, text: this.on() ? 'No stations yet' : 'Switched off' }];
   });
 
   private asInfo(): HappyInfo {
