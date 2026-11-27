@@ -1,6 +1,6 @@
 import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { watchAutofill } from './autofill';
 import { retryOnce } from '../core/secure-login';
@@ -10,7 +10,7 @@ import { tokenFor, Turnstile } from './turnstile';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, Icon, LoginStage, Turnstile],
+  imports: [ReactiveFormsModule, Icon, LoginStage, Turnstile, RouterLink],
   template: `
     <section class="relative isolate mx-auto my-4 grid max-w-5xl overflow-hidden rounded-2xl border border-violet-500/30 bg-slate-900/70 shadow-[0_0_60px_-20px_rgb(139_92_246_/_0.8)] sm:my-8 md:my-0 md:flex md:min-h-[calc(100vh-4rem)] md:max-w-none md:items-center md:rounded-none md:border-0 md:bg-transparent md:px-[5vw] md:shadow-none" data-login-screen>
       <app-login-stage class="h-44 md:absolute md:inset-0 md:h-auto" variant="staff" eyebrow="Staff area"
@@ -60,6 +60,7 @@ import { tokenFor, Turnstile } from './turnstile';
             @if (!busy()) { <app-icon name="arrow" /> }
           </button>
         </form>
+        <p class="mt-4 text-center text-xs text-slate-500">Trouble signing in? <a routerLink="/connection-test" class="underline hover:text-slate-300" data-link-connection-test>Test this computer's connection</a></p>
       </div>
     </section>
   `,

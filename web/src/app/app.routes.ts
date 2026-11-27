@@ -60,6 +60,7 @@ export const routes: Routes = [
     ],
   },
   // public legal pages: anyone can read them without signing in
+  { path: 'connection-test', loadComponent: () => import('./shared/connection-test').then((m) => m.ConnectionTest) },
   { path: 'terms', loadComponent: () => import('./legal/legal-page').then((m) => m.LegalPage), data: { page: 'terms' } },
   { path: 'privacy', loadComponent: () => import('./legal/legal-page').then((m) => m.LegalPage), data: { page: 'privacy' } },
   { path: 'refunds', loadComponent: () => import('./legal/legal-page').then((m) => m.LegalPage), data: { page: 'refunds' } },

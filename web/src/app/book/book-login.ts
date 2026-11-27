@@ -166,6 +166,7 @@ const FIELD =
           }
           <app-turnstile class="mt-3 block" (token)="captcha.set($event)" />
           <div class="mt-4"><app-legal-links [newTab]="true" /></div>
+          <p class="mt-3 text-center text-xs text-slate-500">Trouble signing in? <a routerLink="/connection-test" class="underline hover:text-slate-300" data-link-connection-test>Test this computer's connection</a></p>
 
         }
       </div>
