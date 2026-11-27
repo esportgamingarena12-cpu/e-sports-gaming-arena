@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { watchAutofill } from './autofill';
+import { retryOnce } from '../core/secure-login';
 import { Icon } from './icon';
 import { LoginStage } from './login-stage';
 import { tokenFor, Turnstile } from './turnstile';
@@ -100,7 +101,14 @@ export class Login {
     this.error.set(null);
     try {
       const { email, password, remember } = this.form.getRawValue();
-      const p = await this.auth.signInWithPassword(email.trim(), password, await tokenFor(() => this.captcha(), this.waiting), remember);
+      const p = await retryOnce(
+        async () => this.auth.signInWithPassword(email.trim(), password, await tokenFor(() => this.captcha(), this.waiting), remember),
+        async () => {
+          this.error.set('The connection is slow. Trying again…');
+          this.turnstile()?.reset(); // the first security check was used up: ask for a new one
+          await new Promise((r) => setTimeout(r, 800));
+        },
+      );
       await this.router.navigateByUrl(this.auth.homeFor(p.role));
     } catch (e) {
       this.error.set((e as Error).message);

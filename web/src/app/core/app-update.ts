@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { NavigationStart, Router } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { filter } from 'rxjs';
@@ -19,6 +19,9 @@ export function mayReload(lastReloadAt: number | null, now: number, windowMs = 6
 }
 
 const RELOAD_KEY = 'app-update-reload-at';
+
+/** True when a page could not be loaded and the automatic recovery has already been tried (so the person sees a message with a button). */
+export const pageLoadFailed = signal(false);
 
 /** Reload the page once (when the guard allows it). Returns true when a reload was started. */
 export function reloadOnce(): boolean {
@@ -101,7 +104,7 @@ export class AppUpdate {
     // a piece that fails to load outside the router (an unhandled import error) gets the same recovery
     if (typeof window !== 'undefined') {
       window.addEventListener('unhandledrejection', (e) => {
-        if (isChunkLoadError(e.reason)) recoverFromStaleApp();
+        if (isChunkLoadError(e.reason) && !recoverFromStaleApp()) pageLoadFailed.set(true);
       });
     }
     const sw = this.sw;

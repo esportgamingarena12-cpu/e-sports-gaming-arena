@@ -1,7 +1,7 @@
 import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
-import { AppUpdate } from './core/app-update';
+import { AppUpdate, pageLoadFailed } from './core/app-update';
 import { BrandingService } from './core/branding';
 import { AuthService } from './core/auth.service';
 import { homeFor } from './core/models';
@@ -38,6 +38,12 @@ export class App {
   private readonly appUpdate = inject(AppUpdate);
   private readonly branding = inject(BrandingService);
   /** The shop name from Settings (the built-in name until it is loaded). */
+  /** a page could not be loaded (a bad connection): a message with a Try again button replaces the empty page */
+  protected readonly pageFailed = pageLoadFailed;
+  protected reloadPage(): void {
+    location.reload();
+  }
+
   protected readonly appName = computed(() => this.branding.brand().shop_name);
 
   /** False while the device has no connection (the installed app still opens its saved shell). */
@@ -53,6 +59,7 @@ export class App {
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e) => {
       this.url.set((e as NavigationEnd).urlAfterRedirects);
       this.menuOpen.set(false);
+      pageLoadFailed.set(false);
       setTimeout(() => this.updateSection(), 60); // the page has drawn: work out which section is showing
     });
   }

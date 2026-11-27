@@ -5,6 +5,7 @@ import { AuthService } from '../core/auth.service';
 import { afterLoginPath, oauthErrorFrom } from '../core/google-login';
 import { passwordProblem, passwordsMatch } from '../core/password-login';
 import { watchAutofill } from '../shared/autofill';
+import { retryOnce } from '../core/secure-login';
 import { Icon } from '../shared/icon';
 import { LegalLinks } from '../legal/legal-links';
 import { LoginStage } from '../shared/login-stage';
@@ -283,7 +284,14 @@ export class BookLogin implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const p = await this.auth.signInCustomer(v.email.trim(), v.password, v.remember, await tokenFor(() => this.captcha(), this.waiting));
+      const p = await retryOnce(
+        async () => this.auth.signInCustomer(v.email.trim(), v.password, v.remember, await tokenFor(() => this.captcha(), this.waiting)),
+        async () => {
+          this.error.set('The connection is slow. Trying again…');
+          this.turnstile()?.reset(); // the first security check was used up: ask for a new one
+          await new Promise((r) => setTimeout(r, 800));
+        },
+      );
       await this.go(p.role, this.next());
     } catch (e) {
       this.error.set((e as Error).message);

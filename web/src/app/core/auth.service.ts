@@ -14,6 +14,10 @@ export interface CustomerRecord {
 }
 
 export const ACCOUNT_DISABLED = 'Account disabled – contact Admin';
+/** shown when the account could not be loaded because of the connection (the account itself is fine) */
+export const ACCOUNT_LOAD_FAILED = 'Could not load your account. Check your connection and try again.';
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -49,7 +53,7 @@ export class AuthService {
 
   private async init(): Promise<void> {
     try {
-      if (shouldEndSession(localStorage.getItem(REMEMBER_KEY), sessionStorage.getItem(ALIVE_KEY))) await this.sb.auth.signOut();
+      if (shouldEndSession(localStorage.getItem(REMEMBER_KEY), sessionStorage.getItem(ALIVE_KEY))) await this.sb.auth.signOut({ scope: 'local' });
       sessionStorage.setItem(ALIVE_KEY, '1');
     } catch {
       /* storage not available: the stored login is simply kept */
@@ -70,18 +74,38 @@ export class AuthService {
       this.customer.set(null);
       return;
     }
-    const { data } = await this.sb
-      .from('profiles')
-      .select('id, email, full_name, phone, role, active, consent_version')
-      .eq('id', session.user.id)
-      .maybeSingle();
-    const profile = (data as Profile | null) ?? null;
+    // The profile is asked for up to 3 times: a slow or dropped connection must never look like "account disabled".
+    let profile: Profile | null = null;
+    let failed = true;
+    for (let attempt = 0; attempt < 3 && failed; attempt++) {
+      if (attempt > 0) await sleep(attempt * 700);
+      try {
+        const { data, error } = await this.sb
+          .from('profiles')
+          .select('id, email, full_name, phone, role, active, consent_version')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        failed = !!error;
+        profile = failed ? null : ((data as Profile | null) ?? null);
+      } catch {
+        failed = true;
+      }
+    }
+
+    if (failed) {
+      // Only the connection failed: the account and the saved login are fine. Nothing is signed out (above all not on other computers).
+      if (this.profile()) return; // already signed in here: keep what is shown
+      this.notice.set(ACCOUNT_LOAD_FAILED);
+      this.session.set(null);
+      this.profile.set(null);
+      return;
+    }
 
     if (!profile || !profile.active) {
       this.notice.set(ACCOUNT_DISABLED);
       this.session.set(null);
       this.profile.set(null);
-      await this.sb.auth.signOut();
+      await this.sb.auth.signOut({ scope: 'local' }); // this browser only: other computers using the same account stay signed in
       return;
     }
     this.session.set(session);
@@ -240,8 +264,9 @@ export class AuthService {
     if (p) this.profile.set({ ...p, consent_version: LEGAL_VERSION });
   }
 
+  /** Ends the login in THIS browser only. (The default would end it on every computer that uses the same account, which is how a shared staff login gets thrown out everywhere.) */
   async signOut(): Promise<void> {
-    await this.sb.auth.signOut();
+    await this.sb.auth.signOut({ scope: 'local' });
     this.session.set(null);
     this.profile.set(null);
     this.customer.set(null);
