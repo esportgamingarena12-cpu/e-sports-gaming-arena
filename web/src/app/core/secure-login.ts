@@ -7,6 +7,8 @@ export interface LoginTokens {
 }
 
 const GENERIC = 'Sign in did not work. Please try again.';
+/** The same plain message plus a short reference (the answer's status, never a password or a technical text), so a failure on one computer can be traced. */
+const withRef = (ref: string): string => `${GENERIC} (ref ${ref})`;
 
 /**
  * The plain message for a failed secure-login answer. Wrong password and unknown email read the same on purpose,
@@ -17,7 +19,7 @@ export function loginFailureText(status: number, body: { error?: string; code?: 
   if (status === 401) return 'Wrong email or password';
   if (body?.code === 'captcha') return 'Please complete the security check and try again.';
   if (body?.code === 'email_not_confirmed') return 'Please confirm your email first, then sign in. Or use Google.';
-  return GENERIC;
+  return withRef(`${status}${body?.code ? '-' + String(body.code).replace(/[^\w-]/g, '').slice(0, 20) : ''}`);
 }
 
 /**
@@ -50,6 +52,7 @@ export async function secureLogin(sb: SupabaseClient, req: LoginRequest): Promis
     const ctx = (error as { context?: Response }).context;
     if (ctx && typeof ctx.json === 'function') {
       const body = (await ctx.json().catch(() => null)) as { error?: string; code?: string } | null;
+      console.warn('[sign-in] the login service answered', ctx.status, body?.code ?? '');
       throw new Error(loginFailureText(ctx.status, body));
     }
     // no answer at all: the network
@@ -57,6 +60,6 @@ export async function secureLogin(sb: SupabaseClient, req: LoginRequest): Promis
   }
   if (req.verifyOnly) return null;
   const t = data as Partial<LoginTokens> | null;
-  if (!t?.access_token || !t.refresh_token) throw new Error(GENERIC);
+  if (!t?.access_token || !t.refresh_token) throw new Error(withRef('no-tokens'));
   return { access_token: t.access_token, refresh_token: t.refresh_token };
 }

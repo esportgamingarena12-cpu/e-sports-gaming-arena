@@ -12,10 +12,13 @@ describe('secure login messages', () => {
   it('a failed security check, an unconfirmed email and anything else have their own plain text', () => {
     expect(loginFailureText(400, { code: 'captcha' })).toContain('security check');
     expect(loginFailureText(400, { code: 'email_not_confirmed' })).toContain('confirm your email');
-    expect(loginFailureText(502, null)).toBe('Sign in did not work. Please try again.');
+    expect(loginFailureText(502, null)).toBe('Sign in did not work. Please try again. (ref 502)');
+    expect(loginFailureText(503, { code: 'lock_check' })).toBe('Sign in did not work. Please try again. (ref 503-lock_check)');
   });
   it('never shows a technical message from the server', () => {
-    expect(loginFailureText(500, { error: 'duplicate key value violates unique constraint "x"' })).toBe('Sign in did not work. Please try again.');
+    const t = loginFailureText(500, { error: 'duplicate key value violates unique constraint "x"' });
+    expect(t).toBe('Sign in did not work. Please try again. (ref 500)');
+    expect(t).not.toContain('duplicate');
   });
 });
 

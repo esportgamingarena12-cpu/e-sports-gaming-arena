@@ -126,7 +126,10 @@ export class AuthService {
   private async passwordSession(email: string, password: string, captchaToken: string): Promise<Session> {
     const tokens = await secureLogin(this.sb, { email, password, captchaToken });
     const { data, error } = await this.sb.auth.setSession({ access_token: tokens!.access_token, refresh_token: tokens!.refresh_token });
-    if (error || !data.session) throw new Error('Sign in did not work. Please try again.');
+    if (error || !data.session) {
+      console.warn('[sign-in] the session could not be installed:', error?.message ?? 'no session');
+      throw new Error(`Sign in did not work. Please try again. (ref s-${(error?.name ?? 'nosession').replace(/[^\w-]/g, '').slice(0, 30)})`);
+    }
     return data.session;
   }
 
