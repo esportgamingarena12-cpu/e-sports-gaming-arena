@@ -5,8 +5,10 @@
 //   - wrong password, unknown email and a locked account give the same plain answers, so nothing reveals whether an email exists
 //   - the Cloudflare Turnstile token (when Supabase's CAPTCHA protection is on) is passed on to Supabase, which checks it
 // The password is only passed to Supabase's own login. It is never stored, logged or returned.
-// Secrets used (set by Supabase for every function): SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+// Secrets used: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (set by Supabase for every function) and PROXY_SECRET (optional, set by the owner:
+// the same value as in Cloudflare Pages; see client-ip.ts).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { clientIp } from './client-ip.ts';
 
 // Supabase's edge runtime can finish small jobs after the answer has been sent (so the person does not wait for them).
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -64,7 +66,8 @@ async function handle(req: Request): Promise<Response> {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const db = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
-  const ip = (req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim().slice(0, 64);
+  // the address the lockout counts: normally what Supabase saw; through the shop's own website door, the address that door reports (only with the right secret)
+  const ip = clientIp(req.headers, Deno.env.get('PROXY_SECRET'));
   const acctKey = `acct:${await sha256Hex(email)}`;
   const ipKey = `ip:${ip}`;
 

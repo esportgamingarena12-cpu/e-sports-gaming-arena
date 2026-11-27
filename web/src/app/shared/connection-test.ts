@@ -1,5 +1,6 @@
 import { Component, computed, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
+import { DIRECT_URL, proxyBase } from '../core/api-route';
 
 export interface TestResult {
   name: string;
@@ -33,8 +34,10 @@ export function reportText(results: TestResult[], context: { when: string; agent
   return [`Connection test ${context.when}`, `Browser: ${context.agent}`, `Online: ${context.online ? 'yes' : 'no'}${context.link ? `, link: ${context.link}` : ''}`, ...lines, verdict(results).text].join('\n');
 }
 
-const FN = `${environment.SUPABASE_URL}/functions/v1/secure-login`;
-const RPC = `${environment.SUPABASE_URL}/rest/v1/rpc/happy_hours_info`;
+const FN = `${DIRECT_URL}/functions/v1/secure-login`;
+const RPC = `${DIRECT_URL}/rest/v1/rpc/happy_hours_info`;
+/** this website's own door to the project (null on a local computer) */
+const PROXY = proxyBase(typeof location === 'undefined' ? null : location);
 const KEY = environment.SUPABASE_ANON_KEY;
 const TIMEOUT_MS = 15_000;
 
@@ -45,14 +48,15 @@ interface Try {
   detail?: string;
 }
 
-async function attempt(url: string, init: RequestInit, accept: (status: number) => boolean): Promise<Try> {
+async function attempt(url: string, init: RequestInit, accept: (status: number) => boolean, needProxyHeader = false): Promise<Try> {
   const started = performance.now();
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, { ...init, signal: ctl.signal });
     await res.text().catch(() => '');
-    return { status: String(res.status), ms: Math.round(performance.now() - started), ok: accept(res.status) };
+    const viaDoor = !needProxyHeader || !!res.headers.get('x-sb-proxy');
+    return { status: viaDoor ? String(res.status) : `${res.status}, not through this website's door`, ms: Math.round(performance.now() - started), ok: viaDoor && accept(res.status) };
   } catch (e) {
     const timedOut = ctl.signal.aborted;
     return { status: timedOut ? 'timed out' : 'no answer', ms: Math.round(performance.now() - started), ok: false, detail: timedOut ? `no answer within ${TIMEOUT_MS / 1000} seconds` : `${(e as Error).name}: ${(e as Error).message}` };
@@ -85,8 +89,13 @@ const bigBody = (kb: number) => ({ email: 'connection-test', password: 'x', capt
 export async function runConnectionTests(): Promise<TestResult[]> {
   const out: TestResult[] = [];
   out.push(await check('Website files', 'This website loads its own files', 1, () => attempt('/manifest.webmanifest?connection-test', { cache: 'no-store' }, (s) => s === 200)));
-  out.push(await check('Data service', 'The shop data service answers', 1, () => attempt(RPC, post({}), (s) => s === 200)));
-  out.push(await check('Login service (5 tries)', 'The sign-in service answers a small request, five times in a row', 5, () => attempt(FN, post({}), (s) => s === 400)));
+  if (PROXY) {
+    out.push(await check('Data service via this website', 'The shop data service answers through this website (this works even where supabase.co is blocked)', 1, () => attempt(`${PROXY}/rest/v1/rpc/happy_hours_info`, post({}), (s) => s === 200, true)));
+    out.push(await check('Login service via this website (5 tries)', 'The sign-in service answers through this website, five times in a row', 5, () => attempt(`${PROXY}/functions/v1/secure-login`, post({}), (s) => s === 400, true)));
+    out.push(await check('Login service via this website, 3 KB request', 'A big request through this website', 2, () => attempt(`${PROXY}/functions/v1/secure-login`, post(bigBody(3)), (s) => s === 400, true)));
+  }
+  out.push(await check('Data service (direct)', 'The shop data service answers at its own address (some internet providers block it)', 1, () => attempt(RPC, post({}), (s) => s === 200)));
+  out.push(await check('Login service (5 tries)', 'The sign-in service answers a small request at its own address, five times in a row', 5, () => attempt(FN, post({}), (s) => s === 400)));
   out.push(await check('Login service, 1.5 KB request', 'A request as big as a real sign-in', 3, () => attempt(FN, post(bigBody(1.5)), (s) => s === 400)));
   out.push(await check('Login service, 3 KB request', 'An even bigger request', 3, () => attempt(FN, post(bigBody(3)), (s) => s === 400)));
   if (environment.TURNSTILE_SITE_KEY) {

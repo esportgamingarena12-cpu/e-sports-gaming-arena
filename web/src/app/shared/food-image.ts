@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { environment } from '../../environments/environment';
+import { apiBase } from '../core/api-route';
 
 /** Food photos live in the public Supabase Storage bucket "food-images"; only the admin can add or remove files. */
 export const FOOD_BUCKET = 'food-images';
@@ -7,7 +7,7 @@ export const MAX_FOOD_IMAGE_BYTES = 2 * 1024 * 1024;
 export const FOOD_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /** The public address of a file in a public Storage bucket, or null when there is no file. */
-export function publicImageUrl(bucket: string, path: string | null | undefined, baseUrl: string = environment.SUPABASE_URL): string | null {
+export function publicImageUrl(bucket: string, path: string | null | undefined, baseUrl: string = apiBase()): string | null {
   const p = (path ?? '').trim();
   if (!p) return null;
   const base = baseUrl.replace(/\/+$/, '');
@@ -15,14 +15,14 @@ export function publicImageUrl(bucket: string, path: string | null | undefined, 
 }
 
 /** The public address of a stored food photo, or null when the item has none. */
-export function foodImageUrl(path: string | null | undefined, baseUrl: string = environment.SUPABASE_URL): string | null {
+export function foodImageUrl(path: string | null | undefined, baseUrl: string = apiBase()): string | null {
   return publicImageUrl(FOOD_BUCKET, path, baseUrl);
 }
 
 /** Game posters live in the public bucket "game-images", with the same rules as food photos. */
 export const GAME_BUCKET = 'game-images';
 
-export function gameImageUrl(path: string | null | undefined, baseUrl: string = environment.SUPABASE_URL): string | null {
+export function gameImageUrl(path: string | null | undefined, baseUrl: string = apiBase()): string | null {
   return publicImageUrl(GAME_BUCKET, path, baseUrl);
 }
 
