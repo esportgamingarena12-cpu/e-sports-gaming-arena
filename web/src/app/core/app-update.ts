@@ -40,11 +40,55 @@ export function reloadOnce(): boolean {
 }
 
 /**
+ * Removes the browser's saved copy of the app (the service worker and its caches), so the next load gets the newest files straight
+ * from the server. Never throws. The two arguments are only here so it can be tested.
+ */
+export async function clearSavedApp(
+  sw: { getRegistrations?: () => Promise<readonly { unregister: () => Promise<boolean> }[]> } | undefined = typeof navigator === 'undefined' ? undefined : navigator.serviceWorker,
+  store: { keys: () => Promise<string[]>; delete: (k: string) => Promise<boolean> } | undefined = typeof caches === 'undefined' ? undefined : caches,
+): Promise<void> {
+  try {
+    const regs = (await sw?.getRegistrations?.()) ?? [];
+    await Promise.all(regs.map((r) => r.unregister()));
+  } catch {
+    /* nothing to remove */
+  }
+  try {
+    const keys = (await store?.keys()) ?? [];
+    await Promise.all(keys.map((k) => store!.delete(k)));
+  } catch {
+    /* nothing to remove */
+  }
+}
+
+/**
+ * A page piece could not be loaded because a new version was deployed and this browser still holds the old copy (only the top
+ * bar shows and the rest of the page stays empty). Remove the saved copy, then reload once. Returns true when it started.
+ */
+export function recoverFromStaleApp(): boolean {
+  let last: number | null = null;
+  try {
+    const v = sessionStorage.getItem(RELOAD_KEY);
+    last = v ? Number(v) : null;
+  } catch {
+    /* storage unavailable: still allow one try */
+  }
+  if (!mayReload(last, Date.now())) return false;
+  try {
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+  void clearSavedApp().finally(() => location.reload());
+  return true;
+}
+
+/**
  * Keeps a long-open counter screen from going blank after a new version is deployed:
  *  - it checks for a new version when the tab comes back to the front and every 15 minutes;
  *  - when a new version is ready it waits for the next time the person opens another screen, then loads that screen
  *    fresh (so nothing they are typing is thrown away);
- *  - if a screen still cannot be loaded (see isChunkLoadError) the page reloads once.
+ *  - if a screen still cannot be loaded (see isChunkLoadError) the saved copy of the app is cleared and the page reloads once.
  */
 @Injectable({ providedIn: 'root' })
 export class AppUpdate {
@@ -54,6 +98,12 @@ export class AppUpdate {
   private ready = false;
 
   constructor() {
+    // a piece that fails to load outside the router (an unhandled import error) gets the same recovery
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unhandledrejection', (e) => {
+        if (isChunkLoadError(e.reason)) recoverFromStaleApp();
+      });
+    }
     const sw = this.sw;
     if (!sw || !sw.isEnabled) return;
     sw.versionUpdates.pipe(filter((e) => e.type === 'VERSION_READY')).subscribe(() => (this.ready = true));

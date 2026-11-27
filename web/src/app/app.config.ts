@@ -1,7 +1,7 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, isDevMode } from '@angular/core';
 import { provideRouter, withInMemoryScrolling, withNavigationErrorHandler } from '@angular/router';
 
-import { isChunkLoadError, reloadOnce } from './core/app-update';
+import { isChunkLoadError, recoverFromStaleApp } from './core/app-update';
 import { routes } from './app.routes';
 import { provideServiceWorker } from '@angular/service-worker';
 
@@ -11,9 +11,9 @@ export const appConfig: ApplicationConfig = {
     provideRouter(
       routes,
       withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' }),
-      // a screen that cannot be fetched after a new deploy: load the fresh version once instead of showing a blank page
+      // a screen that cannot be fetched after a new deploy: clear the saved old copy and load the fresh version once, instead of a blank page
       withNavigationErrorHandler((e) => {
-        if (isChunkLoadError(e.error)) reloadOnce();
+        if (isChunkLoadError(e.error)) recoverFromStaleApp();
       }),
     ), provideServiceWorker('ngsw-worker.js', {
             enabled: !isDevMode(),

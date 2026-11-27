@@ -1,4 +1,4 @@
-import { isChunkLoadError, mayReload } from './app-update';
+import { clearSavedApp, isChunkLoadError, mayReload } from './app-update';
 
 describe('isChunkLoadError', () => {
   it('recognises the errors a stale copy of the app gets', () => {
@@ -22,5 +22,21 @@ describe('mayReload', () => {
   });
   it('allows another one after the window', () => {
     expect(mayReload(1000, 62_000)).toBe(true);
+  });
+});
+
+describe('clearSavedApp (a stale saved copy of the app)', () => {
+  it('removes every service worker and every cache', async () => {
+    const removed: string[] = [];
+    const sw = { getRegistrations: () => Promise.resolve([{ unregister: () => (removed.push('sw1'), Promise.resolve(true)) }, { unregister: () => (removed.push('sw2'), Promise.resolve(true)) }]) };
+    const store = { keys: () => Promise.resolve(['ngsw:/:db', 'ngsw:/:1:data']), delete: (k: string) => (removed.push(k), Promise.resolve(true)) };
+    await clearSavedApp(sw, store);
+    expect(removed.sort()).toEqual(['ngsw:/:1:data', 'ngsw:/:db', 'sw1', 'sw2']);
+  });
+  it('never throws, even when the browser has no such feature or they fail', async () => {
+    await expect(clearSavedApp(undefined, undefined)).resolves.toBeUndefined();
+    await expect(
+      clearSavedApp({ getRegistrations: () => Promise.reject(new Error('no')) }, { keys: () => Promise.reject(new Error('no')), delete: () => Promise.resolve(true) }),
+    ).resolves.toBeUndefined();
   });
 });
