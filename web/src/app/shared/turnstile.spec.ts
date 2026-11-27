@@ -31,3 +31,33 @@ describe('waitForToken (the sign-in buttons are never blocked by the security ch
     expect(await waitForToken(() => '')).toBe('');
   });
 });
+
+describe('tokenFor (a sign-in started before the security check is ready)', () => {
+  it('returns the token at once, without waiting, when the check has passed', async () => {
+    if (!CAPTCHA_REQUIRED) return;
+    const { signal } = await import('@angular/core');
+    const { tokenFor } = await import('./turnstile');
+    const waiting = signal(false);
+    expect(await tokenFor(() => 'tok', waiting)).toBe('tok');
+    expect(waiting()).toBe(false);
+  });
+  it('says it is waiting while the check is not ready, then returns the token and stops saying it', async () => {
+    if (!CAPTCHA_REQUIRED) return;
+    vi.useFakeTimers();
+    try {
+      const { signal } = await import('@angular/core');
+      const { tokenFor } = await import('./turnstile');
+      const waiting = signal(false);
+      let token = '';
+      setTimeout(() => (token = 'late'), 1500);
+      const p = tokenFor(() => token, waiting);
+      await vi.advanceTimersByTimeAsync(300);
+      expect(waiting()).toBe(true);
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(await p).toBe('late');
+      expect(waiting()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

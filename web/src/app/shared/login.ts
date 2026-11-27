@@ -5,7 +5,7 @@ import { AuthService } from '../core/auth.service';
 import { watchAutofill } from './autofill';
 import { Icon } from './icon';
 import { LoginStage } from './login-stage';
-import { Turnstile, waitForToken } from './turnstile';
+import { tokenFor, Turnstile } from './turnstile';
 
 @Component({
   selector: 'app-login',
@@ -46,13 +46,16 @@ import { Turnstile, waitForToken } from './turnstile';
               </button>
             </span>
           </div>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" formControlName="remember" class="size-4 accent-violet-500" data-remember /> Remember me on this computer
+          </label>
           @if (error()) {
             <p class="text-sm text-red-400" role="alert">{{ error() }}</p>
           }
           <app-turnstile (token)="captcha.set($event)" />
           <button type="submit" [disabled]="form.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
             @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
-            {{ busy() ? 'Signing in…' : 'Sign in' }}
+            {{ busy() ? (waiting() ? 'Checking security…' : 'Signing in…') : 'Sign in' }}
             @if (!busy()) { <app-icon name="arrow" /> }
           </button>
         </form>
@@ -66,6 +69,8 @@ export class Login {
   private readonly fb = inject(FormBuilder);
 
   protected readonly captcha = signal('');
+  /** true while a sign-in that was started early waits for the security check */
+  protected readonly waiting = signal(false);
   private readonly turnstile = viewChild(Turnstile);
   protected readonly show = signal(false);
   protected readonly busy = signal(false);
@@ -73,6 +78,7 @@ export class Login {
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
+    remember: [true],
   });
 
   /** reads a saved password the browser filled in without telling the page */
@@ -93,8 +99,8 @@ export class Login {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const { email, password } = this.form.getRawValue();
-      const p = await this.auth.signInWithPassword(email.trim(), password, await waitForToken(() => this.captcha()));
+      const { email, password, remember } = this.form.getRawValue();
+      const p = await this.auth.signInWithPassword(email.trim(), password, await tokenFor(() => this.captcha(), this.waiting), remember);
       await this.router.navigateByUrl(this.auth.homeFor(p.role));
     } catch (e) {
       this.error.set((e as Error).message);

@@ -101,9 +101,10 @@ export class AuthService {
   }
 
   /** Admin / staff login. Throws an Error with a user-friendly message. */
-  async signInWithPassword(email: string, password: string, captchaToken = ''): Promise<Profile> {
+  async signInWithPassword(email: string, password: string, captchaToken = '', remember = true): Promise<Profile> {
     this.notice.set(null);
     const session = await this.passwordSession(email, password, captchaToken);
+    this.setRemember(remember); // unticked: the login ends when the browser is closed (same rule as for customers)
     await this.apply(session);
     const p = this.profile();
     if (!p) throw new Error(this.notice() ?? ACCOUNT_DISABLED);

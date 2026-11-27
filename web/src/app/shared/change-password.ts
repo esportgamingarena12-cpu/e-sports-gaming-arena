@@ -6,7 +6,7 @@ import { homeFor } from '../core/models';
 import { changePasswordProblem } from '../core/password-login';
 import { Icon } from './icon';
 import { ToastService } from './toast.service';
-import { Turnstile, waitForToken } from './turnstile';
+import { tokenFor, Turnstile } from './turnstile';
 
 /** Change password: the same screen for admin, staff and customers (they reach it from the account menu, above Logout). */
 @Component({
@@ -47,7 +47,7 @@ import { Turnstile, waitForToken } from './turnstile';
         <div class="flex gap-2">
           <button type="submit" class="btn-primary flex-1" [disabled]="busy()" data-save>
             @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
-            @if (!busy()) { <app-icon name="lock" [size]="16" /> } {{ busy() ? 'Saving…' : 'Change password' }}
+            @if (!busy()) { <app-icon name="lock" [size]="16" /> } {{ busy() ? (waiting() ? 'Checking security…' : 'Saving…') : 'Change password' }}
           </button>
           <a class="btn" [routerLink]="home()">Back</a>
         </div>
@@ -68,6 +68,7 @@ export class ChangePassword {
 
   protected readonly needsCurrent = computed(() => this.auth.hasPassword());
   protected readonly captcha = signal('');
+  protected readonly waiting = signal(false);
   private readonly turnstile = viewChild(Turnstile);
   protected readonly home = computed(() => homeFor(this.auth.role() ?? 'customer'));
 
@@ -79,7 +80,7 @@ export class ChangePassword {
     if (bad) return;
     this.busy.set(true);
     try {
-      await this.auth.changePassword(v.current, v.next, this.needsCurrent() ? await waitForToken(() => this.captcha()) : '');
+      await this.auth.changePassword(v.current, v.next, this.needsCurrent() ? await tokenFor(() => this.captcha(), this.waiting) : '');
       this.form.reset({ current: '', next: '', confirm: '' });
       this.done.set(true);
       this.toast.success('Password changed');

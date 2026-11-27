@@ -8,7 +8,7 @@ import { watchAutofill } from '../shared/autofill';
 import { Icon } from '../shared/icon';
 import { LegalLinks } from '../legal/legal-links';
 import { LoginStage } from '../shared/login-stage';
-import { Turnstile, waitForToken } from '../shared/turnstile';
+import { tokenFor, Turnstile } from '../shared/turnstile';
 import { notBlank } from '../shared/validators';
 import { BookingInfo, BookingService } from './booking.service';
 import { loginChips } from './plans';
@@ -102,7 +102,7 @@ const FIELD =
               </label>
               <button type="submit" [disabled]="signinForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signin-submit>
                 @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
-                {{ busy() ? 'Signing in…' : 'Sign in' }}
+                {{ busy() ? (waiting() ? 'Checking security…' : 'Signing in…') : 'Sign in' }}
                 @if (!busy()) { <app-icon name="arrow" /> }
               </button>
               <p class="text-center text-xs text-slate-500">Forgot your password? Sign in with Google instead.</p>
@@ -158,7 +158,7 @@ const FIELD =
               </label>
               <button type="submit" [disabled]="signupForm.invalid || busy()" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base" data-signup-submit>
                 @if (busy()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" role="status" aria-label="Please wait" data-spinner></span> }
-                {{ busy() ? 'Creating your account…' : 'Create account' }}
+                {{ busy() ? (waiting() ? 'Checking security…' : 'Creating your account…') : 'Create account' }}
                 @if (!busy()) { <app-icon name="arrow" /> }
               </button>
             </form>
@@ -269,6 +269,8 @@ export class BookLogin implements OnInit {
 
   /** the Cloudflare security-check token for the next try ('' until it is ready) */
   protected readonly captcha = signal('');
+  /** true while a sign-in or sign-up that was started early waits for the security check */
+  protected readonly waiting = signal(false);
   private readonly turnstile = viewChild(Turnstile);
 
   protected async signIn(): Promise<void> {
@@ -281,7 +283,7 @@ export class BookLogin implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const p = await this.auth.signInCustomer(v.email.trim(), v.password, v.remember, await waitForToken(() => this.captcha()));
+      const p = await this.auth.signInCustomer(v.email.trim(), v.password, v.remember, await tokenFor(() => this.captcha(), this.waiting));
       await this.go(p.role, this.next());
     } catch (e) {
       this.error.set((e as Error).message);
@@ -308,7 +310,7 @@ export class BookLogin implements OnInit {
     this.error.set(null);
     this.info2.set(null);
     try {
-      const p = await this.auth.signUpCustomer(v.name.trim(), email, v.password, v.remember, await waitForToken(() => this.captcha()));
+      const p = await this.auth.signUpCustomer(v.name.trim(), email, v.password, v.remember, await tokenFor(() => this.captcha(), this.waiting));
       if (p) {
         // remember that they agreed; if this fails they are simply asked again on the next screen
         await this.auth.recordConsent().catch(() => undefined);
