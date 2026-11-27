@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { afterLoginPath, oauthErrorFrom } from '../core/google-login';
 import { passwordProblem, passwordsMatch } from '../core/password-login';
+import { watchAutofill } from '../shared/autofill';
 import { Icon } from '../shared/icon';
 import { LegalLinks } from '../legal/legal-links';
 import { LoginStage } from '../shared/login-stage';
@@ -207,6 +208,12 @@ export class BookLogin implements OnInit {
     },
     { validators: passwordsAgree },
   );
+  /** reads a saved password the browser filled in without telling the page */
+  private readonly syncBoxes = watchAutofill([
+    { form: this.signinForm, rootOf: (h) => h.querySelector('[data-signin-form]') },
+    { form: this.signupForm, rootOf: (h) => h.querySelector('[data-signup-form]') },
+  ]);
+
   constructor() {
     this.auth.warmUpLogin();
     // the banner shows the real rates; if the shop info cannot be loaded it just shows the plain chips
@@ -265,6 +272,7 @@ export class BookLogin implements OnInit {
   private readonly turnstile = viewChild(Turnstile);
 
   protected async signIn(): Promise<void> {
+    this.syncBoxes();
     if (this.signinForm.invalid) {
       this.signinForm.markAllAsTouched();
       return;
@@ -284,6 +292,7 @@ export class BookLogin implements OnInit {
   }
 
   protected async signUp(): Promise<void> {
+    this.syncBoxes();
     if (this.signupForm.invalid) {
       this.signupForm.markAllAsTouched();
       return;

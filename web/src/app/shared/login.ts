@@ -2,6 +2,7 @@ import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { watchAutofill } from './autofill';
 import { Icon } from './icon';
 import { LoginStage } from './login-stage';
 import { Turnstile, waitForToken } from './turnstile';
@@ -74,6 +75,9 @@ export class Login {
     password: ['', Validators.required],
   });
 
+  /** reads a saved password the browser filled in without telling the page */
+  private readonly syncBoxes = watchAutofill([{ form: this.form }]);
+
   constructor() {
     this.auth.warmUpLogin();
     // already signed in when the page opens -> go to your own area.
@@ -84,6 +88,7 @@ export class Login {
   }
 
   protected async submit(): Promise<void> {
+    this.syncBoxes();
     if (this.form.invalid) return;
     this.busy.set(true);
     this.error.set(null);
